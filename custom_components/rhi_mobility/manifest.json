@@ -7,12 +7,12 @@
   "codeowners": [
     "@npinguin"
   ],
-  "documentation": "https://robotix.be/",
-  "version": "0.5.8",
   "config_flow": true,
+  "documentation": "https://robotix.be/",
   "integration_type": "hub",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/npinguin/rhi-mobility/issues",
+  "requirements": [],
   "single_config_entry": true,
-  "requirements": []
+  "version": "0.5.8"
 }
