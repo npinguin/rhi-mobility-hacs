@@ -1,0 +1,81 @@
+{
+  "kind": "domain_build_specification",
+  "contract_version": "1.2.0",
+  "publisher": "rhi_mobility",
+  "domain_id": "mobility",
+  "builder_id": "mobility.person.presence.v1",
+  "builder_version": "1.5.1",
+  "concept": {
+    "concept_id": "person",
+    "display_name": "Person Presence",
+    "description": "Represents a person presence or location source used by the Mobility domain.",
+    "selection_guidance": "Select the person source that should provide presence or location context to Mobility."
+  },
+  "supported_sources": [
+    {
+      "integration_domain": "person"
+    }
+  ],
+  "candidate_requirements": {
+    "topology": {
+      "candidate_scope": "entity",
+      "grouping": "person_entity",
+      "minimum_groups": 0,
+      "maximum_groups": null
+    },
+    "normalized_inputs": [
+      {
+        "input_id": "person_location_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": true,
+        "cardinality": "exactly_one",
+        "integration_matches": [
+          {
+            "integration_domain": "person",
+            "raw_capability_id": "person_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "contains",
+                "value": "person"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "declared_domain_outputs": {
+    "possible_facts": [
+      "person.location_state",
+      "person.presence_state",
+      "person.health"
+    ],
+    "possible_editable_properties": [],
+    "possible_commands": []
+  },
+  "build_policy": {
+    "auto_prepare_when_unambiguous": true,
+    "review_when_multiple_candidates": true,
+    "block_when_required_input_missing": true
+  },
+  "safety": {
+    "creates_binding": false,
+    "creates_runtime_truth": false,
+    "creates_public_contract": false,
+    "executes_commands": false
+  },
+  "domain_presentation": {
+    "display_name": "Mobility",
+    "description": "Builds the Mobility domain model for vehicles, EV chargers and Mobility-related presence from Foundation-selected technical sources.",
+    "selection_guidance": "Configure each Mobility concept by selecting the integrations and devices that provide its technical data or control surfaces."
+  }
+}

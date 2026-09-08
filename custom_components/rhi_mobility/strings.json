@@ -1,0 +1,14 @@
+{
+  "title": "Robotix Home Intelligence - Mobility Module",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Robotix Home Intelligence - Mobility Module",
+        "description": "Publishes Mobility build specifications, consumes Foundation-selected build input, exposes canonical Mobility Public Runtime V2, Energy V2 and safe Mobility-owned controls. No command runs automatically at startup."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Robotix Home Intelligence - Mobility Module is already configured."
+    }
+  }
+}

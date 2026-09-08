@@ -1,0 +1,18 @@
+{
+  "domain": "rhi_mobility",
+  "name": "Robotix Home Intelligence - Mobility Module",
+  "after_dependencies": [
+    "rhi_foundation"
+  ],
+  "codeowners": [
+    "@npinguin"
+  ],
+  "documentation": "https://robotix.be/",
+  "version": "0.5.8",
+  "config_flow": true,
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/npinguin/rhi-mobility/issues",
+  "single_config_entry": true,
+  "requirements": []
+}

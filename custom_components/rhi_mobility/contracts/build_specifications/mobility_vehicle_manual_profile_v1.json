@@ -1,0 +1,89 @@
+{
+  "kind": "domain_build_specification",
+  "contract_version": "1.2.0",
+  "publisher": "rhi_mobility",
+  "domain_id": "mobility",
+  "builder_id": "mobility.vehicle.manual_profile.v1",
+  "builder_version": "1.5.1",
+  "concept": {
+    "concept_id": "vehicle",
+    "display_name": "Vehicle",
+    "description": "Represents a vehicle managed by the Mobility domain.",
+    "selection_guidance": "Select the integrations and devices that provide technical data for this vehicle."
+  },
+  "supported_sources": [
+    {
+      "integration_domain": "rhi_foundation"
+    }
+  ],
+  "candidate_requirements": {
+    "topology": {
+      "candidate_scope": "configured_product",
+      "grouping": "configured_vehicle",
+      "minimum_groups": 0,
+      "maximum_groups": null
+    },
+    "normalized_inputs": [
+      {
+        "input_id": "manual_vehicle_configuration",
+        "technical_capabilities": {
+          "any_of": [
+            "configured_vehicle_profile"
+          ]
+        },
+        "allowed_source_kinds": [
+          "configured_product_capability"
+        ],
+        "required": true,
+        "cardinality": "exactly_one",
+        "integration_matches": [
+          {
+            "integration_domain": "rhi_foundation",
+            "raw_capability_id": "manual_vehicle_configuration",
+            "source_kind": "configured_product_capability",
+            "all_of": [
+              {
+                "field": "source_identity.capability_key",
+                "operator": "equals",
+                "value": "manual_vehicle_configuration"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "declared_domain_outputs": {
+    "possible_facts": [
+      "vehicle.soc_pct",
+      "vehicle.battery_capacity_kwh",
+      "vehicle.battery_energy_kwh",
+      "vehicle.target_soc_pct",
+      "vehicle.required_energy_kwh",
+      "vehicle.health"
+    ],
+    "possible_editable_properties": [
+      "vehicle.soc_pct",
+      "vehicle.battery_capacity_kwh",
+      "vehicle.battery_energy_kwh",
+      "vehicle.target_soc_pct"
+    ],
+    "possible_commands": []
+  },
+  "build_policy": {
+    "auto_prepare_when_unambiguous": true,
+    "review_when_multiple_candidates": false,
+    "block_when_required_input_missing": true
+  },
+  "safety": {
+    "creates_binding": false,
+    "creates_runtime_truth": false,
+    "creates_public_contract": false,
+    "executes_commands": false
+  },
+  "domain_presentation": {
+    "display_name": "Mobility",
+    "description": "Builds the Mobility domain model for vehicles, EV chargers and Mobility-related presence from Foundation-selected technical sources.",
+    "selection_guidance": "Configure each Mobility concept by selecting the integrations and devices that provide its technical data or control surfaces."
+  }
+}

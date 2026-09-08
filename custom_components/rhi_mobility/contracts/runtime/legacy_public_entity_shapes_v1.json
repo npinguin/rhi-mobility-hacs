@@ -1,0 +1,849 @@
+{
+  "kind": "mobility_legacy_public_entity_shapes",
+  "contract_version": "MOBILITY_PUBLIC_RUNTIME_V1",
+  "reference_release": "R43.2.65",
+  "release": "M0.5.8",
+  "entities": {
+    "sensor.mobility_charger_profile_index": {
+      "source_file": "SOURCE/profiles/charger_profiles.yaml",
+      "legacy_unique_id": "mobility_charger_profile_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "index_type",
+        "consumer_visibility",
+        "selection_usage",
+        "key_field",
+        "label_field",
+        "profile_source",
+        "profiles",
+        "profiles_by_key",
+        "selector_contract_json"
+      ]
+    },
+    "sensor.mobility_vehicle_profile_index": {
+      "source_file": "SOURCE/profiles/vehicle_profiles.yaml",
+      "legacy_unique_id": "mobility_vehicle_profile_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "index_type",
+        "consumer_visibility",
+        "selection_usage",
+        "key_field",
+        "label_field",
+        "profile_source",
+        "profiles",
+        "profiles_by_key",
+        "selector_contract_json"
+      ]
+    },
+    "sensor.mobility_energy_asset_publication": {
+      "source_file": "SOURCE/intelligence/energy_consumer_publication.yaml",
+      "legacy_unique_id": "mobility_energy_asset_publication",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "schema_version",
+        "publication_role",
+        "source_domain",
+        "target_domain",
+        "total_energy_asset_count",
+        "consumer_asset_count",
+        "consumer_count",
+        "active_consumer_count",
+        "connection_asset_count",
+        "connection_count",
+        "republish_dependencies_json",
+        "publication_boundary_rule",
+        "consumer_assets",
+        "connection_assets",
+        "health",
+        "health_reason",
+        "semantic_violations_json",
+        "minimal_tech_debt_rule",
+        "legacy_field_policy",
+        "canonical_field_policy",
+        "charging_relations",
+        "directional_connection_counters",
+        "actual_power_kw_scope_rule",
+        "primary_contract_shape_rule",
+        "energy_boundary_minimality_rule",
+        "operating_state_vocabulary",
+        "last_command_result",
+        "minimal_charging_contract_rule",
+        "canonical_charger_runtime_projection_rule"
+      ]
+    },
+    "sensor.mobility_effective_charging_capability_index": {
+      "source_file": "SOURCE/intelligence/effective_charging_capability_index.yaml",
+      "legacy_unique_id": "mobility_effective_charging_capability_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_visibility",
+        "index_schema",
+        "semantic_rule",
+        "dependency_rule",
+        "formula",
+        "rounding_policy",
+        "ownership_rule",
+        "capabilities",
+        "capabilities_by_asset",
+        "structural_health"
+      ]
+    },
+    "sensor.mobility_intelligence_index": {
+      "source_file": "SOURCE/intelligence/cluster_intelligence_index.yaml",
+      "legacy_unique_id": "mobility_intelligence_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "consumer_visibility",
+        "intelligence_role",
+        "property_lineage_rule",
+        "presentation_boundary_rule",
+        "no_write_rule",
+        "clusters_json",
+        "clusters_by_asset_type",
+        "supervisory_by_key",
+        "supervisory_keys_json",
+        "supervisory_rule"
+      ]
+    },
+    "sensor.mobility_vehicle_intelligence_index": {
+      "source_file": "SOURCE/intelligence/cluster_intelligence_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_intelligence_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "consumer_visibility",
+        "intelligence_role",
+        "property_lineage_rule",
+        "no_write_rule",
+        "completeness_rule",
+        "assets_json",
+        "assets_by_id",
+        "intelligence_keys_json"
+      ]
+    },
+    "sensor.mobility_charger_intelligence_index": {
+      "source_file": "SOURCE/intelligence/cluster_intelligence_index.yaml",
+      "legacy_unique_id": "mobility_charger_intelligence_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "consumer_visibility",
+        "intelligence_role",
+        "property_lineage_rule",
+        "vehicle_context_rule",
+        "freshness_rule",
+        "no_write_rule",
+        "assets_json",
+        "assets_by_id",
+        "intelligence_keys_json"
+      ]
+    },
+    "sensor.mobility_intelligence_publication_health": {
+      "source_file": "SOURCE/intelligence/cluster_intelligence_index.yaml",
+      "legacy_unique_id": "mobility_intelligence_publication_health",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_visibility",
+        "release_gate",
+        "vehicle_intelligence_count",
+        "expected_vehicle_intelligence_count",
+        "charger_intelligence_count",
+        "expected_charger_intelligence_count",
+        "violations_json"
+      ]
+    },
+    "sensor.mobility_product_profile_index": {
+      "source_file": "SOURCE/config/product_config_alignment_indexes.yaml",
+      "legacy_unique_id": "mobility_product_profile_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_visibility",
+        "index_schema",
+        "index_role",
+        "profiles_json",
+        "profile_indexes_json",
+        "profile_affects_rule"
+      ]
+    },
+    "sensor.mobility_runtime_health": {
+      "source_file": "SOURCE/diagnostics/minimal_runtime_health.yaml",
+      "legacy_unique_id": "mobility_runtime_health",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "release_version",
+        "health_scope",
+        "health_rule",
+        "missing_entities_json",
+        "violations_json",
+        "required_owner_precedence_json"
+      ]
+    },
+    "sensor.mobility_release_acceptance_health": {
+      "source_file": "SOURCE/diagnostics/minimal_runtime_health.yaml",
+      "legacy_unique_id": "mobility_release_acceptance_health",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "release_version",
+        "health_scope",
+        "runtime_health",
+        "physical_acceptance",
+        "acceptance_rule"
+      ]
+    },
+    "sensor.mobility_activity_index": {
+      "source_file": "SOURCE/contracts/activity_index.yaml",
+      "legacy_unique_id": "mobility_activity_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_visibility",
+        "index_schema",
+        "index_role",
+        "standard_rule",
+        "long_term_history_rule",
+        "open_activity_count",
+        "activities_by_scope",
+        "activities_json",
+        "transactions_by_scope",
+        "last_results_by_scope",
+        "snapshot_revision",
+        "observed_at"
+      ]
+    },
+    "sensor.mobility_vehicle_command_slot_index": {
+      "source_file": "SOURCE/contracts/vehicle_command_slot_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_command_slot_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "release_version",
+        "consumer_visibility",
+        "index_schema",
+        "command_index_entity",
+        "authority_rule",
+        "execution_rule",
+        "family_section_rule",
+        "slots_json",
+        "slots_by_asset"
+      ]
+    },
+    "sensor.mobility_vehicle_command_slot_health": {
+      "source_file": "SOURCE/contracts/vehicle_command_slot_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_command_slot_health",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "release_version",
+        "consumer_visibility",
+        "release_gate",
+        "violations_json"
+      ]
+    },
+    "sensor.mobility_asset_index": {
+      "source_file": "SOURCE/contracts/asset_index.yaml",
+      "legacy_unique_id": "mobility_asset_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "consumer_visibility",
+        "index_role",
+        "ownership",
+        "forbidden_contents",
+        "assets_json",
+        "image_identity_rule"
+      ]
+    },
+    "sensor.mobility_charger_property_index": {
+      "source_file": "SOURCE/contracts/charger_property_index.yaml",
+      "legacy_unique_id": "mobility_charger_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "consumer_visibility",
+        "ownership",
+        "definition_owner",
+        "placement_projection",
+        "module_entities_json",
+        "raw_properties",
+        "properties",
+        "properties_by_key",
+        "unmapped_properties_json",
+        "structural_health",
+        "placement_rule"
+      ]
+    },
+    "sensor.mobility_charger_command_slot_index": {
+      "source_file": "SOURCE/contracts/charger_command_slot_index.yaml",
+      "legacy_unique_id": "mobility_charger_command_slot_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "consumer_visibility",
+        "command_index_entity",
+        "authority_rule",
+        "lifecycle_rule",
+        "availability_command_rule",
+        "execution_rule",
+        "placement_rule",
+        "slots_json",
+        "slots_by_asset",
+        "placement_violations_json"
+      ]
+    },
+    "sensor.mobility_charger_command_slot_health": {
+      "source_file": "SOURCE/contracts/charger_command_slot_index.yaml",
+      "legacy_unique_id": "mobility_charger_command_slot_health",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_visibility",
+        "release_gate",
+        "violations_json"
+      ]
+    },
+    "sensor.mobility_ux_runtime_consumption_map": {
+      "source_file": "SOURCE/contracts/ux_runtime_consumption_map.yaml",
+      "legacy_unique_id": "mobility_ux_runtime_consumption_map",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_visibility",
+        "index_schema",
+        "governance_rule",
+        "identity_navigation_contract",
+        "vehicle_property_router_contract",
+        "charger_property_contract",
+        "person_property_contract",
+        "relationship_contract",
+        "command_readiness_contract",
+        "command_result_contract",
+        "vehicle_layout_contract",
+        "charger_layout_contract",
+        "vehicle_command_placement_contract",
+        "charger_command_placement_contract",
+        "vehicle_intelligence_contract",
+        "charger_intelligence_contract",
+        "runtime_entry_points_json",
+        "deprecated_compatibility_sources_json",
+        "forbidden_new_ux_sources_json",
+        "join_rule",
+        "property_rule",
+        "charger_operational_status_rule",
+        "charger_connection_status_rule",
+        "charger_status_fallback_rule",
+        "relationship_rule",
+        "command_rule",
+        "intelligence_rule",
+        "energy_boundary_rule",
+        "deprecated_contract_rule",
+        "migration_sequence_rule",
+        "vehicle_property_resolution_rule",
+        "command_join_rule",
+        "component_normalization_rule",
+        "active_health_rule",
+        "footer_hard_gates_json",
+        "forbidden_ux_inferences_json",
+        "intelligence_catalog_contract",
+        "requested_power_lifecycle_rule",
+        "actual_current_rule",
+        "supervisory_rule",
+        "product_display_rule",
+        "health_separation_rule",
+        "compatibility_cleanup_rule"
+      ]
+    },
+    "sensor.mobility_vehicle_component_contract_index": {
+      "source_file": "SOURCE/contracts/vehicle_component_contract_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_component_contract_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "consumer_visibility",
+        "entity_id",
+        "governance_rule",
+        "model_source",
+        "source_implementation",
+        "definition_hash",
+        "definition_count",
+        "internal_alias_count",
+        "router_entity",
+        "router_rule",
+        "component_materialization_rule",
+        "engineering_rule",
+        "component_count",
+        "components_json",
+        "components_by_id",
+        "property_component_map_json",
+        "ux_cards_json",
+        "ux_fields_by_property_json",
+        "ux_layout_rules_json",
+        "ux_forbidden_rendering_json",
+        "required_component_indexes_json",
+        "required_ux_contract_fields_json"
+      ]
+    },
+    "sensor.mobility_command_index": {
+      "source_file": "SOURCE/contracts/command_index.yaml",
+      "legacy_unique_id": "mobility_command_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "consumer_visibility",
+        "authority_rule",
+        "binding_source_rule",
+        "execution_rule",
+        "stop_rule",
+        "commands"
+      ]
+    },
+    "sensor.mobility_command_publication_health": {
+      "source_file": "SOURCE/contracts/command_index.yaml",
+      "legacy_unique_id": "mobility_command_publication_health",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_visibility",
+        "public_index",
+        "execution_policy",
+        "release_gate"
+      ]
+    },
+    "sensor.mobility_person_property_index": {
+      "source_file": "SOURCE/contracts/person_property_index.yaml",
+      "legacy_unique_id": "mobility_person_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "consumer_visibility",
+        "materialization_rule",
+        "properties",
+        "properties_by_key"
+      ]
+    },
+    "sensor.mobility_relationship_index": {
+      "source_file": "SOURCE/contracts/relationship_index.yaml",
+      "legacy_unique_id": "mobility_relationship_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "consumer_visibility",
+        "relationship_policy",
+        "relationships",
+        "relationships_by_asset",
+        "assignments_json",
+        "assignment_rule"
+      ]
+    },
+    "sensor.mobility_relationship_integrity_health": {
+      "source_file": "SOURCE/contracts/relationship_index.yaml",
+      "legacy_unique_id": "mobility_relationship_integrity_health",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_visibility",
+        "checked_index",
+        "inverse_relationship_rule",
+        "missing_or_degraded_count",
+        "validation_rule",
+        "violations_json"
+      ]
+    },
+    "sensor.mobility_vehicle_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "consumer_visibility",
+        "materialization_rule",
+        "component_split_rule",
+        "dependency_rule",
+        "component_indexes_json",
+        "component_indexes_by_component",
+        "properties",
+        "properties_by_key",
+        "component_property_counts_json",
+        "structural_health",
+        "definition_owner",
+        "component_contract_entity"
+      ]
+    },
+    "sensor.mobility_vehicle_identity_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_identity_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "component",
+        "consumer_visibility",
+        "materialization_rule",
+        "dependency_rule",
+        "properties",
+        "properties_by_key",
+        "property_count",
+        "payload_guardrail",
+        "definition_owner",
+        "placement_projection"
+      ]
+    },
+    "sensor.mobility_vehicle_battery_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_battery_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "component",
+        "consumer_visibility",
+        "materialization_rule",
+        "dependency_rule",
+        "properties",
+        "properties_by_key",
+        "property_count",
+        "payload_guardrail",
+        "definition_owner",
+        "placement_projection"
+      ]
+    },
+    "sensor.mobility_vehicle_charging_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_charging_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "component",
+        "consumer_visibility",
+        "materialization_rule",
+        "dependency_rule",
+        "properties",
+        "properties_by_key",
+        "property_count",
+        "payload_guardrail",
+        "definition_owner",
+        "placement_projection"
+      ]
+    },
+    "sensor.mobility_vehicle_range_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_range_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "component",
+        "consumer_visibility",
+        "materialization_rule",
+        "dependency_rule",
+        "properties",
+        "properties_by_key",
+        "property_count",
+        "payload_guardrail",
+        "definition_owner",
+        "placement_projection"
+      ]
+    },
+    "sensor.mobility_vehicle_access_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_access_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "component",
+        "consumer_visibility",
+        "materialization_rule",
+        "dependency_rule",
+        "properties",
+        "properties_by_key",
+        "property_count",
+        "payload_guardrail",
+        "definition_owner",
+        "placement_projection"
+      ]
+    },
+    "sensor.mobility_vehicle_comfort_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_comfort_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "component",
+        "consumer_visibility",
+        "materialization_rule",
+        "dependency_rule",
+        "properties",
+        "properties_by_key",
+        "property_count",
+        "payload_guardrail",
+        "definition_owner",
+        "placement_projection"
+      ]
+    },
+    "sensor.mobility_vehicle_location_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_location_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "component",
+        "consumer_visibility",
+        "materialization_rule",
+        "dependency_rule",
+        "properties",
+        "properties_by_key",
+        "property_count",
+        "payload_guardrail",
+        "definition_owner",
+        "placement_projection"
+      ]
+    },
+    "sensor.mobility_vehicle_maintenance_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_maintenance_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "component",
+        "consumer_visibility",
+        "materialization_rule",
+        "dependency_rule",
+        "properties",
+        "properties_by_key",
+        "property_count",
+        "payload_guardrail",
+        "definition_owner",
+        "placement_projection"
+      ]
+    },
+    "sensor.mobility_vehicle_diagnostics_property_index": {
+      "source_file": "SOURCE/contracts/vehicle_property_index.yaml",
+      "legacy_unique_id": "mobility_vehicle_diagnostics_property_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "component",
+        "consumer_visibility",
+        "materialization_rule",
+        "dependency_rule",
+        "properties",
+        "properties_by_key",
+        "property_count",
+        "payload_guardrail",
+        "definition_owner",
+        "placement_projection"
+      ]
+    },
+    "sensor.mobility_charger_component_contract_index": {
+      "source_file": "SOURCE/contracts/charger_component_contract_index.yaml",
+      "legacy_unique_id": "mobility_charger_component_contract_index",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "index_schema",
+        "asset_type",
+        "consumer_visibility",
+        "governance_rule",
+        "model_source",
+        "source_implementation",
+        "definition_hash",
+        "definition_count",
+        "internal_alias_count",
+        "component_count",
+        "property_index_entity",
+        "relationship_index_entity",
+        "activity_index_entity",
+        "command_index_entity",
+        "command_slot_index_entity",
+        "property_component_map_json",
+        "ux_fields_by_property_json",
+        "components_json",
+        "ux_cards_json",
+        "ux_layout_rules_json",
+        "ux_forbidden_rendering_json",
+        "command_render_rule",
+        "required_ux_contract_fields_json"
+      ]
+    },
+    "sensor.mobility_release_identity": {
+      "source_file": "generated/release identity",
+      "legacy_unique_id": "mobility_release_identity",
+      "state_kind": "release",
+      "attribute_keys": [
+        "contract_version",
+        "release_version",
+        "release_name",
+        "contract_name",
+        "distribution_file",
+        "runtime_status"
+      ]
+    },
+    "sensor.mobility_release_contract": {
+      "source_file": "SOURCE/contracts/release_contract.yaml",
+      "legacy_unique_id": "mobility_release_contract",
+      "state_kind": "template",
+      "attribute_keys": [
+        "backend_release",
+        "release_title",
+        "contract_version",
+        "contract_name",
+        "schema_version",
+        "contract_health",
+        "compatibility_rule",
+        "public_contracts_json",
+        "deprecated_contracts_json",
+        "internal_only_contracts_json",
+        "ownership_rule",
+        "deprecation_rule",
+        "governance_rule"
+      ]
+    },
+    "sensor.mobility_energy_contract_registry": {
+      "source_file": "SOURCE/intelligence/energy_consumer_publication.yaml",
+      "legacy_unique_id": "mobility_energy_contract_registry",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "registry_type",
+        "consumer_visibility",
+        "publication_role",
+        "domain_boundary_rule",
+        "republish_trigger_rule",
+        "schema_version",
+        "publication_entity",
+        "asset_scope_json",
+        "forbidden_publication_json",
+        "required_consumer_fields_json",
+        "required_connection_fields_json",
+        "active_rule",
+        "limit_rule",
+        "semantic_publication_rule",
+        "r41_83_minimal_contract_marker",
+        "direction_rule",
+        "policy_rule",
+        "minimal_tech_debt_rule",
+        "legacy_field_policy",
+        "availability_projection_rule",
+        "canonical_energy_contract",
+        "model_first_rule",
+        "required_core_fields_json",
+        "required_controllable_fields_json",
+        "required_flexible_load_fields_json",
+        "required_connection_point_fields_json",
+        "forbidden_canonical_fields_json",
+        "power_flow_rule",
+        "lifecycle_rule",
+        "source_context_rule",
+        "canonical_cutover_rule",
+        "command_reference_rule",
+        "canonical_charger_runtime_projection_rule",
+        "ocpp_power_fallback_rule",
+        "peblar_projection_rule",
+        "utility_projection_rule",
+        "device_recovery_rule",
+        "recovery_snapshot_rule",
+        "utility_plug_profile_binding_rule",
+        "energy_command_resolution_rule",
+        "persistent_user_setting_rule",
+        "requested_power_current_correlation_rule",
+        "lifecycle_participation_rule",
+        "original_energy_requested_power_rule",
+        "mobility_energy_authority_rule",
+        "requested_power_external_write_contract_rule",
+        "connection_editor_link_rule",
+        "start_stop_command_integrity_rule"
+      ]
+    },
+    "sensor.mobility_energy_publication_health": {
+      "source_file": "SOURCE/intelligence/energy_consumer_publication.yaml",
+      "legacy_unique_id": "mobility_energy_publication_health",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_count",
+        "expected_consumer_count",
+        "active_consumer_count",
+        "expected_active_consumer_count",
+        "connection_count",
+        "expected_connection_count",
+        "total_energy_asset_count",
+        "expected_total_energy_asset_count",
+        "relationship_republish_dependency",
+        "semantic_violations_json",
+        "release_gate",
+        "minimal_tech_debt_rule",
+        "legacy_field_policy",
+        "schema_version",
+        "canonical_field_policy",
+        "charger_runtime_projection_gate",
+        "canonical_cutover_gate",
+        "command_reference_gate",
+        "execution_boundary_gate",
+        "persistent_setting_gate"
+      ]
+    },
+    "sensor.mobility_canonical_asset_contract_registry": {
+      "source_file": "SOURCE/contracts/mobility_canonical_asset_runtime_contract.yaml",
+      "legacy_unique_id": "mobility_canonical_asset_contract_registry",
+      "state_kind": "template",
+      "attribute_keys": [
+        "contract_version",
+        "consumer_visibility",
+        "contract_name",
+        "aligned_energy_contract",
+        "external_publication_contract",
+        "governance_rule",
+        "shared_canonical_fields_json",
+        "lifecycle_enum_json",
+        "availability_enum_json",
+        "energy_control_mode_enum_json",
+        "energy_control_hold_state_enum_json",
+        "energy_flow_direction_enum_json",
+        "no_guess_rule"
+      ]
+    }
+  }
+}

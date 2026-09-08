@@ -1,0 +1,48 @@
+execute_command:
+  name: Execute Mobility command
+  description: Execute one canonical Mobility-owned command. Raw Home Assistant service details remain internal to Mobility.
+  fields:
+    asset_id:
+      required: true
+      selector:
+        text:
+    command_key:
+      required: true
+      selector:
+        text:
+    request_id:
+      required: false
+      selector:
+        text:
+set_requested_power:
+  name: Set requested charging power
+  description: Write requested charging power through the bound Mobility setpoint surface. Physical readback remains the displayed value.
+  fields:
+    asset_id:
+      required: true
+      selector:
+        text:
+    power_kw:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.1
+          unit_of_measurement: kW
+    request_id:
+      required: false
+      selector:
+        text:
+rearm_execution:
+  name: Rearm Mobility execution scope
+  description: Explicitly clear an uncertain execution block after engineering review.
+  fields:
+    asset_id:
+      required: true
+      selector:
+        text:
+    conflict_family:
+      required: true
+      selector:
+        text:

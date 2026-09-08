@@ -1,0 +1,2998 @@
+{
+  "kind": "domain_build_specification",
+  "contract_version": "1.2.0",
+  "publisher": "rhi_mobility",
+  "domain_id": "mobility",
+  "builder_id": "mobility.charger.full_evse.v1",
+  "builder_version": "1.5.1",
+  "concept": {
+    "concept_id": "charger",
+    "display_name": "EV Charger",
+    "description": "Represents a physical EV charging point managed by the Mobility domain.",
+    "selection_guidance": "Select the integrations and devices that expose the charging point and its technical data."
+  },
+  "supported_sources": [
+    {
+      "integration_domain": "ocpp"
+    },
+    {
+      "integration_domain": "peblar"
+    },
+    {
+      "integration_domain": "wallbox"
+    }
+  ],
+  "candidate_requirements": {
+    "topology": {
+      "candidate_scope": "config_entry",
+      "grouping": "charger_device",
+      "minimum_groups": 0,
+      "maximum_groups": null
+    },
+    "normalized_inputs": [
+      {
+        "input_id": "charger_operating_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": true,
+        "cardinality": "exactly_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "evse_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "evse_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "evse_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_connection",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "connector_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "connector_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "connector_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status_connector.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_power",
+        "technical_capabilities": {
+          "any_of": [
+            "power_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": true,
+        "cardinality": "exactly_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_active_import.sensor"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_total"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_energy_total",
+        "technical_capabilities": {
+          "any_of": [
+            "energy_counter"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "lifetime_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "lifetime_energy"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "lifetime_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "energy"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "lifetime_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "energy_active_import_register.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_actual_current",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "actual_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "actual_current_a"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "actual_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "actual_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_import.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_current_limit",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "offered_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "limit_source"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "offered_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "offered_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_offered.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_power_limit_write",
+        "technical_capabilities": {
+          "any_of": [
+            "number_write_surface"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_more_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "maximum_power",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "maximum_power"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "maximum_power",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "maximum_power"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "maximum_power",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "maximum_power"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_current_limit_write",
+        "technical_capabilities": {
+          "any_of": [
+            "number_write_surface"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_more_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "maximum_current",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "maximum_current"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "maximum_current",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "maximum_current"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "maximum_current",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "maximum_current"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_start_surface",
+        "technical_capabilities": {
+          "any_of": [
+            "binary_write_surface",
+            "service_command_surface"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity",
+          "service"
+        ],
+        "required": false,
+        "cardinality": "zero_or_more_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "start_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "charge_control"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "start_charging",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "start"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "start_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "start_charging"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "start_charging",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "start"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "start_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "charge"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "start_charging",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "start"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_stop_surface",
+        "technical_capabilities": {
+          "any_of": [
+            "binary_write_surface",
+            "service_command_surface"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity",
+          "service"
+        ],
+        "required": false,
+        "cardinality": "zero_or_more_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "stop_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "charge_control"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "stop_charging",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "stop"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "stop_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "stop_charging"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "stop_charging",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "stop"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "stop_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "charge"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "stop_charging",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "stop"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_restart_surface",
+        "technical_capabilities": {
+          "any_of": [
+            "service_command_surface"
+          ]
+        },
+        "allowed_source_kinds": [
+          "service"
+        ],
+        "required": false,
+        "cardinality": "zero_or_more_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "restart",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "restart"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "restart",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "restart"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "restart",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "restart"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_unlock_surface",
+        "technical_capabilities": {
+          "any_of": [
+            "service_command_surface"
+          ]
+        },
+        "allowed_source_kinds": [
+          "service"
+        ],
+        "required": false,
+        "cardinality": "zero_or_more_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "unlock",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "unlock"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "unlock",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "unlock"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "unlock",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "unlock"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_identify_surface",
+        "technical_capabilities": {
+          "any_of": [
+            "service_command_surface"
+          ]
+        },
+        "allowed_source_kinds": [
+          "service"
+        ],
+        "required": false,
+        "cardinality": "zero_or_more_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "identify",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "identify"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "identify",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "identify"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "identify",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "identify"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_session_energy",
+        "technical_capabilities": {
+          "any_of": [
+            "energy_counter"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "session_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_energy"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "session_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "session_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "energy_session.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_session_duration",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "session_duration",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_duration"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "session_duration",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_duration"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "session_duration",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_duration"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_connected_vehicle_soc",
+        "technical_capabilities": {
+          "any_of": [
+            "percentage_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "connected_vehicle_soc_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "connected_vehicle_soc_pct"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "connected_vehicle_soc_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "connected_vehicle_soc_pct"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "connected_vehicle_soc_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "connected_vehicle_soc_pct"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_connector_status",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "connector_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "connector_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "connector_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status_connector.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_voltage_l1",
+        "technical_capabilities": {
+          "any_of": [
+            "voltage_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_voltage_l1_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "voltage_phase_1"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_voltage_l1_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "voltage_phase_1"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_voltage_l1_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_voltage_l1_v"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_voltage_l2",
+        "technical_capabilities": {
+          "any_of": [
+            "voltage_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_voltage_l2_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "voltage_phase_2"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_voltage_l2_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "voltage_phase_2"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_voltage_l2_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_voltage_l2_v"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_voltage_l3",
+        "technical_capabilities": {
+          "any_of": [
+            "voltage_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_voltage_l3_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "voltage_phase_3"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_voltage_l3_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "voltage_phase_3"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_voltage_l3_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_voltage_l3_v"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_current_l1",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_current_l1_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_phase_1"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_current_l1_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_phase_1"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_current_l1_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_current_l1_a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_current_l2",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_current_l2_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_phase_2"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_current_l2_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_phase_2"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_current_l2_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_current_l2_a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_current_l3",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_current_l3_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_phase_3"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_current_l3_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_phase_3"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_current_l3_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_current_l3_a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_power_l1",
+        "technical_capabilities": {
+          "any_of": [
+            "power_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_power_l1_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_phase_1"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_power_l1_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_phase_1"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_power_l1_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_power_l1_kw"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_power_l2",
+        "technical_capabilities": {
+          "any_of": [
+            "power_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_power_l2_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_phase_2"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_power_l2_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_phase_2"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_power_l2_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_power_l2_kw"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_power_l3",
+        "technical_capabilities": {
+          "any_of": [
+            "power_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_power_l3_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_phase_3"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_power_l3_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_phase_3"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_power_l3_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_power_l3_kw"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_connector_count",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "connector_count",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "connector_count"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "connector_count",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "connector_count"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "connector_count",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "connector_count"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_identity_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "identity_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "identity_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "identity_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "identity_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "identity_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "identity_state"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_image_key",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "image_key",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "image_key"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "image_key",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "image_key"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "image_key",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "image_key"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_model",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "model",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "model"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "model",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "model"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "model",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "model.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_vendor",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "vendor",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vendor"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "vendor",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vendor"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "vendor",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vendor.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_effective_max_charge_power_kw",
+        "technical_capabilities": {
+          "any_of": [
+            "power_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "effective_max_charge_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "effective_max_charge_power_kw"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "effective_max_charge_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "effective_max_charge_power_kw"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "effective_max_charge_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "effective_max_charge_power_kw"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_max_current_a",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "max_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "max_current_a"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "max_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "max_current_a"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "max_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "max_current_a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_min_current_a",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "min_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "min_current_a"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "min_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "min_current_a"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "min_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "min_current_a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_nominal_voltage_v",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "nominal_voltage_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "nominal_voltage_v"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "nominal_voltage_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "nominal_voltage_v"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "nominal_voltage_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "nominal_voltage_v"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_phase_capability",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "phase_capability",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_capability"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "phase_capability",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_capability"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "phase_capability",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "phase_capability"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_added_range_km",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "added_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "added_range_km"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "added_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "added_range_km"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "added_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "added_range_km"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_energy_flow_direction",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "energy_flow_direction",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "energy_flow_direction"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "energy_flow_direction",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "energy_flow_direction"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "energy_flow_direction",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "energy_flow_direction"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_energy_price_per_kwh",
+        "technical_capabilities": {
+          "any_of": [
+            "energy_counter"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "energy_price_per_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "energy_price_per_kwh"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "energy_price_per_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "energy_price_per_kwh"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "energy_price_per_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "energy_price_per_kwh"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_export_current_a",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "export_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "export_current_a"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "export_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "export_current_a"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "export_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "export_current_a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_export_power_kw",
+        "technical_capabilities": {
+          "any_of": [
+            "power_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "export_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "export_power_kw"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "export_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "export_power_kw"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "export_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "export_power_kw"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_grid_energy_kwh",
+        "technical_capabilities": {
+          "any_of": [
+            "energy_counter"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "grid_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "grid_energy_kwh"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "grid_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "grid_energy_kwh"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "grid_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "grid_energy_kwh"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_offered_current_a",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "offered_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "limit_source"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "offered_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "offered_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_offered.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_offered_power_kw",
+        "technical_capabilities": {
+          "any_of": [
+            "power_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "offered_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "offered_power_kw"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "offered_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "offered_power_kw"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "offered_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "offered_power_kw"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_session_cost",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "session_cost",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_cost"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "session_cost",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_cost"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "session_cost",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_cost"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_solar_energy_kwh",
+        "technical_capabilities": {
+          "any_of": [
+            "energy_counter"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "solar_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "solar_energy_kwh"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "solar_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "solar_energy_kwh"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "solar_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "solar_energy_kwh"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_current_a",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_a"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_a"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "current_a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_evse_status",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "evse_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "evse_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "evse_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_direct_power_kw",
+        "technical_capabilities": {
+          "any_of": [
+            "power_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "direct_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "direct_power_kw"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "direct_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "direct_power_kw"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_total"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_firmware_version",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "firmware_version",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "firmware_version"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "firmware_version",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "firmware_version"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "firmware_version",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "firmware_version"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_electrical_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "electrical_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "electrical_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "electrical_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "electrical_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "electrical_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "electrical_state"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_session_value_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "session_value_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_value_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "session_value_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_value_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "session_value_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_value_state"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_serial_number",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "serial_number",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "serial_number"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "serial_number",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "serial_number"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "serial_number",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "serial_number"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_status",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status"
+              }
+            ]
+          },
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "evse_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "status.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "compat_charger_telemetry_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "telemetry_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "telemetry_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "peblar",
+            "raw_capability_id": "telemetry_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "telemetry_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "wallbox",
+            "raw_capability_id": "telemetry_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "telemetry_state"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "declared_domain_outputs": {
+    "possible_asset_types": [
+      "charger"
+    ],
+    "possible_facts": [
+      "charger.actual_current_a",
+      "charger.added_range_km",
+      "charger.connected_vehicle_soc_pct",
+      "charger.connection_state",
+      "charger.connector_count",
+      "charger.connector_status",
+      "charger.current_a",
+      "charger.current_l1_a",
+      "charger.current_l2_a",
+      "charger.current_l3_a",
+      "charger.current_limit_a",
+      "charger.direct_power_kw",
+      "charger.effective_max_charge_power_kw",
+      "charger.electrical_state",
+      "charger.energy_flow_direction",
+      "charger.energy_price_per_kwh",
+      "charger.energy_total_kwh",
+      "charger.evse_status",
+      "charger.export_current_a",
+      "charger.export_power_kw",
+      "charger.firmware_version",
+      "charger.grid_energy_kwh",
+      "charger.health",
+      "charger.identity_state",
+      "charger.image_key",
+      "charger.max_current_a",
+      "charger.min_current_a",
+      "charger.model",
+      "charger.nominal_voltage_v",
+      "charger.offered_current_a",
+      "charger.offered_power_kw",
+      "charger.operating_state",
+      "charger.phase_capability",
+      "charger.power_kw",
+      "charger.power_l1_kw",
+      "charger.power_l2_kw",
+      "charger.power_l3_kw",
+      "charger.serial_number",
+      "charger.session_cost",
+      "charger.session_duration_s",
+      "charger.session_energy_kwh",
+      "charger.session_value_state",
+      "charger.solar_energy_kwh",
+      "charger.status",
+      "charger.telemetry_state",
+      "charger.vendor",
+      "charger.voltage_l1_v",
+      "charger.voltage_l2_v",
+      "charger.voltage_l3_v"
+    ],
+    "possible_editable_properties": [
+      "charger.requested_power_kw"
+    ],
+    "possible_commands": [
+      "charger.command.start",
+      "charger.command.stop",
+      "charger.command.restart",
+      "charger.command.unlock_connector",
+      "charger.command.identify"
+    ]
+  },
+  "build_policy": {
+    "auto_prepare_when_unambiguous": true,
+    "review_when_multiple_equal_matches": true,
+    "block_when_required_input_missing": true
+  },
+  "safety": {
+    "creates_binding": false,
+    "creates_runtime_truth": false,
+    "creates_public_contract": false,
+    "executes_commands": false
+  },
+  "domain_presentation": {
+    "display_name": "Mobility",
+    "description": "Builds the Mobility domain model for vehicles, EV chargers and Mobility-related presence from Foundation-selected technical sources.",
+    "selection_guidance": "Configure each Mobility concept by selecting the integrations and devices that provide its technical data or control surfaces."
+  }
+}

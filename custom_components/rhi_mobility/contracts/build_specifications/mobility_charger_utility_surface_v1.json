@@ -1,0 +1,329 @@
+{
+  "kind": "domain_build_specification",
+  "contract_version": "1.2.0",
+  "publisher": "rhi_mobility",
+  "domain_id": "mobility",
+  "builder_id": "mobility.charger.utility_surface.v1",
+  "builder_version": "1.5.1",
+  "concept": {
+    "concept_id": "utility_charging_surface",
+    "display_name": "Utility Charging Surface",
+    "description": "Represents a limited charging control or measurement surface managed by the Mobility domain when a full EVSE integration is not available.",
+    "selection_guidance": "Select the integration and devices that provide the technical charging state, measurement or control surface."
+  },
+  "supported_sources": [
+    {
+      "integration_domain": "mqtt"
+    },
+    {
+      "integration_domain": "zwave_js"
+    }
+  ],
+  "candidate_requirements": {
+    "topology": {
+      "candidate_scope": "config_entry",
+      "grouping": "switch_or_device",
+      "minimum_groups": 0,
+      "maximum_groups": null
+    },
+    "normalized_inputs": [
+      {
+        "input_id": "charger_operating_state",
+        "technical_capabilities": {
+          "any_of": [
+            "binary_write_surface",
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": true,
+        "cardinality": "exactly_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "zwave_js",
+            "raw_capability_id": "evse_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "evse_status"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mqtt",
+            "raw_capability_id": "switch_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "37-0-currentValue"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_power",
+        "technical_capabilities": {
+          "any_of": [
+            "power_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "zwave_js",
+            "raw_capability_id": "power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "power_kw"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mqtt",
+            "raw_capability_id": "power_w",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "50-0-value-66049"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_energy_total",
+        "technical_capabilities": {
+          "any_of": [
+            "energy_counter",
+            "energy_capacity"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "zwave_js",
+            "raw_capability_id": "lifetime_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "lifetime_energy_kwh"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mqtt",
+            "raw_capability_id": "lifetime_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "50-0-value-65537"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_start_surface",
+        "technical_capabilities": {
+          "any_of": [
+            "binary_write_surface",
+            "service_command_surface"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity",
+          "service"
+        ],
+        "required": false,
+        "cardinality": "zero_or_more_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "zwave_js",
+            "raw_capability_id": "start_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "start_charging"
+              }
+            ]
+          },
+          {
+            "integration_domain": "zwave_js",
+            "raw_capability_id": "start_charging",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "start"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mqtt",
+            "raw_capability_id": "start_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "37-0-currentValue"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_stop_surface",
+        "technical_capabilities": {
+          "any_of": [
+            "binary_write_surface",
+            "service_command_surface"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity",
+          "service"
+        ],
+        "required": false,
+        "cardinality": "zero_or_more_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "zwave_js",
+            "raw_capability_id": "stop_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "stop_charging"
+              }
+            ]
+          },
+          {
+            "integration_domain": "zwave_js",
+            "raw_capability_id": "stop_charging",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "stop"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mqtt",
+            "raw_capability_id": "stop_charging",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "37-0-currentValue"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "charger_session_energy",
+        "technical_capabilities": {
+          "any_of": [
+            "energy_counter"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "mqtt",
+            "raw_capability_id": "session_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_energy_kwh"
+              }
+            ]
+          },
+          {
+            "integration_domain": "zwave_js",
+            "raw_capability_id": "session_energy_kwh",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "session_energy_kwh"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "declared_domain_outputs": {
+    "possible_asset_types": [
+      "charger"
+    ],
+    "possible_facts": [
+      "charger.operating_state",
+      "charger.power_kw",
+      "charger.energy_total_kwh",
+      "charger.health",
+      "charger.session_energy_kwh"
+    ],
+    "possible_editable_properties": [],
+    "possible_commands": [
+      "charger.command.start",
+      "charger.command.stop"
+    ]
+  },
+  "build_policy": {
+    "auto_prepare_when_unambiguous": true,
+    "review_when_multiple_equal_matches": true,
+    "block_when_required_input_missing": true
+  },
+  "safety": {
+    "creates_binding": false,
+    "creates_runtime_truth": false,
+    "creates_public_contract": false,
+    "executes_commands": false
+  },
+  "domain_presentation": {
+    "display_name": "Mobility",
+    "description": "Builds the Mobility domain model for vehicles, EV chargers and Mobility-related presence from Foundation-selected technical sources.",
+    "selection_guidance": "Configure each Mobility concept by selecting the integrations and devices that provide its technical data or control surfaces."
+  }
+}

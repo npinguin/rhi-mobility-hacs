@@ -1,0 +1,4674 @@
+{
+  "kind": "mobility_domain_runtime_model",
+  "contract_version": "1.5.0",
+  "model_version": "M0.5.8",
+  "source_of_truth": "contracts/mobility/domain_runtime_model.json + DomainBuildSpecification; generated into integration package",
+  "canonical_state_vocabularies": {
+    "charger.operating_state": [
+      "idle",
+      "preparing",
+      "running",
+      "suspended",
+      "stopped",
+      "fault",
+      "unknown"
+    ],
+    "charger.connection_state": [
+      "no_asset_connected",
+      "asset_connected",
+      "fault",
+      "unknown"
+    ],
+    "vehicle.charging_state": [
+      "not_charging",
+      "connected",
+      "charging",
+      "complete",
+      "unknown"
+    ],
+    "vehicle.security_state": [
+      "locked",
+      "unlocked",
+      "unknown"
+    ],
+    "vehicle.climate_state": [
+      "on",
+      "off",
+      "unknown"
+    ]
+  },
+  "builders": {
+    "mobility.charger.full_evse.v1": {
+      "concept_id": "charger",
+      "source_role": "primary_evse",
+      "source_precedence": 100,
+      "input_rules": {
+        "charger_operating_state": {
+          "normalizer": "charger_state",
+          "outputs": [
+            "charger.operating_state",
+            "charger.connection_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": true,
+          "cardinality": "exactly_one_per_group"
+        },
+        "charger_connection": {
+          "normalizer": "charger_connection",
+          "outputs": [
+            "charger.connection_state"
+          ],
+          "precedence": 20,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_power": {
+          "normalizer": "power_kw",
+          "outputs": [
+            "charger.power_kw"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": true,
+          "cardinality": "exactly_one_per_group"
+        },
+        "charger_energy_total": {
+          "normalizer": "energy_kwh",
+          "outputs": [
+            "charger.energy_total_kwh"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_actual_current": {
+          "normalizer": "current_a",
+          "outputs": [
+            "charger.actual_current_a"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_current_limit": {
+          "normalizer": "current_a",
+          "outputs": [
+            "charger.current_limit_a"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_power_limit_write": {
+          "usage": "control",
+          "control_kind": "requested_power_direct",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "number_write_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "charger_current_limit_write": {
+          "usage": "control",
+          "control_kind": "requested_power_via_current",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "number_write_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "charger_start_surface": {
+          "usage": "command",
+          "command_key": "charger.command.start",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "binary_write_surface",
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity",
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "charger_stop_surface": {
+          "usage": "command",
+          "command_key": "charger.command.stop",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "binary_write_surface",
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity",
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "charger_restart_surface": {
+          "usage": "command",
+          "command_key": "charger.command.restart",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "charger_unlock_surface": {
+          "usage": "command",
+          "command_key": "charger.command.unlock_connector",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "charger_identify_surface": {
+          "usage": "command",
+          "command_key": "charger.command.identify",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "charger_session_energy": {
+          "normalizer": "energy_kwh",
+          "outputs": [
+            "charger.session_energy_kwh"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_session_duration": {
+          "normalizer": "duration_s",
+          "outputs": [
+            "charger.session_duration_s"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_connected_vehicle_soc": {
+          "normalizer": "percentage",
+          "outputs": [
+            "charger.connected_vehicle_soc_pct"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_connector_status": {
+          "normalizer": "canonical_token",
+          "outputs": [
+            "charger.connector_status"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_voltage_l1": {
+          "normalizer": "voltage_v",
+          "outputs": [
+            "charger.voltage_l1_v"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "voltage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_voltage_l2": {
+          "normalizer": "voltage_v",
+          "outputs": [
+            "charger.voltage_l2_v"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "voltage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_voltage_l3": {
+          "normalizer": "voltage_v",
+          "outputs": [
+            "charger.voltage_l3_v"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "voltage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_current_l1": {
+          "normalizer": "current_a",
+          "outputs": [
+            "charger.current_l1_a"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_current_l2": {
+          "normalizer": "current_a",
+          "outputs": [
+            "charger.current_l2_a"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_current_l3": {
+          "normalizer": "current_a",
+          "outputs": [
+            "charger.current_l3_a"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_power_l1": {
+          "normalizer": "power_kw",
+          "outputs": [
+            "charger.power_l1_kw"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_power_l2": {
+          "normalizer": "power_kw",
+          "outputs": [
+            "charger.power_l2_kw"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_power_l3": {
+          "normalizer": "power_kw",
+          "outputs": [
+            "charger.power_l3_kw"
+          ],
+          "precedence": 5,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_connector_count": {
+          "usage": "observation",
+          "outputs": [
+            "charger.connector_count"
+          ],
+          "normalizer": "integer_count",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_identity_state": {
+          "usage": "observation",
+          "outputs": [
+            "charger.source_identity_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_image_key": {
+          "usage": "observation",
+          "outputs": [
+            "charger.image_key"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_model": {
+          "usage": "observation",
+          "outputs": [
+            "charger.model"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_vendor": {
+          "usage": "observation",
+          "outputs": [
+            "charger.vendor"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_effective_max_charge_power_kw": {
+          "usage": "observation",
+          "outputs": [
+            "charger.effective_max_charge_power_kw"
+          ],
+          "normalizer": "power_kw",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_max_current_a": {
+          "usage": "observation",
+          "outputs": [
+            "charger.max_current_a"
+          ],
+          "normalizer": "current_a",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_min_current_a": {
+          "usage": "observation",
+          "outputs": [
+            "charger.min_current_a"
+          ],
+          "normalizer": "current_a",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_nominal_voltage_v": {
+          "usage": "observation",
+          "outputs": [
+            "charger.nominal_voltage_v"
+          ],
+          "normalizer": "voltage_v",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_phase_capability": {
+          "usage": "observation",
+          "outputs": [
+            "charger.phase_capability"
+          ],
+          "normalizer": "phase_count",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_added_range_km": {
+          "usage": "observation",
+          "outputs": [
+            "charger.added_range_km"
+          ],
+          "normalizer": "distance_km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_energy_flow_direction": {
+          "usage": "observation",
+          "outputs": [
+            "charger.energy_flow_direction"
+          ],
+          "normalizer": "energy_flow_direction",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_energy_price_per_kwh": {
+          "usage": "observation",
+          "outputs": [
+            "charger.energy_price_per_kwh"
+          ],
+          "normalizer": "energy_price_per_kwh",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_export_current_a": {
+          "usage": "observation",
+          "outputs": [
+            "charger.export_current_a"
+          ],
+          "normalizer": "current_a",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_export_power_kw": {
+          "usage": "observation",
+          "outputs": [
+            "charger.export_power_kw"
+          ],
+          "normalizer": "power_kw",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_grid_energy_kwh": {
+          "usage": "observation",
+          "outputs": [
+            "charger.grid_energy_kwh"
+          ],
+          "normalizer": "energy_kwh",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_offered_current_a": {
+          "usage": "observation",
+          "outputs": [
+            "charger.offered_current_a"
+          ],
+          "normalizer": "current_a",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_offered_power_kw": {
+          "usage": "observation",
+          "outputs": [
+            "charger.offered_power_kw"
+          ],
+          "normalizer": "power_kw",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_session_cost": {
+          "usage": "observation",
+          "outputs": [
+            "charger.session_cost"
+          ],
+          "normalizer": "currency_value",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_solar_energy_kwh": {
+          "usage": "observation",
+          "outputs": [
+            "charger.solar_energy_kwh"
+          ],
+          "normalizer": "energy_kwh",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_current_a": {
+          "usage": "observation",
+          "outputs": [
+            "charger.current_a"
+          ],
+          "normalizer": "current_a",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_evse_status": {
+          "usage": "observation",
+          "outputs": [
+            "charger.evse_status"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_direct_power_kw": {
+          "usage": "observation",
+          "outputs": [
+            "charger.direct_power_kw"
+          ],
+          "normalizer": "power_kw",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_firmware_version": {
+          "usage": "observation",
+          "outputs": [
+            "charger.firmware_version"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_electrical_state": {
+          "usage": "observation",
+          "outputs": [
+            "charger.source_electrical_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_session_value_state": {
+          "usage": "observation",
+          "outputs": [
+            "charger.source_session_value_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_serial_number": {
+          "usage": "observation",
+          "outputs": [
+            "charger.serial_number"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_status": {
+          "usage": "observation",
+          "outputs": [
+            "charger.status"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_charger_telemetry_state": {
+          "usage": "observation",
+          "outputs": [
+            "charger.telemetry_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        }
+      },
+      "command_rules": {
+        "charger.command.start": {
+          "input_id": "charger_start_surface",
+          "conflict_family": "charger_physical",
+          "confirmation": {
+            "mode": "runtime_property",
+            "property_key": "charger.operating_state",
+            "accepted_values": [
+              "running",
+              "preparing"
+            ]
+          },
+          "protective": false,
+          "placement": "charger.primary"
+        },
+        "charger.command.stop": {
+          "input_id": "charger_stop_surface",
+          "conflict_family": "charger_physical",
+          "confirmation": {
+            "mode": "runtime_property",
+            "property_key": "charger.operating_state",
+            "accepted_values": [
+              "idle",
+              "stopped"
+            ]
+          },
+          "protective": true,
+          "placement": "charger.primary"
+        },
+        "charger.command.restart": {
+          "input_id": "charger_restart_surface",
+          "conflict_family": "charger_physical",
+          "confirmation": {
+            "mode": "service_acceptance_only"
+          },
+          "protective": false,
+          "placement": "charger.engineering"
+        },
+        "charger.command.unlock_connector": {
+          "input_id": "charger_unlock_surface",
+          "conflict_family": "charger_physical",
+          "confirmation": {
+            "mode": "service_acceptance_only"
+          },
+          "protective": false,
+          "placement": "charger.primary"
+        },
+        "charger.command.identify": {
+          "input_id": "charger_identify_surface",
+          "conflict_family": "charger_physical",
+          "confirmation": {
+            "mode": "service_acceptance_only"
+          },
+          "protective": false,
+          "placement": "charger.engineering"
+        }
+      },
+      "editable_rules": {
+        "charger.requested_power_kw": {
+          "direct_power_input": "charger_power_limit_write",
+          "current_input": "charger_current_limit_write",
+          "conflict_family": "charger_physical",
+          "confirmation": "physical_write_surface_readback",
+          "placement": "charger.primary"
+        }
+      },
+      "input_order": [
+        "charger_operating_state",
+        "charger_connection",
+        "charger_power",
+        "charger_energy_total",
+        "charger_actual_current",
+        "charger_current_limit",
+        "charger_power_limit_write",
+        "charger_current_limit_write",
+        "charger_start_surface",
+        "charger_stop_surface",
+        "charger_restart_surface",
+        "charger_unlock_surface",
+        "charger_identify_surface",
+        "charger_session_energy",
+        "charger_session_duration",
+        "charger_connected_vehicle_soc",
+        "charger_connector_status",
+        "charger_voltage_l1",
+        "charger_voltage_l2",
+        "charger_voltage_l3",
+        "charger_current_l1",
+        "charger_current_l2",
+        "charger_current_l3",
+        "charger_power_l1",
+        "charger_power_l2",
+        "charger_power_l3",
+        "compat_charger_connector_count",
+        "compat_charger_identity_state",
+        "compat_charger_image_key",
+        "compat_charger_model",
+        "compat_charger_vendor",
+        "compat_charger_effective_max_charge_power_kw",
+        "compat_charger_max_current_a",
+        "compat_charger_min_current_a",
+        "compat_charger_nominal_voltage_v",
+        "compat_charger_phase_capability",
+        "compat_charger_added_range_km",
+        "compat_charger_energy_flow_direction",
+        "compat_charger_energy_price_per_kwh",
+        "compat_charger_export_current_a",
+        "compat_charger_export_power_kw",
+        "compat_charger_grid_energy_kwh",
+        "compat_charger_offered_current_a",
+        "compat_charger_offered_power_kw",
+        "compat_charger_session_cost",
+        "compat_charger_solar_energy_kwh",
+        "compat_charger_current_a",
+        "compat_charger_evse_status",
+        "compat_charger_direct_power_kw",
+        "compat_charger_firmware_version",
+        "compat_charger_electrical_state",
+        "compat_charger_session_value_state",
+        "compat_charger_serial_number",
+        "compat_charger_status",
+        "compat_charger_telemetry_state"
+      ],
+      "topology": {
+        "candidate_scope": "config_entry",
+        "grouping": "charger_device",
+        "minimum_groups": 0,
+        "maximum_groups": null
+      }
+    },
+    "mobility.charger.utility_surface.v1": {
+      "concept_id": "utility_charging_surface",
+      "logical_asset_type": "charger",
+      "source_role": "utility_surface",
+      "source_precedence": 50,
+      "input_rules": {
+        "charger_operating_state": {
+          "normalizer": "utility_charger_state",
+          "outputs": [
+            "charger.operating_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "binary_write_surface",
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": true,
+          "cardinality": "exactly_one_per_group"
+        },
+        "charger_power": {
+          "normalizer": "power_kw",
+          "outputs": [
+            "charger.power_kw"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_energy_total": {
+          "normalizer": "energy_kwh",
+          "outputs": [
+            "charger.energy_total_kwh"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter",
+              "energy_capacity"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_start_surface": {
+          "usage": "command",
+          "command_key": "charger.command.start",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "binary_write_surface",
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity",
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "charger_stop_surface": {
+          "usage": "command",
+          "command_key": "charger.command.stop",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "binary_write_surface",
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity",
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "charger_session_energy": {
+          "normalizer": "energy_kwh",
+          "outputs": [
+            "charger.session_energy_kwh"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        }
+      },
+      "command_rules": {
+        "charger.command.start": {
+          "input_id": "charger_start_surface",
+          "conflict_family": "charger_physical",
+          "confirmation": {
+            "mode": "runtime_property",
+            "property_key": "charger.operating_state",
+            "accepted_values": [
+              "running"
+            ]
+          },
+          "protective": false,
+          "placement": "charger.primary"
+        },
+        "charger.command.stop": {
+          "input_id": "charger_stop_surface",
+          "conflict_family": "charger_physical",
+          "confirmation": {
+            "mode": "runtime_property",
+            "property_key": "charger.operating_state",
+            "accepted_values": [
+              "idle",
+              "stopped"
+            ]
+          },
+          "protective": true,
+          "placement": "charger.primary"
+        }
+      },
+      "input_order": [
+        "charger_operating_state",
+        "charger_power",
+        "charger_energy_total",
+        "charger_start_surface",
+        "charger_stop_surface",
+        "charger_session_energy"
+      ],
+      "topology": {
+        "candidate_scope": "config_entry",
+        "grouping": "switch_or_device",
+        "minimum_groups": 0,
+        "maximum_groups": null
+      }
+    },
+    "mobility.vehicle.connected_vehicle.v1": {
+      "concept_id": "vehicle",
+      "source_role": "connected_vehicle",
+      "source_precedence": 100,
+      "input_rules": {
+        "vehicle_soc": {
+          "normalizer": "percentage",
+          "outputs": [
+            "vehicle.soc_pct"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": true,
+          "cardinality": "exactly_one_per_group"
+        },
+        "vehicle_range": {
+          "normalizer": "distance_km",
+          "outputs": [
+            "vehicle.range_km"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_charging_state": {
+          "normalizer": "vehicle_charging_state",
+          "outputs": [
+            "vehicle.charging_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_location": {
+          "normalizer": "text",
+          "outputs": [
+            "vehicle.location"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_odometer": {
+          "normalizer": "distance_km",
+          "outputs": [
+            "vehicle.odometer_km"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_security_state": {
+          "normalizer": "vehicle_security_state",
+          "outputs": [
+            "vehicle.security_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_climate_state": {
+          "normalizer": "vehicle_climate_state",
+          "outputs": [
+            "vehicle.climate_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_charge_power": {
+          "normalizer": "power_kw",
+          "outputs": [
+            "vehicle.charge_power_kw"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_lock_surface": {
+          "usage": "command",
+          "command_key": "vehicle.command.lock",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "vehicle_unlock_surface": {
+          "usage": "command",
+          "command_key": "vehicle.command.unlock",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "vehicle_climate_start_surface": {
+          "usage": "command",
+          "command_key": "vehicle.command.climate_start",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "vehicle_climate_stop_surface": {
+          "usage": "command",
+          "command_key": "vehicle.command.climate_stop",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "vehicle_refresh_surface": {
+          "usage": "command",
+          "command_key": "vehicle.command.refresh",
+          "precedence": 30,
+          "technical_capabilities": {
+            "any_of": [
+              "service_command_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "service"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        },
+        "vehicle_charge_current": {
+          "normalizer": "current_a",
+          "outputs": [
+            "vehicle.charge_current_a"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_plug_state": {
+          "normalizer": "plug_state",
+          "outputs": [
+            "vehicle.plug_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_remaining_charge_time": {
+          "normalizer": "duration_s",
+          "outputs": [
+            "vehicle.remaining_charging_time_s"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_charging_complete_time": {
+          "normalizer": "timestamp",
+          "outputs": [
+            "vehicle.charging_complete_time"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_doors_locked": {
+          "normalizer": "locked_state",
+          "outputs": [
+            "vehicle.doors_locked"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_windows_locked": {
+          "normalizer": "locked_state",
+          "outputs": [
+            "vehicle.windows_locked"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_trunk_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.trunk_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_hood_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.hood_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_door_front_left_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.door_front_left_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_door_front_right_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.door_front_right_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_door_rear_left_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.door_rear_left_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_door_rear_right_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.door_rear_right_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_window_fl_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.window_fl_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_window_fr_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.window_fr_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_window_rl_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.window_rl_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_window_rr_state": {
+          "normalizer": "open_closed_state",
+          "outputs": [
+            "vehicle.window_rr_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_remaining_climate_time": {
+          "normalizer": "duration_s",
+          "outputs": [
+            "vehicle.remaining_climate_time_s"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_window_heating_state": {
+          "normalizer": "on_off_state",
+          "outputs": [
+            "vehicle.window_heating_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_tire_health_state": {
+          "normalizer": "tire_health_state",
+          "outputs": [
+            "vehicle.tire_health_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_tire_pressure_fl": {
+          "normalizer": "pressure_bar",
+          "outputs": [
+            "vehicle.tire_pressure_fl_bar"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_tire_pressure_fr": {
+          "normalizer": "pressure_bar",
+          "outputs": [
+            "vehicle.tire_pressure_fr_bar"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_tire_pressure_rl": {
+          "normalizer": "pressure_bar",
+          "outputs": [
+            "vehicle.tire_pressure_rl_bar"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_tire_pressure_rr": {
+          "normalizer": "pressure_bar",
+          "outputs": [
+            "vehicle.tire_pressure_rr_bar"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_inspection_due_days": {
+          "normalizer": "days",
+          "outputs": [
+            "vehicle.inspection_due_days"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_inspection_due_km": {
+          "normalizer": "distance_km",
+          "outputs": [
+            "vehicle.inspection_due_km"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_oil_service_due_days": {
+          "normalizer": "days",
+          "outputs": [
+            "vehicle.oil_service_due_days"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_oil_service_due_km": {
+          "normalizer": "distance_km",
+          "outputs": [
+            "vehicle.oil_service_due_km"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_oil_level": {
+          "normalizer": "percentage",
+          "outputs": [
+            "vehicle.oil_level_pct"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_service_state": {
+          "normalizer": "maintenance_state",
+          "outputs": [
+            "vehicle.maintenance_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_fuel_level": {
+          "normalizer": "percentage",
+          "outputs": [
+            "vehicle.fuel_level_pct"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_fuel_range": {
+          "normalizer": "distance_km",
+          "outputs": [
+            "vehicle.fuel_range_km"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_manufacturer": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.manufacturer"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_model": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.model"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_vehicle_kind": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.vehicle_kind"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_image_key": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.image_key"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_kind": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.kind"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_nominal_range_km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.nominal_range_km"
+          ],
+          "normalizer": "distance_km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_max_ac_power_kw": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.max_ac_power_kw"
+          ],
+          "normalizer": "power_kw",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "power_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_phase_capability": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.phase_capability"
+          ],
+          "normalizer": "phase_count",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_body_type": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.body_type"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_primary_engine_type": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.primary_engine_type"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_secondary_engine_type": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.secondary_engine_type"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_limits_requested_current_limit_a_from_power_kw": {
+          "usage": "observation",
+          "outputs": [
+            "limits.requested_current_limit_a_from_power_kw"
+          ],
+          "normalizer": "current_a",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_charge_rate_kmh": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.charge_rate_kmh"
+          ],
+          "normalizer": "speed_kmh",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_charge_mode": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.charge_mode"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_charge_type": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.charge_type"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_charging_scenario": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.charging_scenario"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_max_ac_charge_current_mode": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.max_ac_charge_current_mode"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_external_power_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.external_power_state"
+          ],
+          "normalizer": "plug_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_charging_error_code": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.charging_error_code"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_last_charge_at": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.last_charge_at"
+          ],
+          "normalizer": "timestamp",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_charge_mode_selection": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.charge_mode_selection"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_charged_energy_kwh": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.charged_energy_kwh"
+          ],
+          "normalizer": "energy_kwh",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_charging_action_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.charging_action_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_home_storage_charging_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.home_storage_charging_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_immediate_charging_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.immediate_charging_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_immediate_discharging_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.immediate_discharging_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_max_ac_charge_current_a": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.max_ac_charge_current_a"
+          ],
+          "normalizer": "current_a",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_preferred_charging_times_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.preferred_charging_times_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_timer_charging_climatization_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.timer_charging_climatization_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_timer_charging_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.timer_charging_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_energy_status": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.energy_status"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_battery_energy_kwh": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.battery_energy_kwh"
+          ],
+          "normalizer": "energy_kwh",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_battery_min_temperature_c": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.battery_min_temperature_c"
+          ],
+          "normalizer": "temperature_c",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "temperature_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_battery_max_temperature_c": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.battery_max_temperature_c"
+          ],
+          "normalizer": "temperature_c",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "temperature_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_battery_management_level": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.battery_management_level"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_source_battery_energy_kwh": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.source_battery_energy_kwh"
+          ],
+          "normalizer": "energy_kwh",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "energy_counter"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_battery_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.source_battery_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_source_target_soc_pct": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.source_target_soc_pct"
+          ],
+          "normalizer": "percentage",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_range_total_km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.range_total_km"
+          ],
+          "normalizer": "distance_km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_primary_range_km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.primary_range_km"
+          ],
+          "normalizer": "distance_km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_secondary_range_km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.secondary_range_km"
+          ],
+          "normalizer": "distance_km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_scr_range_km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.scr_range_km"
+          ],
+          "normalizer": "distance_km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_avg_electric_consumption_long_kwh_100km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.avg_electric_consumption_long_kwh_100km"
+          ],
+          "normalizer": "electric_consumption_kwh_100km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_avg_fuel_consumption_long_l_100km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.avg_fuel_consumption_long_l_100km"
+          ],
+          "normalizer": "fuel_consumption_l_100km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_trip_distance_long_km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.trip_distance_long_km"
+          ],
+          "normalizer": "distance_km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_trip_distance_short_km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.trip_distance_short_km"
+          ],
+          "normalizer": "distance_km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_fuel_level_accuracy_pct": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.fuel_level_accuracy_pct"
+          ],
+          "normalizer": "percentage",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_avg_electric_consumption_short_kwh_100km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.avg_electric_consumption_short_kwh_100km"
+          ],
+          "normalizer": "electric_consumption_kwh_100km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_avg_fuel_consumption_short_l_100km": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.avg_fuel_consumption_short_l_100km"
+          ],
+          "normalizer": "fuel_consumption_l_100km",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_range_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.source_range_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_avg_speed_long_kmh": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.avg_speed_long_kmh"
+          ],
+          "normalizer": "speed_kmh",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_cng_level_pct": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.cng_level_pct"
+          ],
+          "normalizer": "percentage",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_travel_time_long_min": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.travel_time_long_min"
+          ],
+          "normalizer": "duration_min",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_travel_time_short_min": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.travel_time_short_min"
+          ],
+          "normalizer": "duration_min",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_trip_reset_long_at": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.trip_reset_long_at"
+          ],
+          "normalizer": "timestamp",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_trip_reset_short_at": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.trip_reset_short_at"
+          ],
+          "normalizer": "timestamp",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_lock_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.lock_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_opening_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.opening_state"
+          ],
+          "normalizer": "open_closed_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_window_fl_position_pct": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.window_fl_position_pct"
+          ],
+          "normalizer": "percentage",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_window_fr_position_pct": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.window_fr_position_pct"
+          ],
+          "normalizer": "percentage",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_window_rl_position_pct": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.window_rl_position_pct"
+          ],
+          "normalizer": "percentage",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_window_rr_position_pct": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.window_rr_position_pct"
+          ],
+          "normalizer": "percentage",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_plug_lock_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.plug_lock_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_spoiler_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.spoiler_state"
+          ],
+          "normalizer": "open_closed_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_sunroof_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.sunroof_state"
+          ],
+          "normalizer": "open_closed_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_roof_position_pct": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.roof_position_pct"
+          ],
+          "normalizer": "percentage",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_lock_component_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.lock_component_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_safe_lock_component_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.safe_lock_component_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_auto_unlock_ac_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.auto_unlock_ac_state"
+          ],
+          "normalizer": "on_off_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_door_front_left_lock_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.door_front_left_lock_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_door_front_right_lock_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.door_front_right_lock_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_door_rear_left_lock_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.door_rear_left_lock_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_door_rear_right_lock_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.door_rear_right_lock_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_doors_trunk_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.doors_trunk_state"
+          ],
+          "normalizer": "open_closed_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_hood_lock_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.hood_lock_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_parking_brake_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.parking_brake_state"
+          ],
+          "normalizer": "on_off_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_parking_light_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.parking_light_state"
+          ],
+          "normalizer": "on_off_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_trunk_lock_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.trunk_lock_state"
+          ],
+          "normalizer": "locked_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_tire_pressure_spare_bar": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.tire_pressure_spare_bar"
+          ],
+          "normalizer": "pressure_bar",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_tire_pressure_delta_fl_bar": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.tire_pressure_delta_fl_bar"
+          ],
+          "normalizer": "pressure_bar",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_tire_pressure_delta_fr_bar": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.tire_pressure_delta_fr_bar"
+          ],
+          "normalizer": "pressure_bar",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_tire_pressure_delta_rl_bar": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.tire_pressure_delta_rl_bar"
+          ],
+          "normalizer": "pressure_bar",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_tire_pressure_delta_rr_bar": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.tire_pressure_delta_rr_bar"
+          ],
+          "normalizer": "pressure_bar",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_oil_level_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.oil_level_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_service_hatch_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.service_hatch_state"
+          ],
+          "normalizer": "open_closed_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_additional_oil_level_pct": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.additional_oil_level_pct"
+          ],
+          "normalizer": "percentage",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "percentage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_tire_pressure_delta_spare_bar": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.tire_pressure_delta_spare_bar"
+          ],
+          "normalizer": "pressure_bar",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_max_oil_level": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.max_oil_level"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_oil_dipstick_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.oil_dipstick_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_outside_temperature_c": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.outside_temperature_c"
+          ],
+          "normalizer": "temperature_c",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "temperature_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_climate_summary_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.climate_summary_state"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_location_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.location_state"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_moving_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.moving_state"
+          ],
+          "normalizer": "moving_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_motion_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.motion_state"
+          ],
+          "normalizer": "moving_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_parked_since": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.parked_since"
+          ],
+          "normalizer": "timestamp",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_park_time_s": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.park_time_s"
+          ],
+          "normalizer": "duration_s",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_integration_status": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.integration_status"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_telemetry_age_min": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.telemetry_age_min"
+          ],
+          "normalizer": "duration_min",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_connectivity_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.source_connectivity_state"
+          ],
+          "normalizer": "connectivity_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_last_seen": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.last_seen"
+          ],
+          "normalizer": "timestamp",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_source_timestamp": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.source_timestamp"
+          ],
+          "normalizer": "timestamp",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_subscription_days_remaining": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.subscription_days_remaining"
+          ],
+          "normalizer": "days",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_api_requests_remaining": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.api_requests_remaining"
+          ],
+          "normalizer": "integer_count",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_uncurated_field_count": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.uncurated_field_count"
+          ],
+          "normalizer": "integer_count",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_source_vehicle_clock": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.source_vehicle_clock"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_charging_timer_reachability": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.charging_timer_reachability"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_bcam_activation_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.bcam_activation_state"
+          ],
+          "normalizer": "on_off_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_only_own_current_state": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.only_own_current_state"
+          ],
+          "normalizer": "on_off_state",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "compat_vehicle_source_model": {
+          "usage": "observation",
+          "outputs": [
+            "vehicle.source_model"
+          ],
+          "normalizer": "text",
+          "precedence": 1,
+          "compatibility_property": true,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_charge_mode_write": {
+          "usage": "control",
+          "control_kind": "vehicle_charge_mode",
+          "outputs": [
+            "vehicle.charge_mode"
+          ],
+          "normalizer": "canonical_token",
+          "precedence": 100,
+          "technical_capabilities": {
+            "any_of": [
+              "select_write_surface"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_more_per_group"
+        }
+      },
+      "command_rules": {
+        "vehicle.command.lock": {
+          "input_id": "vehicle_lock_surface",
+          "conflict_family": "vehicle_physical",
+          "confirmation": {
+            "mode": "runtime_property",
+            "property_key": "vehicle.security_state",
+            "accepted_values": [
+              "locked"
+            ]
+          },
+          "protective": false,
+          "placement": "vehicle.security"
+        },
+        "vehicle.command.unlock": {
+          "input_id": "vehicle_unlock_surface",
+          "conflict_family": "vehicle_physical",
+          "confirmation": {
+            "mode": "runtime_property",
+            "property_key": "vehicle.security_state",
+            "accepted_values": [
+              "unlocked"
+            ]
+          },
+          "protective": false,
+          "placement": "vehicle.security"
+        },
+        "vehicle.command.climate_start": {
+          "input_id": "vehicle_climate_start_surface",
+          "conflict_family": "vehicle_physical",
+          "confirmation": {
+            "mode": "runtime_property",
+            "property_key": "vehicle.climate_state",
+            "accepted_values": [
+              "on"
+            ]
+          },
+          "protective": false,
+          "placement": "vehicle.comfort"
+        },
+        "vehicle.command.climate_stop": {
+          "input_id": "vehicle_climate_stop_surface",
+          "conflict_family": "vehicle_physical",
+          "confirmation": {
+            "mode": "runtime_property",
+            "property_key": "vehicle.climate_state",
+            "accepted_values": [
+              "off"
+            ]
+          },
+          "protective": false,
+          "placement": "vehicle.comfort"
+        },
+        "vehicle.command.refresh": {
+          "input_id": "vehicle_refresh_surface",
+          "conflict_family": "vehicle_physical",
+          "confirmation": {
+            "mode": "service_acceptance_only"
+          },
+          "protective": false,
+          "placement": "vehicle.engineering"
+        }
+      },
+      "input_order": [
+        "vehicle_soc",
+        "vehicle_range",
+        "vehicle_charging_state",
+        "vehicle_location",
+        "vehicle_odometer",
+        "vehicle_security_state",
+        "vehicle_climate_state",
+        "vehicle_charge_power",
+        "vehicle_lock_surface",
+        "vehicle_unlock_surface",
+        "vehicle_climate_start_surface",
+        "vehicle_climate_stop_surface",
+        "vehicle_refresh_surface",
+        "vehicle_charge_current",
+        "vehicle_plug_state",
+        "vehicle_remaining_charge_time",
+        "vehicle_charging_complete_time",
+        "vehicle_doors_locked",
+        "vehicle_windows_locked",
+        "vehicle_trunk_state",
+        "vehicle_hood_state",
+        "vehicle_door_front_left_state",
+        "vehicle_door_front_right_state",
+        "vehicle_door_rear_left_state",
+        "vehicle_door_rear_right_state",
+        "vehicle_window_fl_state",
+        "vehicle_window_fr_state",
+        "vehicle_window_rl_state",
+        "vehicle_window_rr_state",
+        "vehicle_remaining_climate_time",
+        "vehicle_window_heating_state",
+        "vehicle_tire_health_state",
+        "vehicle_tire_pressure_fl",
+        "vehicle_tire_pressure_fr",
+        "vehicle_tire_pressure_rl",
+        "vehicle_tire_pressure_rr",
+        "vehicle_inspection_due_days",
+        "vehicle_inspection_due_km",
+        "vehicle_oil_service_due_days",
+        "vehicle_oil_service_due_km",
+        "vehicle_oil_level",
+        "vehicle_service_state",
+        "vehicle_fuel_level",
+        "vehicle_fuel_range",
+        "compat_vehicle_manufacturer",
+        "compat_vehicle_model",
+        "compat_vehicle_vehicle_kind",
+        "compat_vehicle_image_key",
+        "compat_vehicle_kind",
+        "compat_vehicle_nominal_range_km",
+        "compat_vehicle_max_ac_power_kw",
+        "compat_vehicle_phase_capability",
+        "compat_vehicle_body_type",
+        "compat_vehicle_primary_engine_type",
+        "compat_vehicle_secondary_engine_type",
+        "compat_limits_requested_current_limit_a_from_power_kw",
+        "compat_vehicle_charge_rate_kmh",
+        "compat_vehicle_charge_mode",
+        "compat_vehicle_charge_type",
+        "compat_vehicle_charging_scenario",
+        "compat_vehicle_max_ac_charge_current_mode",
+        "compat_vehicle_external_power_state",
+        "compat_vehicle_charging_error_code",
+        "compat_vehicle_last_charge_at",
+        "compat_vehicle_charge_mode_selection",
+        "compat_vehicle_charged_energy_kwh",
+        "compat_vehicle_charging_action_state",
+        "compat_vehicle_home_storage_charging_state",
+        "compat_vehicle_immediate_charging_state",
+        "compat_vehicle_immediate_discharging_state",
+        "compat_vehicle_max_ac_charge_current_a",
+        "compat_vehicle_preferred_charging_times_state",
+        "compat_vehicle_timer_charging_climatization_state",
+        "compat_vehicle_timer_charging_state",
+        "compat_vehicle_energy_status",
+        "compat_vehicle_battery_energy_kwh",
+        "compat_vehicle_battery_min_temperature_c",
+        "compat_vehicle_battery_max_temperature_c",
+        "compat_vehicle_battery_management_level",
+        "compat_vehicle_source_battery_energy_kwh",
+        "compat_vehicle_battery_state",
+        "compat_vehicle_source_target_soc_pct",
+        "compat_vehicle_range_total_km",
+        "compat_vehicle_primary_range_km",
+        "compat_vehicle_secondary_range_km",
+        "compat_vehicle_scr_range_km",
+        "compat_vehicle_avg_electric_consumption_long_kwh_100km",
+        "compat_vehicle_avg_fuel_consumption_long_l_100km",
+        "compat_vehicle_trip_distance_long_km",
+        "compat_vehicle_trip_distance_short_km",
+        "compat_vehicle_fuel_level_accuracy_pct",
+        "compat_vehicle_avg_electric_consumption_short_kwh_100km",
+        "compat_vehicle_avg_fuel_consumption_short_l_100km",
+        "compat_vehicle_range_state",
+        "compat_vehicle_avg_speed_long_kmh",
+        "compat_vehicle_cng_level_pct",
+        "compat_vehicle_travel_time_long_min",
+        "compat_vehicle_travel_time_short_min",
+        "compat_vehicle_trip_reset_long_at",
+        "compat_vehicle_trip_reset_short_at",
+        "compat_vehicle_lock_state",
+        "compat_vehicle_opening_state",
+        "compat_vehicle_window_fl_position_pct",
+        "compat_vehicle_window_fr_position_pct",
+        "compat_vehicle_window_rl_position_pct",
+        "compat_vehicle_window_rr_position_pct",
+        "compat_vehicle_plug_lock_state",
+        "compat_vehicle_spoiler_state",
+        "compat_vehicle_sunroof_state",
+        "compat_vehicle_roof_position_pct",
+        "compat_vehicle_lock_component_state",
+        "compat_vehicle_safe_lock_component_state",
+        "compat_vehicle_auto_unlock_ac_state",
+        "compat_vehicle_door_front_left_lock_state",
+        "compat_vehicle_door_front_right_lock_state",
+        "compat_vehicle_door_rear_left_lock_state",
+        "compat_vehicle_door_rear_right_lock_state",
+        "compat_vehicle_doors_trunk_state",
+        "compat_vehicle_hood_lock_state",
+        "compat_vehicle_parking_brake_state",
+        "compat_vehicle_parking_light_state",
+        "compat_vehicle_trunk_lock_state",
+        "compat_vehicle_tire_pressure_spare_bar",
+        "compat_vehicle_tire_pressure_delta_fl_bar",
+        "compat_vehicle_tire_pressure_delta_fr_bar",
+        "compat_vehicle_tire_pressure_delta_rl_bar",
+        "compat_vehicle_tire_pressure_delta_rr_bar",
+        "compat_vehicle_oil_level_state",
+        "compat_vehicle_service_hatch_state",
+        "compat_vehicle_additional_oil_level_pct",
+        "compat_vehicle_tire_pressure_delta_spare_bar",
+        "compat_vehicle_max_oil_level",
+        "compat_vehicle_oil_dipstick_state",
+        "compat_vehicle_outside_temperature_c",
+        "compat_vehicle_climate_summary_state",
+        "compat_vehicle_location_state",
+        "compat_vehicle_moving_state",
+        "compat_vehicle_motion_state",
+        "compat_vehicle_parked_since",
+        "compat_vehicle_park_time_s",
+        "compat_vehicle_integration_status",
+        "compat_vehicle_telemetry_age_min",
+        "compat_vehicle_connectivity_state",
+        "compat_vehicle_last_seen",
+        "compat_vehicle_source_timestamp",
+        "compat_vehicle_subscription_days_remaining",
+        "compat_vehicle_api_requests_remaining",
+        "compat_vehicle_uncurated_field_count",
+        "compat_vehicle_source_vehicle_clock",
+        "compat_vehicle_charging_timer_reachability",
+        "compat_vehicle_bcam_activation_state",
+        "compat_vehicle_only_own_current_state",
+        "compat_vehicle_source_model",
+        "vehicle_charge_mode_write"
+      ],
+      "topology": {
+        "candidate_scope": "config_entry",
+        "grouping": "vehicle_device",
+        "minimum_groups": 0,
+        "maximum_groups": null
+      }
+    },
+    "mobility.person.presence.v1": {
+      "concept_id": "person",
+      "logical_asset_type": "person",
+      "source_role": "presence",
+      "source_precedence": 100,
+      "input_rules": {
+        "person_location_state": {
+          "usage": "observation",
+          "outputs": [
+            "person.location_state",
+            "person.presence_state"
+          ],
+          "normalizer": "person_presence",
+          "precedence": 100,
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": true,
+          "cardinality": "exactly_one"
+        }
+      },
+      "command_rules": {},
+      "input_order": [
+        "person_location_state"
+      ],
+      "topology": {
+        "candidate_scope": "entity",
+        "grouping": "person_entity",
+        "minimum_groups": 0,
+        "maximum_groups": null
+      }
+    },
+    "mobility.vehicle.manual_profile.v1": {
+      "concept_id": "vehicle",
+      "logical_asset_type": "vehicle",
+      "source_role": "manual_profile",
+      "source_precedence": 10,
+      "input_rules": {
+        "manual_vehicle_configuration": {
+          "usage": "configuration_marker",
+          "outputs": [],
+          "normalizer": "none",
+          "precedence": 0,
+          "technical_capabilities": {
+            "any_of": [
+              "configured_vehicle_profile"
+            ]
+          },
+          "allowed_source_kinds": [
+            "configured_product_capability"
+          ],
+          "required": true,
+          "cardinality": "exactly_one"
+        }
+      },
+      "command_rules": {},
+      "input_order": [
+        "manual_vehicle_configuration"
+      ],
+      "topology": {
+        "candidate_scope": "configured_product",
+        "grouping": "configured_vehicle",
+        "minimum_groups": 0,
+        "maximum_groups": null
+      }
+    }
+  },
+  "relationship_contract": {
+    "supported_types": [
+      "configured_assignment"
+    ],
+    "physical_connection_inference": "forbidden_without_explicit_vehicle_identity_evidence"
+  },
+  "energy_projection": {
+    "contract_id": "MOBILITY_ENERGY_V2",
+    "provider_id": "mobility.energy.v2",
+    "compatibility_provider_id": "mobility.energy.read_only.v1",
+    "consumer_asset_facts": [
+      "vehicle.soc_pct",
+      "vehicle.target_soc_pct",
+      "vehicle.battery_capacity_kwh",
+      "vehicle.required_energy_kwh",
+      "vehicle.ready_by",
+      "vehicle.charge_power_kw",
+      "vehicle.charging_state",
+      "vehicle.plug_state"
+    ],
+    "charger_facts": [
+      "charger.power_kw",
+      "charger.energy_total_kwh",
+      "charger.session_energy_kwh",
+      "charger.actual_current_a",
+      "charger.current_limit_a",
+      "charger.connection_state",
+      "charger.operating_state"
+    ],
+    "includes_command_references": true,
+    "command_provider_id": "mobility.command.v1",
+    "includes_physical_bindings": false,
+    "meter_counter_owner": "rhi_mobility",
+    "periodization_owner": "rhi_energy",
+    "attribution_owner": "rhi_energy"
+  },
+  "control_profile_contract": {
+    "location": "candidate_group.domain_parameters.mobility_control_profile",
+    "charger_fields": [
+      "nominal_voltage_v",
+      "phase_count",
+      "min_current_a",
+      "max_current_a",
+      "current_step_a"
+    ],
+    "vehicle_fields": [
+      "ac_phase_count",
+      "max_ac_power_kw"
+    ],
+    "rule": "required only when requested power is implemented through a current-limit surface; values are domain configuration carried by Foundation, not technical discovery truth"
+  },
+  "execution_contract": {
+    "contract_id": "MOBILITY_COMMAND_EXECUTION_V1",
+    "owner": "rhi_mobility",
+    "queueing": "none",
+    "physical_dispatch_per_request_max": 1,
+    "automatic_retry": false,
+    "restart_replay": false,
+    "unknown_write_policy": "block_conflict_scope_until_readback_converges_or_explicit_rearm",
+    "protective_stop_override": true,
+    "actual_requested_separation": true
+  },
+  "command_interop": {
+    "provider_id": "mobility.command.v1",
+    "contains_physical_bindings": false,
+    "energy_may_request_intent": true,
+    "energy_may_execute_raw_service": false
+  },
+  "public_runtime_contract": {
+    "contract_id": "MOBILITY_PUBLIC_RUNTIME_V2",
+    "provider_id": "mobility.public.v2",
+    "canonical": true,
+    "rules": {
+      "actual_requested_separate": true,
+      "ux_inference_forbidden": true,
+      "raw_integration_state_public": false,
+      "fast_values_scalar_entities": true,
+      "runtime_index_values_embedded": false
+    },
+    "v1_drop_in_parity_contract": "v1_drop_in_parity.json",
+    "v1_property_definition_count": 236,
+    "v1_unique_property_key_count": 231,
+    "full_semantic_parity_required": true,
+    "semantic_property_catalog": "semantic_property_catalog.json",
+    "profile_catalog": "profile_catalog.json",
+    "canonical_property_count": 262,
+    "v1_reference_role": "acceptance_only",
+    "runtime_property_authority": "semantic_property_catalog.json"
+  },
+  "experience_contract": {
+    "contract_id": "MOBILITY_EXPERIENCE_V2",
+    "provider_id": "mobility.experience.v2",
+    "security_unsafe_values": [
+      "unlocked",
+      "open"
+    ],
+    "maintenance_attention_values": [
+      "due",
+      "warning",
+      "critical",
+      "service_required"
+    ],
+    "rule": "Only explicit canonical unsafe/due values create attention; missing values remain unknown and do not create false alarms."
+  },
+  "planning_profile_contract": {
+    "location": "candidate_group.domain_parameters.mobility_planning_profile",
+    "fields": [
+      "battery_capacity_kwh",
+      "target_soc_pct",
+      "ready_by",
+      "enabled"
+    ],
+    "owner": "rhi_mobility",
+    "configuration_carrier": "rhi_foundation",
+    "derived_fact": "vehicle.required_energy_kwh=max(0,(target_soc_pct-soc_pct)/100*battery_capacity_kwh)",
+    "rule": "Planning profile is user/domain intent, not technical discovery truth or OEM setpoint readback."
+  },
+  "activity_contract": {
+    "contract_id": "MOBILITY_ACTIVITY_V2",
+    "provider_id": "mobility.activity.v2",
+    "history_owner": "home_assistant_recorder",
+    "runtime_scope": "latest typed execution result and current asset activity only"
+  },
+  "legacy_compatibility_contract": {
+    "contract_id": "MOBILITY_PUBLIC_RUNTIME_V1",
+    "provider_id": "mobility.public.compat.v1",
+    "mode": "exact_public_entity_facade",
+    "entity_id_drop_in": true,
+    "old_ux_modification_required": false,
+    "canonical_owner": "rhi_mobility",
+    "aliases": {
+      "lifecycle_status": "asset.lifecycle_status",
+      "vehicle.ev_range_km": "vehicle.range_km",
+      "vehicle.charge_state": "vehicle.charging_state",
+      "vehicle.charging_power_kw": "vehicle.charge_power_kw",
+      "vehicle.range_fuel_km": "vehicle.fuel_range_km",
+      "vehicle.tank_level_pct": "vehicle.fuel_level_pct",
+      "vehicle.inspection_distance_km": "vehicle.inspection_due_km",
+      "vehicle.inspection_interval_days": "vehicle.inspection_due_days",
+      "vehicle.oil_change_distance_km": "vehicle.oil_service_due_km",
+      "vehicle.oil_change_interval_days": "vehicle.oil_service_due_days",
+      "vehicle.requested_charge_power_kw": "charger.requested_power_kw",
+      "charger.requested_charge_power_kw": "charger.requested_power_kw",
+      "charger.lifetime_energy_kwh": "charger.energy_total_kwh",
+      "charger.phase_current_l1_a": "charger.current_l1_a",
+      "charger.phase_current_l2_a": "charger.current_l2_a",
+      "charger.phase_current_l3_a": "charger.current_l3_a",
+      "charger.phase_power_l1_kw": "charger.power_l1_kw",
+      "charger.phase_power_l2_kw": "charger.power_l2_kw",
+      "charger.phase_power_l3_kw": "charger.power_l3_kw",
+      "charger.phase_voltage_l1_v": "charger.voltage_l1_v",
+      "charger.phase_voltage_l2_v": "charger.voltage_l2_v",
+      "charger.phase_voltage_l3_v": "charger.voltage_l3_v",
+      "charger.added_energy_kwh": "charger.session_energy_kwh",
+      "charger.session_duration_s": "charger.session_duration_s"
+    },
+    "property_definition_source": "contracts/mobility/legacy_public_runtime_v1.json",
+    "rule": "Exact R43.2.65 exterior is projected from V2 only; no V1 computation."
+  },
+  "release": "M0.5.8",
+  "authoring_contract": {
+    "builder_input_authority": "builders.input_rules + builders.input_order",
+    "dbs_role": "generated Foundation handoff contract"
+  }
+}
