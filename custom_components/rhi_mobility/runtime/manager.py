@@ -13,7 +13,7 @@ from .derived import apply_vehicle_derivations, apply_charger_derivations
 _LOGGER = logging.getLogger(__name__)
 
 class MobilityRuntimeManager:
-    """Mobility runtime built solely from Foundation SelectedDomainBuildInput."""
+    """Runtime from Foundation technical inputs plus Mobility-owned guest vehicles."""
     def __init__(self, hass: HomeAssistant, registry, domain_config=None) -> None:
         self.hass=hass
         self.registry=registry
@@ -266,7 +266,9 @@ class MobilityRuntimeManager:
             value=float(value)
             if value <= 0: raise ValueError('battery_capacity_kwh must be positive')
         if property_key in {'vehicle.soc_pct','vehicle.battery_energy_kwh'}:
-            if asset.concept_id!='vehicle' or 'manual_profile' not in asset.source_bindings:
+            is_manual_vehicle = ('manual_profile' in asset.source_bindings or
+                                 (self.domain_config is not None and hasattr(self.domain_config, 'is_guest_vehicle') and self.domain_config.is_guest_vehicle(asset_id)))
+            if asset.concept_id!='vehicle' or not is_manual_vehicle:
                 raise ValueError(f'{property_key} is editable only for manual-profile vehicles')
             value=float(value)
             if property_key=='vehicle.soc_pct' and not 0 <= value <= 100:
@@ -509,12 +511,38 @@ class MobilityRuntimeManager:
                 capability_diagnostics.extend(dict(row) for row in prepared.capability_diagnostics)
                 problem_statuses={'MISSING','AMBIGUOUS','INVALID_EVIDENCE','BLOCKED_BY_REVIEW','BLOCKED_BY_TARGET_SCOPE'}
                 problems=[row for row in prepared.capability_diagnostics if row.get('status') in problem_statuses]
-                status='EMPTY' if not prepared.asset_seeds else ('PARTIAL' if problems or prepared.discovery_assessment.get('review_required') else 'READY')
+                filtered=[row for row in prepared.capability_diagnostics if row.get('status') in {'REJECTED_UNSUPPORTED_DEVICE_TYPE','REJECTED_LEGACY_MANUAL_PROFILE'}]
+                # Unsupported technical devices are deliberately filtered, not runtime
+                # degradation. This lets an OCPP Central System remain selected in an old
+                # Foundation configuration without poisoning valid charge-point assets.
+                if filtered and not problems:
+                    status='READY_WITH_FILTERED_DEVICES' if ids else 'FILTERED'
+                elif problems or prepared.discovery_assessment.get('review_required'):
+                    status='PARTIAL'
+                else:
+                    status='EMPTY' if not prepared.asset_seeds else 'READY'
                 selection_diagnostics[sid]={
                     'selection_id':sid,'builder_id':prepared.builder_id,'integration_domain':prepared.integration_domain,
                     'status':status,'asset_ids':sorted(ids),'binding_count':len(prepared.source_bindings),
                     'assessment':dict(prepared.discovery_assessment),'problem_count':len(problems),
+                    'filtered_device_count':len(filtered),
                 }
+
+            # Guest/manual vehicles are Mobility semantic products, not technical
+            # devices. They never create an AcceptedSourceBinding and never enter
+            # Foundation's integration/device selection flow.
+            guest_rows = self.domain_config.guest_vehicles() if self.domain_config is not None and hasattr(self.domain_config, 'guest_vehicles') else {}
+            for asset_id, row in sorted(guest_rows.items()):
+                if not isinstance(row, dict) or not str(asset_id).startswith('vehicle_guest_'):
+                    continue
+                if asset_id in proposed_assets:
+                    raise ValueError(f'configured guest vehicle conflicts with technical asset {asset_id}')
+                proposed_assets[asset_id] = LogicalAssetBinding(
+                    asset_id, 'vehicle', str(row.get('name') or 'Guest vehicle').strip(), {},
+                    source_integration_domain='rhi_mobility',
+                )
+                max_cfg_by_asset[asset_id] = int(getattr(self.domain_config, 'revision', 0) or 0)
+                max_build_by_asset[asset_id] = 0
 
             merged_control={}
             for rows in selection_control_profiles.values():
@@ -730,7 +758,9 @@ class MobilityRuntimeManager:
                 snap.values['vehicle.target_soc_pct']=float(snap.values['vehicle.target_soc_pct'])
             if snap.values.get('vehicle.battery_capacity_kwh') is not None:
                 snap.values['vehicle.battery_capacity_kwh']=float(snap.values['vehicle.battery_capacity_kwh'])
-            if 'manual_profile' in asset.source_bindings:
+            is_manual_vehicle = ('manual_profile' in asset.source_bindings or
+                                 (self.domain_config is not None and hasattr(self.domain_config, 'is_guest_vehicle') and self.domain_config.is_guest_vehicle(asset_id)))
+            if is_manual_vehicle:
                 manual_soc=self.configuration_value(asset_id,'vehicle.soc_pct',None)
                 manual_energy=self.configuration_value(asset_id,'vehicle.battery_energy_kwh',None)
                 if manual_soc is not None:

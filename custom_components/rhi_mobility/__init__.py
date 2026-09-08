@@ -121,6 +121,28 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any) -> No
     entry.async_on_unload(unsub)
 
 
+def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any) -> None:
+    """Reconcile local guest topology only when the guest collection changes."""
+    from copy import deepcopy
+    from .domain_config import GUEST_VEHICLES_KEY
+
+    previous = deepcopy((getattr(entry, "options", {}) or {}).get(GUEST_VEHICLES_KEY, {}))
+
+    async def options_updated(_hass: Any, updated_entry: Any) -> None:
+        nonlocal previous
+        current = deepcopy((getattr(updated_entry, "options", {}) or {}).get(GUEST_VEHICLES_KEY, {}))
+        if current == previous:
+            return
+        previous = current
+        await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
+        from .projection import async_reconcile_projection
+        await async_reconcile_projection(hass, entry.entry_id, set(manager.assets))
+
+    add_listener = getattr(entry, "add_update_listener", None)
+    if callable(add_listener):
+        entry.async_on_unload(add_listener(options_updated))
+
+
 def _load_foundation_registry_api() -> tuple[Any, Any]:
     """Load the shared registry API only when the config entry is being set up.
 
@@ -239,6 +261,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     from .projection import async_reconcile_projection
     await async_reconcile_projection(hass, entry.entry_id, set(manager.assets))
     _install_selected_input_lifecycle(hass, manager, entry)
+    _install_domain_configuration_lifecycle(hass, manager, entry)
 
     interop = hass.data.setdefault(INTEROP_PROVIDER_REGISTRY_KEY, {})
     interop[ENERGY_PROVIDER_ID] = energy_provider

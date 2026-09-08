@@ -22,7 +22,7 @@
     },
     {
       "builder_id": "mobility.vehicle.connected_vehicle.v1",
-      "builder_version": "1.5.1",
+      "builder_version": "1.5.2",
       "file": "mobility_vehicle_connected_vehicle_v1.json"
     },
     {
@@ -42,7 +42,7 @@
     "creates_public_contract": false,
     "executes_commands": false
   },
-  "release": "M0.5.8",
+  "release": "M0.5.9",
   "closure": {
     "step": 3,
     "full_feature_migration": true,
@@ -61,12 +61,12 @@
     "runtime_convergence_release": "M0.5.7",
     "static_semantic_feature_parity_proven": true
   },
-  "builder_version": "1.5.1",
+  "builder_version": "1.5.2",
   "specification_versions": {
     "mobility.charger.full_evse.v1": "1.5.0",
     "mobility.charger.utility_surface.v1": "1.5.0",
     "mobility.person.presence.v1": "1.5.0",
-    "mobility.vehicle.connected_vehicle.v1": "1.5.0",
+    "mobility.vehicle.connected_vehicle.v1": "1.5.2",
     "mobility.vehicle.manual_profile.v1": "1.5.0"
   },
   "legacy_adapter_consolidation": {

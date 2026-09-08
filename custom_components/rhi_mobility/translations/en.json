@@ -10,5 +10,22 @@
     "abort": {
       "single_instance_allowed": "Robotix Home Intelligence - Mobility Module is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage guest vehicles",
+        "menu_options": {
+          "add_guest_vehicle": "Add guest vehicle",
+          "edit_guest_vehicle": "Edit guest vehicle",
+          "remove_guest_vehicle": "Remove guest vehicle"
+        }
+      },
+      "add_guest_vehicle": {"title": "Add guest vehicle", "description": "Create a Mobility-owned vehicle without a technical Foundation device."},
+      "edit_guest_vehicle": {"title": "Choose guest vehicle"},
+      "edit_guest": {"title": "Edit guest vehicle"},
+      "remove_guest_vehicle": {"title": "Choose guest vehicle"},
+      "remove_guest": {"title": "Remove {name}", "description": "Remove this guest vehicle and its Mobility-owned configuration."}
+    }
   }
 }

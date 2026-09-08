@@ -361,19 +361,46 @@ def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedB
     logical_concept = model.get("logical_asset_type") or model["concept_id"]
     spec_inputs = {row["input_id"]: row for row in spec["candidate_requirements"]["normalized_inputs"]}
 
+    if builder_id == "mobility.vehicle.manual_profile.v1":
+        # Compatibility-only acceptance of stale Foundation handoffs. Manual/guest
+        # vehicles are Mobility-owned configuration products since M0.5.9; Foundation
+        # devices and configured capabilities can never materialize them.
+        diagnostic = _capability_diag(
+            builder_id=builder_id,
+            integration_domain=integration_domain,
+            selection_id=selection_id,
+            asset_id="selection_scope",
+            device_id=None,
+            input_id="manual_vehicle_configuration",
+            required=False,
+            status="REJECTED_LEGACY_MANUAL_PROFILE",
+            reason="manual vehicles are managed through the Mobility options flow",
+        )
+        return PreparedBuildInput(
+            selection_id=selection_id,
+            builder_id=builder_id,
+            integration_domain=integration_domain,
+            source_configuration_revision=payload["configuration_revision"],
+            candidate_revision=payload["candidate_revision"],
+            build_input_revision=payload["build_input_revision"],
+            source_bindings=(),
+            asset_seeds=(),
+            capability_diagnostics=(diagnostic,),
+            discovery_assessment=assessment,
+            relationships=(),
+            control_profiles=(),
+            planning_profiles=(),
+        )
+
     # Object identity is intentionally narrower than candidate identity. One selected
     # technical device becomes one logical Mobility object. Integration-global/config-entry
-    # surfaces never create phantom vehicles/chargers. Explicit specific-device selections
-    # stay visible even if Foundation cannot currently match a required capability.
+    # surfaces never create phantom vehicles/chargers. A selected device is not itself
+    # evidence that its device type is a valid Mobility concept: only validated, attributable
+    # candidate evidence may create an object anchor.
     asset_inputs: dict[str, dict[str, dict[str, Any]]] = {}
     asset_device_ids: dict[str, str | None] = {}
     asset_config_entry_ids: dict[str, str | None] = {}
     selected_device_ids = {str(x) for x in (selection.get("selected_device_ids") or []) if str(x) != "__all_matching__"}
-    for device_id in sorted(selected_device_ids):
-        key = f"device:{device_id}"
-        asset_inputs.setdefault(key, {})
-        asset_device_ids[key] = device_id
-        asset_config_entry_ids[key] = None
 
     evidence_by_id: dict[str, dict[str, Any]] = {}
     evidence_errors: dict[str, str] = {}
@@ -547,7 +574,41 @@ def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedB
     source_bindings: list[AcceptedSourceBinding] = []
     asset_seeds: list[PreparedAssetSeed] = []
     role = model["source_role"]
+    # Fail closed on device type. Required input evidence is the existing domain-owned
+    # discriminator available in SelectedDomainBuildInput 1.2.0; no Foundation contract
+    # extension or Home Assistant registry rescan is needed. A server/hub device, or any
+    # other selected device that cannot satisfy the builder's required inputs, is not a
+    # Mobility asset.
+    required_input_ids = {
+        input_id for input_id, rule in spec_inputs.items() if rule.get("required")
+    }
+    eligible_asset_inputs: dict[str, dict[str, dict[str, Any]]] = {}
+    anchored_device_ids = {
+        device_id for device_id in asset_device_ids.values() if isinstance(device_id, str) and device_id
+    }
+    for device_id in sorted(selected_device_ids - anchored_device_ids):
+        capability_diagnostics.append(_capability_diag(
+            builder_id=builder_id, integration_domain=integration_domain, selection_id=selection_id,
+            asset_id="selection_scope", device_id=device_id, input_id="device_eligibility", required=True,
+            status="REJECTED_UNSUPPORTED_DEVICE_TYPE",
+            reason=f"selected device {device_id} has no attributable candidate evidence for this Mobility concept",
+        ))
     for technical_key, inputs in sorted(asset_inputs.items()):
+        missing_required = sorted(required_input_ids - set(inputs))
+        device_id = asset_device_ids.get(technical_key)
+        if not inputs or missing_required:
+            capability_diagnostics.append(_capability_diag(
+                builder_id=builder_id, integration_domain=integration_domain, selection_id=selection_id,
+                asset_id="selection_scope", device_id=device_id, input_id="device_eligibility", required=True,
+                status="REJECTED_UNSUPPORTED_DEVICE_TYPE",
+                reason=(f"selected device {device_id} has no attributable candidate evidence for this Mobility concept"
+                        if not inputs else
+                        "selected device does not satisfy required Mobility inputs: " + ",".join(missing_required)),
+            ))
+            continue
+        eligible_asset_inputs[technical_key] = inputs
+
+    for technical_key, inputs in sorted(eligible_asset_inputs.items()):
         asset_id = _safe_asset_id(logical_concept, technical_key)
         device_id = asset_device_ids.get(technical_key)
         asset_seeds.append(PreparedAssetSeed(
@@ -577,8 +638,6 @@ def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedB
                 candidate=candidate, candidate_match=cm,
                 normalized_properties=list(model["input_rules"][input_id].get("outputs") or []),
             ))
-        # A binding with zero trustworthy inputs has no semantic source value. The asset
-        # seed still keeps the configured object visible and degraded in the UX.
         if parsed:
             binding_id = f"binding.mobility.{selection_id}.{role}.{asset_id}"
             source_bindings.append(AcceptedSourceBinding(
@@ -590,18 +649,20 @@ def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedB
                 inputs=parsed,
             ))
 
-        # Explicitly surface every missing capability at object scope. Optional inputs are
-        # UNSUPPORTED; required inputs are MISSING. Already emitted hard problems win.
+        # Diagnostics are evidence-oriented. Optional inputs without a candidate are not
+        # defects and are therefore omitted; otherwise every sparse integration creates
+        # hundreds of meaningless UNSUPPORTED rows. Required gaps and concrete rejected,
+        # ambiguous or stale evidence remain explicit.
         existing_diag={(d["input_id"],d["status"]) for d in capability_diagnostics if d.get("asset_id")==asset_id}
         for input_id, rule in spec_inputs.items():
             if input_id in parsed or any(i==input_id and st in {"AMBIGUOUS","INVALID_EVIDENCE","BLOCKED_BY_REVIEW","BLOCKED_BY_TARGET_SCOPE"} for i,st in existing_diag):
                 continue
-            status = "MISSING" if rule.get("required") else "UNSUPPORTED"
-            reason = "required technical capability not available for selected object" if rule.get("required") else "optional technical capability not available for selected object"
+            if not rule.get("required"):
+                continue
             capability_diagnostics.append(_capability_diag(
                 builder_id=builder_id, integration_domain=integration_domain, selection_id=selection_id,
                 asset_id=asset_id, device_id=device_id, input_id=input_id, required=bool(rule.get("required")),
-                status=status, reason=reason,
+                status="MISSING", reason="required technical capability not available for selected object",
                 normalized_properties=list(model["input_rules"][input_id].get("outputs") or []),
             ))
 

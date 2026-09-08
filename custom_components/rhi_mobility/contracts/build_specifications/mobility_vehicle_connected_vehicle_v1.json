@@ -4,7 +4,7 @@
   "publisher": "rhi_mobility",
   "domain_id": "mobility",
   "builder_id": "mobility.vehicle.connected_vehicle.v1",
-  "builder_version": "1.5.1",
+  "builder_version": "1.5.2",
   "concept": {
     "concept_id": "vehicle",
     "display_name": "Vehicle",
@@ -90,6 +90,18 @@
                 "value": "battery_level_HV.value"
               }
             ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "battery_soc_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_state_of_charge"
+              }
+            ]
           }
         ]
       },
@@ -141,6 +153,30 @@
                 "value": "range_total_km"
               }
             ]
+          },
+          {
+            "integration_domain": "audiconnect",
+            "raw_capability_id": "range_total_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_range"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "range_total_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_range_electric"
+              }
+            ]
           }
         ]
       },
@@ -190,6 +226,30 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "charge_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "audiconnect",
+            "raw_capability_id": "charge_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_charging_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "charge_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_charging_status"
               }
             ]
           }
@@ -3201,6 +3261,18 @@
                 "value": "external_power_state"
               }
             ]
+          },
+          {
+            "integration_domain": "audiconnect",
+            "raw_capability_id": "external_power_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_external_power"
+              }
+            ]
           }
         ]
       },
@@ -3556,6 +3628,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "immediate_charging_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "immediate_charging_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_charging_active"
               }
             ]
           }
@@ -7381,6 +7465,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "last_seen"
+              }
+            ]
+          },
+          {
+            "integration_domain": "audiconnect",
+            "raw_capability_id": "last_seen",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_last_update"
               }
             ]
           }

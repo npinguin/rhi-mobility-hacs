@@ -18,9 +18,13 @@ def editable_definitions(registry, asset_type: str, platform: str) -> list[tuple
     return sorted(rows,key=lambda row: row[0])
 
 
-def _has_binding_role(asset, role: str | None) -> bool:
+def _has_binding_role(manager, asset_id: str, asset, role: str | None) -> bool:
     if not role:
         return True
+    if role == "manual_profile":
+        config = getattr(manager, "domain_config", None)
+        is_guest = getattr(config, "is_guest_vehicle", None)
+        return bool(callable(is_guest) and is_guest(asset_id))
     return role in asset.source_bindings
 
 
@@ -30,7 +34,7 @@ def effective_charger_id(manager, vehicle_id: str) -> str | None:
 
 def is_available(manager, controller, asset_id: str, property_key: str, editable: dict[str, Any]) -> bool:
     asset=manager.assets.get(asset_id)
-    if asset is None or not _has_binding_role(asset,editable.get("requires_binding_role")):
+    if asset is None or not _has_binding_role(manager,asset_id,asset,editable.get("requires_binding_role")):
         return False
     write_kind=editable.get("write_kind")
     if write_kind=="selected_charger":
