@@ -60,9 +60,6 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
 
     @staticmethod
     def _guest_profiles() -> dict[str, str]:
-        # These are the two canonical generic guest profiles from profile_catalog.json.
-        # Keeping only guest profiles here prevents a manually entered vehicle from
-        # accidentally claiming a make/model-specific source profile.
         return {
             "guest_phev_1phase": "Guest PHEV (1 phase)",
             "guest_ev_3phase": "Guest EV (3 phase)",
@@ -70,32 +67,35 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
 
     def _vehicle_schema(self, current: dict | None = None):
         row = current or {}
-        schema = {
+        # Keep the public Mobility runtime contract unchanged. This options form is
+        # only an authoring surface for Mobility-owned guest vehicles. Battery energy
+        # is derived canonically from capacity * SoC and is therefore not requested
+        # from the user. Existing stored/public battery_energy_kwh remains supported.
+        return vol.Schema({
             vol.Required("name", default=row.get("name", "Guest vehicle")): str,
             vol.Required("profile_id", default=row.get("profile_id", "guest_phev_1phase")): vol.In(self._guest_profiles()),
             vol.Required("battery_capacity_kwh", default=row.get("battery_capacity_kwh", 20.0)): vol.All(vol.Coerce(float), vol.Range(min=1, max=200)),
             vol.Required("soc_pct", default=row.get("soc_pct", 50.0)): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
             vol.Required("present", default=row.get("present", True)): bool,
-            vol.Required("selected_charger", default=row.get("selected_charger") or ""): vol.In(self._charger_options()),
+            # Empty string represents the UI choice 'No charger assigned'. It must be
+            # optional because HA 2026.9 may omit an empty-string radio value from the
+            # submitted payload; marking it Required causes the misleading frontend
+            # error 'Not all required fields are filled'.
+            vol.Optional("selected_charger", default=row.get("selected_charger") or ""): vol.In(self._charger_options()),
             vol.Required("lifecycle_status", default=row.get("lifecycle_status", "active")): vol.In({"active": "Active", "disabled": "Disabled"}),
-        }
-        # HA 2026.9/probatio cannot serialize a literal None validator. A genuinely
-        # optional numeric field is serializable; omission means derive energy from
-        # battery capacity * SoC in the canonical Mobility validator.
-        energy = row.get("battery_energy_kwh")
-        energy_key = vol.Optional("battery_energy_kwh", default=energy) if energy not in (None, "") else vol.Optional("battery_energy_kwh")
-        schema[energy_key] = vol.All(vol.Coerce(float), vol.Range(min=0, max=200))
-        return vol.Schema(schema)
+        })
 
     def _validated_vehicle(self, user_input: dict) -> dict:
         values = dict(user_input)
         values["selected_charger"] = values.get("selected_charger") or None
+        # The options form intentionally does not author battery_energy_kwh. Preserve
+        # backwards compatibility for callers that still send the key, otherwise let
+        # the canonical validator derive it from battery_capacity_kwh * soc_pct.
+        if "battery_energy_kwh" not in user_input:
+            values["battery_energy_kwh"] = None
         return MobilityDomainConfiguration._validate_guest_vehicle(values)
 
     def _result(self, guests: dict[str, dict]):
-        # OptionsFlow's create-entry result is the canonical HA persistence operation.
-        # The config-entry update listener reconciles these guest rows into the same
-        # MobilityRuntimeManager used by technical vehicles and chargers.
         options = self._options()
         options[GUEST_VEHICLES_KEY] = guests
         options[REVISION_KEY] = int(options.get(REVISION_KEY, 0) or 0) + 1
