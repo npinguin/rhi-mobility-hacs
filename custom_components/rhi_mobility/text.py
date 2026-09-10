@@ -14,7 +14,6 @@ async def async_setup_entry(hass: HomeAssistant,entry: ConfigEntry,async_add_ent
         new=[]; wanted=set()
         for aid,asset in sorted(manager.assets.items()):
             for property_key,editable in editable_definitions(registry,asset.concept_id,'text'):
-                if not is_available(manager,controller,aid,property_key,editable): continue
                 key=(aid,property_key); wanted.add(key)
                 if key not in created:
                     entity=MobilityText(entry.entry_id,aid,property_key,editable,manager,controller,registry); created[key]=entity; new.append(entity)
@@ -29,19 +28,15 @@ class MobilityText(TextEntity):
     _attr_native_min=0; _attr_native_max=255
     def __init__(self,entry_id,asset_id,property_key,editable,manager,controller,registry):
         self.asset_id=asset_id; self.property_key=property_key; self.editable=editable; self.manager=manager; self.controller=controller; self.registry=registry
-        suffix=property_key.replace('.','_')
-        self._attr_unique_id=f'{DOMAIN}:{asset_id}:text:{property_key}'; self._attr_suggested_object_id=f'{DOMAIN}_{asset_id}_{suffix}'
-        self._attr_name=editable.get('name') or property_key.split('.')[-1].replace('_',' ').title()
-        self._attr_device_info=logical_device_info(manager.hass,entry_id,manager,asset_id)
-    async def async_added_to_hass(self) -> None:
+        suffix=property_key.replace('.','_'); self._attr_unique_id=f'{DOMAIN}:{asset_id}:text:{property_key}'; self._attr_suggested_object_id=f'{DOMAIN}_{asset_id}_{suffix}'; self._attr_name=editable.get('name') or property_key.split('.')[-1].replace('_',' ').title(); self._attr_device_info=logical_device_info(manager.hass,entry_id,manager,asset_id)
+    async def async_added_to_hass(self):
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
         if self.editable.get('write_kind')=='vehicle_charge_mode': self.async_on_remove(self.controller.add_listener(self._changed))
     @callback
     def _changed(self): self.async_write_ha_state()
     @property
     def native_value(self):
-        current=value(self.manager,self.controller,self.asset_id,self.property_key,self.editable)
-        return None if current is None else str(current)
+        current=value(self.manager,self.controller,self.asset_id,self.property_key,self.editable); return None if current is None else str(current)
     @property
     def available(self): return is_available(self.manager,self.controller,self.asset_id,self.property_key,self.editable)
     async def async_set_value(self,new_value: str): await async_write(self.manager,self.controller,self.asset_id,self.property_key,self.editable,str(new_value))
