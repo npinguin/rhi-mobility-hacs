@@ -1,5 +1,13 @@
 # Changelog
 
+## M0.5.10 — Public runtime usability correction
+
+- Fix the Home Assistant options-flow HTTP 500 caused by assigning its read-only config-entry property.
+- Restore the complete applicable vehicle and charger property layout instead of removing unknown source values from the public contract.
+- Keep profile, configured, derived, relationship and editable properties visible for every applicable asset.
+- Resolve deterministic default profiles for the supported Audi, Mercedes, VW ID.4, Peblar, MQTT utility-plug and OCPP source types; explicit user configuration remains authoritative.
+- Preserve exact source provenance and the no-automatic-multi-source-fusion rule.
+
 ## M0.5.9 — Structural runtime correction
 
 - Filter devices that cannot prove required Mobility inputs; OCPP Central System devices never become chargers.

@@ -24,11 +24,22 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     """Mobility-owned configuration for semantic guest vehicles."""
 
     def __init__(self, config_entry) -> None:
-        self.config_entry = config_entry
+        # Current Home Assistant owns ``OptionsFlow.config_entry`` and exposes it as
+        # a read-only property after the flow has been initialised. Assigning it here
+        # raises AttributeError and makes the options dialog fail with HTTP 500.
+        # Keep the constructor value only as a compatibility fallback for older HA
+        # releases and isolated tests.
+        self._provided_config_entry = config_entry
         self._target_guest: str | None = None
 
+    def _entry(self):
+        try:
+            return self.config_entry
+        except (AttributeError, ValueError):
+            return self._provided_config_entry
+
     def _options(self) -> dict:
-        return deepcopy(dict(getattr(self.config_entry, "options", {}) or {}))
+        return deepcopy(dict(getattr(self._entry(), "options", {}) or {}))
 
     def _guests(self) -> dict[str, dict]:
         rows = self._options().get(GUEST_VEHICLES_KEY, {})
@@ -37,7 +48,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     def _charger_options(self) -> dict[str, str]:
         hass = getattr(self, "hass", None)
         domain_data = getattr(hass, "data", {}).get(DOMAIN, {}) if hass is not None else {}
-        runtime = (domain_data.get(self.config_entry.entry_id) or {}).get("runtime")
+        runtime = (domain_data.get(self._entry().entry_id) or {}).get("runtime")
         rows = {"": "No charger assigned"}
         for asset_id, asset in sorted(getattr(runtime, "assets", {}).items()):
             if getattr(asset, "concept_id", None) == "charger":
