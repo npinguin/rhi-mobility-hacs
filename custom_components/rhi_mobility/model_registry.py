@@ -1,9 +1,66 @@
 from __future__ import annotations
+from copy import deepcopy
 import json
 from importlib.resources import files
 from typing import Any
 
 from .contracts.presentation import canonicalize_presentation
+
+
+def _normalize_current_ocpp_contract(spec: dict[str, Any]) -> dict[str, Any]:
+    """Correct OCPP charger discovery against observed HA 2026.9 source identities.
+
+    Shared Baseline 1.7.0 deliberately exposes ``source_identity.unique_id`` as the
+    portable entity identity match surface.  Target Foundation diagnostics prove that
+    current OCPP entities retain semantic unique IDs such as
+    ``ocpp.<charger>.status_connector.sensor`` and
+    ``ocpp.<charger>.energy_active_import_register.sensor``.
+
+    Two defects in the generated M0.5.x charger adapter are corrected here without
+    changing the Shared Baseline:
+
+    * the required physical operating-state input used ``status.sensor`` even though
+      the physical connector state is ``status_connector.sensor``;
+    * measured active-import power was mandatory for every charger, which filtered
+      otherwise valid physical OCPP charge points when that optional meter value is
+      not exposed by the charger/integration.  Power remains in the canonical product
+      contract and can be bound whenever evidence exists; absence no longer prevents
+      the physical charger from materializing.
+
+    Physical OCPP identity remains fail-closed because connector status is required on
+    the selected device.  Central-system/server objects do not expose connector status
+    on their own device and therefore cannot qualify as charger assets.
+    """
+    if spec.get("builder_id") != "mobility.charger.full_evse.v1":
+        return spec
+
+    out = deepcopy(spec)
+    out["builder_version"] = "1.6.0"
+    inputs = (out.get("candidate_requirements") or {}).get("normalized_inputs") or []
+
+    for row in inputs:
+        input_id = str(row.get("input_id") or "")
+
+        if input_id == "charger_operating_state":
+            for match in row.get("integration_matches") or []:
+                if match.get("integration_domain") != "ocpp" or match.get("source_kind") != "entity":
+                    continue
+                predicates = match.get("all_of") or []
+                if len(predicates) != 1 or not isinstance(predicates[0], dict):
+                    continue
+                predicate = predicates[0]
+                if predicate.get("field") == "source_identity.unique_id" and predicate.get("operator") == "ends_with":
+                    predicate["value"] = "status_connector.sensor"
+
+        if input_id == "charger_power":
+            # Charger existence must not depend on optional metering.  The semantic
+            # charger.power property still exists and becomes unknown/unavailable when
+            # no measured power binding is present.
+            row["required"] = False
+            row["cardinality"] = "zero_or_one_per_group"
+
+    return out
+
 
 class MobilityModelRegistry:
     """Loads generated copies of authoritative release contracts."""
@@ -13,6 +70,7 @@ class MobilityModelRegistry:
         for item in spec_root.iterdir():
             if item.name.endswith(".json") and item.name != "manifest.json":
                 spec = json.loads(item.read_text(encoding="utf-8"))
+                spec = _normalize_current_ocpp_contract(spec)
                 spec = canonicalize_presentation(spec)
                 self.specs[spec["builder_id"]] = spec
         model_root = files("custom_components.rhi_mobility.contracts.runtime")
