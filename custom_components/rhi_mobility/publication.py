@@ -10,13 +10,17 @@ class MobilityBuildSpecificationProvider:
     """
 
     publisher_domain = "rhi_mobility"
-    publication_revision = 7
+    publication_revision = 8
 
     def __init__(self, registry) -> None:
         self.registry = registry
 
     def get_build_specifications(self) -> tuple[dict[str, Any], ...]:
-        """Return the bounded authoritative Mobility build specifications."""
+        """Return the bounded authoritative Mobility build specifications.
+
+        Manual/guest vehicles are deliberately not published. They are Mobility-owned
+        semantic products and never participate in Foundation integration/device discovery.
+        """
         return tuple(
             self.registry.specs[key]
             for key in sorted(self.registry.specs)
