@@ -250,16 +250,16 @@ class MobilityPublicRuntimeProvider:
         supported = set(self._capability_supported_keys(asset_id))
         supported.update((snap.values if snap else {}).keys())
 
-        # Non-source V1 semantics are stable product surfaces and remain present even if
-        # their current value is unknown. Source-only properties are projected when the
-        # selected object has matched/stale/missing evidence for that capability.
+        # The canonical per-asset catalog is itself a public product contract. Every
+        # applicable property therefore remains placed even when its current observation
+        # is unknown. Capability diagnostics still distinguish unsupported/missing source
+        # evidence; removing the row here makes profiles, editable configuration and the
+        # layout contract disappear from consumers.
         for key, definition in self.properties.items():
             types = set(definition.get("applicable_asset_types") or [])
             if types and typ not in types:
                 continue
-            producer = self._producer_type(typ, key)
-            if producer and producer != "SOURCE":
-                supported.add(key)
+            supported.add(key)
 
         # Aliases follow their canonical supported key instead of becoming a second fact engine.
         for alias, canonical in self.aliases.items():

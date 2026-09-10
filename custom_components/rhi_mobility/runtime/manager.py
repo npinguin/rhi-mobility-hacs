@@ -44,7 +44,7 @@ class MobilityRuntimeManager:
         return {b.binding_id:b for a in self.assets.values() for b in a.source_bindings.values()}
 
     def _selected_profile(self, asset_id: str) -> dict[str, Any] | None:
-        profile_id = self.configuration_value(asset_id, "asset.profile_id", None)
+        profile_id = self.effective_profile_id(asset_id)
         if not profile_id:
             return None
         getter = getattr(self.registry, "profile", None)
@@ -55,6 +55,46 @@ class MobilityRuntimeManager:
         if profile.get("profile_type") != asset.concept_id:
             return None
         return profile
+
+    def effective_profile_id(self, asset_id: str) -> str | None:
+        """Resolve explicit configuration first, then a deterministic source default.
+
+        These defaults are Mobility-owned product semantics. They never change the
+        technical source binding and deliberately do not fuse multiple vehicle sources.
+        """
+        configured = self.configuration_value(asset_id, "asset.profile_id", None)
+        if configured:
+            return str(configured)
+        asset = self.assets.get(asset_id)
+        if asset is None:
+            return None
+        integration = str(asset.source_integration_domain or "").lower()
+        if asset.concept_id == "charger":
+            return {
+                "ocpp": "wallbox_ocpp",
+                "peblar": "peblar_22kw",
+                "mqtt": "utility_plug",
+            }.get(integration)
+        if asset.concept_id != "vehicle":
+            return None
+        if integration == "audiconnect":
+            return "audi_q8_tfsi_55e_2025_phev"
+        if integration == "mbapi2020":
+            return "mercedes_gla_2021_phev"
+        if integration == "cupra_eu_data_act":
+            identity = " ".join(
+                str(value or "")
+                for value in (
+                    self._source_device_name(asset.source_device_id),
+                    asset.display_name,
+                    asset.source_device_id,
+                )
+            ).lower()
+            if "id4" in identity or "id.4" in identity or "volkswagen" in identity or "vw " in identity:
+                return "vw_id4_business_pro_77kwh"
+            if "audi" in identity or "q8" in identity:
+                return "audi_q8_tfsi_55e_2025_phev"
+        return None
 
     @property
     def control_profiles(self) -> dict[str, AssetControlProfile]:
@@ -696,7 +736,12 @@ class MobilityRuntimeManager:
         selected_profile=self._selected_profile(asset_id)
         if selected_profile:
             pid=str(selected_profile["profile_id"])
-            snap.values["asset.profile_id"]=pid; snap.quality["asset.profile_id"]="mobility_domain_configuration"
+            snap.values["asset.profile_id"]=pid
+            snap.quality["asset.profile_id"]=(
+                "mobility_domain_configuration"
+                if self.configuration_value(asset_id, "asset.profile_id", None)
+                else "mobility_source_default_profile"
+            )
             semantic_properties=(getattr(self.registry,"semantic_catalog",{}).get("properties") or {})
             for property_key,definition in semantic_properties.items():
                 applicable=set(definition.get("applicable_asset_types") or [])
@@ -897,7 +942,7 @@ class MobilityRuntimeManager:
                 'asset_id':aid,'concept_id':asset.concept_id,'display_name':None if snap is None else snap.values.get('asset.display_name',asset.display_name),
                 'integrations':sorted(integrations or {str(r.get('integration_domain')) for r in cap_rows if r.get('integration_domain')}),
                 'primary_source':self.primary_source_metadata(aid),
-                'profile_id':self.configuration_value(aid,'asset.profile_id',None),
+                'profile_id':self.effective_profile_id(aid),
                 'health':None if snap is None else snap.health,'health_reason':None if snap is None else snap.health_reason,
                 'property_count':0 if snap is None else len(snap.values),'source_bindings':sources,
                 'capability_status_counts':status_counts,'capabilities':cap_rows,
