@@ -6,7 +6,9 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .profile_presentation import profile_image_url, profile_metadata
 from .projection import logical_device_info
+from .property_projection import MobilityPropertyProjection
 from .const import (
     DOMAIN,
     FOUNDATION_DOMAIN_ID,
@@ -26,6 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     public = data["public_provider"]
     controller = data["controller"]
     provider = data["provider"]
+    projection = MobilityPropertyProjection(hass, manager, controller, public)
     async_add_entities(
         [
             ReleaseSensor(entry.entry_id),
@@ -36,8 +39,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         True,
     )
 
-    # Dynamic projection is reconciled both ways: authoritative runtime additions are
-    # created, while entities belonging to removed logical assets are removed in-process.
     created: dict[tuple[str, str], MobilityPropertySensor] = {}
 
     @callback
@@ -54,7 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             key = (row["asset_id"], row["property_key"])
             if key in created:
                 continue
-            entity = MobilityPropertySensor(entry.entry_id, row["asset_id"], row["property_key"], public, manager)
+            entity = MobilityPropertySensor(entry.entry_id, row["asset_id"], row["property_key"], public, manager, projection)
             created[key] = entity
             new.append(entity)
         if new:
@@ -234,8 +235,7 @@ class MobilityPropertySensor(SensorEntity):
     _attr_should_poll = False
     _attr_icon = "mdi:gauge"
 
-    def __init__(self, entry_id, asset_id, property_key, provider, manager):
-        suffix = f"{asset_id}_{property_key.replace('.', '_')}"
+    def __init__(self, entry_id, asset_id, property_key, provider, manager, projection):
         asset = manager.assets.get(asset_id)
         definition = provider.property_definition(property_key, None if asset is None else asset.concept_id) or {}
         name = definition.get("friendly_name") or property_key.split(".")[-1].replace("_", " ").title()
@@ -243,6 +243,7 @@ class MobilityPropertySensor(SensorEntity):
         self.property_key = property_key
         self.provider = provider
         self.manager = manager
+        self.projection = projection
         self._attr_name = name
         self._attr_unique_id = f"{DOMAIN}:{asset_id}:property:{property_key}"
         self._attr_suggested_object_id = f"{DOMAIN}_{asset_id}_{property_key.split('.')[-1]}"
@@ -264,20 +265,31 @@ class MobilityPropertySensor(SensorEntity):
 
     @property
     def available(self):
-        # Stable contract surface: an existing logical object keeps its property entity.
-        # Missing truth is represented by native_value=None (HA unknown), not unavailable.
         return self.asset_id in self.manager.assets
+
+    @property
+    def entity_picture(self):
+        if self.property_key not in {"vehicle.image_key", "charger.image_key"}:
+            return None
+        return profile_image_url(self.manager, self.asset_id)
 
     @property
     def extra_state_attributes(self):
         asset = self.manager.assets.get(self.asset_id)
         definition = self.provider.property_definition(self.property_key, None if asset is None else asset.concept_id) or {}
-        return {
+        provenance = self.provider.property_provenance(self.asset_id, self.property_key)
+        value = self.native_value
+        resolution = self.projection.availability_reason(self.asset_id, self.property_key, value, provenance)
+        attrs = {
             "property_key": self.property_key,
             "component_id": definition.get("component_id"),
             "section_id": definition.get("section_id"),
             "visibility": definition.get("visibility"),
             "quality": self.provider.property_quality(self.asset_id, self.property_key),
-            **self.provider.property_provenance(self.asset_id, self.property_key),
+            "resolution_status": resolution,
+            **provenance,
             "canonical_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
         }
+        if self.property_key in {"asset.profile_id", "vehicle.image_key", "charger.image_key"}:
+            attrs.update(profile_metadata(self.manager, self.asset_id))
+        return attrs
