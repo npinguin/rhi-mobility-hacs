@@ -1,5 +1,20 @@
 # Changelog
 
+## M0.6.7 — Completeness and presentation recovery
+
+- Carry forward the M0.6.6 vehicle property-family and command recovery for AudiConnect, Cupra/Data Act and Mercedes sources.
+- Restore target-proven security, door/window, hood/trunk, climate, range/odometer and maintenance/service mappings without conflating charging-plug lock state with central vehicle security.
+- Restore vehicle command attribution for Foundation-proven config-entry service surfaces; AudiConnect uses its required `device_id + action` payload and Mercedes uses VIN-based routes where safely supported.
+- Keep Mercedes unlock fail-closed when integration-managed security authorization is required.
+- Expose the complete applicable canonical normalized property surface for every logical vehicle and charger. Missing truth remains visible with an explicit resolution reason instead of disappearing.
+- Add fail-closed completeness diagnostics for normalized-property coverage and source-capability classification. Runtime acceptance requires zero ambiguous, unmapped, unclassified or unexplained properties/capabilities.
+- Materialize selected profile metadata and profile-derived values through the canonical runtime while preserving source/configuration precedence.
+- Add profile presentation and packaged profile images for Audi Q8, VW ID.4, Mercedes GLA, BMW X1, Renault Scenic, guest EV/PHEV, Wallbox OCPP, Peblar, utility plug and generic fallbacks.
+- Give Guest Vehicle the same profile-selection and profile-presentation path as discovered vehicles.
+- Preserve and expose vehicle ↔ charger relationships, including `vehicle.selected_charger` / effective charger and charger-side assigned vehicle semantics.
+- Requires Foundation F1.7.5 and Shared Baseline 1.7.1.
+- Source main CI is green at `0a8d1fb823192fe74650b3eae963228c0e391181`; target Home Assistant runtime acceptance remains pending this HACS test release.
+
 ## M0.6.5 — Fixed capability binding recovery
 
 - Restore integration-provided technical capability identifiers as authoritative evidence while Foundation creates or repairs a binding.
