@@ -126,6 +126,8 @@ class MobilityControlCatalog:
     def _descriptor_precedence(self,asset,descriptor) -> int:
         for binding in asset.source_bindings.values():
             if descriptor.source in binding.inputs.values(): return binding.source_precedence
+        # Attributed global services inherit the accepted vehicle object's precedence,
+        # but can never displace an explicit AcceptedSourceBinding command source.
         if descriptor.source.identity.get('command_binding_basis'):
             return min((b.source_precedence for b in asset.source_bindings.values()),default=0)-1
         return -1
