@@ -49,6 +49,11 @@ def _configured_charger(manager: Any, vehicle_id: str) -> str | None:
 
 
 def _explicit_observed_charger(manager: Any, vehicle_id: str) -> str | None:
+    """Return a physical charger only when runtime carries explicit vehicle identity.
+
+    Generic connector state such as `asset_connected` proves occupancy, not which
+    vehicle is connected, and therefore must never be promoted to observed identity.
+    """
     for rel in getattr(manager, "relationships", {}).values():
         relation_type = str(getattr(rel, "relationship_type", ""))
         if relation_type not in {"physical_connection", "observed_connection"}:
