@@ -1,0 +1,116 @@
+diff --git a/custom_components/rhi_mobility/contracts/runtime/semantic_property_catalog.json b/custom_components/rhi_mobility/contracts/runtime/semantic_property_catalog.json
+--- a/custom_components/rhi_mobility/contracts/runtime/semantic_property_catalog.json
++++ b/custom_components/rhi_mobility/contracts/runtime/semantic_property_catalog.json
+@@ -1,7 +1,7 @@
+ {
+   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
+   "contract_version": "1.0.0",
+-  "release": "M0.5.8",
++  "release": "M0.7.1",
+   "authority": "rhi_mobility",
+   "rules": {
+     "canonical_v2_authority": true,
+@@ -2689,17 +2689,18 @@
+           "normalizer": "duration_s"
+         }
+       ],
+-      "producer_type": "SOURCE",
++      "producer_type": "ALIAS",
+       "truth_precedence": [
+-        "SOURCE"
++        "ALIAS"
+       ],
+       "applicable_asset_types": [
+         "charger"
+       ],
+       "producer_types": [
+-        "SOURCE"
++        "ALIAS"
+       ],
+-      "value_type": "number"
++      "value_type": "number",
++      "canonical_alias_of": "charger.session_duration_s"
+     },
+     "charger.session_energy_kwh": {
+       "component_id": "metering",
+@@ -3123,14 +3124,12 @@
+       },
+       "v1_drop_in": true,
+       "producer_types": [
+-        "CONFIGURED",
+         "ALIAS"
+       ],
+       "canonical_alias_of": "asset.lifecycle_status",
+       "producer_type": "ALIAS",
+       "truth_precedence": [
+-        "ALIAS",
+-        "CONFIGURED"
++        "ALIAS"
+       ],
+       "editable": {
+         "platform": "select",
+@@ -3830,7 +3829,7 @@
+       "component_id": "battery",
+       "section_id": "details",
+       "visibility": "product",
+-      "unit": "\u00b0C",
++      "unit": "°C",
+       "entity_type": "sensor",
+       "derived": false,
+       "friendly_name": "Battery Max Temperature C",
+@@ -3846,7 +3845,7 @@
+           "render_as": "readonly_value",
+           "display_order": 120,
+           "friendly_name": "Battery Max Temperature C",
+-          "unit": "\u00b0C",
++          "unit": "°C",
+           "empty_state_behavior": "hide_if_unavailable",
+           "datatype": "state/value"
+         }
+@@ -3873,7 +3872,7 @@
+       "component_id": "battery",
+       "section_id": "details",
+       "visibility": "product",
+-      "unit": "\u00b0C",
++      "unit": "°C",
+       "entity_type": "sensor",
+       "derived": false,
+       "friendly_name": "Battery Min Temperature C",
+@@ -3889,7 +3888,7 @@
+           "render_as": "readonly_value",
+           "display_order": 110,
+           "friendly_name": "Battery Min Temperature C",
+-          "unit": "\u00b0C",
++          "unit": "°C",
+           "empty_state_behavior": "hide_if_unavailable",
+           "datatype": "state/value"
+         }
+@@ -7408,7 +7407,7 @@
+       "component_id": "comfort",
+       "section_id": "overview",
+       "visibility": "product",
+-      "unit": "\u00b0C",
++      "unit": "°C",
+       "entity_type": "sensor",
+       "derived": false,
+       "friendly_name": "Outside temperature",
+@@ -7424,7 +7423,7 @@
+           "render_as": "readonly_value",
+           "display_order": 20,
+           "friendly_name": "Outside temperature",
+-          "unit": "\u00b0C",
++          "unit": "°C",
+           "empty_state_behavior": "hide_if_unavailable",
+           "datatype": "state/value"
+         }
+@@ -10857,5 +10856,10 @@
+       ],
+       "value_type": "boolean"
+     }
++  },
++  "compatibility": {
++    "facade_only_aliases": [
++      "vehicle.charging_power_kw"
++    ]
+   }
+ }
