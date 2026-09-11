@@ -5,20 +5,22 @@ from importlib.resources import files
 from typing import Any
 from .contracts.presentation import canonicalize_presentation
 
-_MUTABLE_NAME_FIELDS = {
-    "source_identity.unique_id",
-    "source_identity.service_name",
+_MUTABLE_RUNTIME_NAME_FIELDS = {
+    "source_identity.current_entity_id",
 }
 
 
-def _separate_structural_evidence_from_name_hints(spec: dict[str, Any]) -> dict[str, Any]:
-    """Make current HA/integration names supporting evidence, never capability authority.
+def _separate_runtime_names_from_capability_evidence(spec: dict[str, Any]) -> dict[str, Any]:
+    """Keep stable integration capability identity structural; demote only HA runtime names.
 
-    Domain adapters still declare the semantic ``raw_capability_id`` for an input, but
-    mutable entity/service naming predicates are moved out of authoritative ``all_of``
-    and into ``hints``. Foundation may use those hints to rank otherwise equal
-    technical candidates; if the hints stop matching after an integration rename the
-    result must become ambiguous/unavailable rather than silently bind another fact.
+    ``source_identity.unique_id`` and ``source_identity.service_name`` are integration-
+    provided technical identifiers used only while Foundation creates or repairs a
+    binding. They are not Home Assistant display/entity names and must remain in
+    authoritative ``all_of`` predicates so one domain input resolves to one technical
+    capability. ``current_entity_id`` is a mutable HA runtime name and is therefore
+    supporting evidence only. Once Mobility accepts the selected candidate it persists
+    the concrete source identity in ``AcceptedSourceBinding``; normal runtime does not
+    repeat semantic discovery.
     """
     out = deepcopy(spec)
     inputs = (out.get("candidate_requirements") or {}).get("normalized_inputs") or []
@@ -27,7 +29,7 @@ def _separate_structural_evidence_from_name_hints(spec: dict[str, Any]) -> dict[
             structural: list[dict[str, Any]] = []
             hints: list[dict[str, Any]] = list(match.get("hints") or [])
             for predicate in match.get("all_of") or []:
-                if isinstance(predicate, dict) and predicate.get("field") in _MUTABLE_NAME_FIELDS:
+                if isinstance(predicate, dict) and predicate.get("field") in _MUTABLE_RUNTIME_NAME_FIELDS:
                     hints.append(dict(predicate))
                 else:
                     structural.append(dict(predicate) if isinstance(predicate, dict) else predicate)
@@ -38,25 +40,45 @@ def _separate_structural_evidence_from_name_hints(spec: dict[str, Any]) -> dict[
 
 
 def _normalize_current_ocpp_contract(spec: dict[str, Any]) -> dict[str, Any]:
-    """Apply source-name-independent cardinality corrections only."""
+    """Apply target-proven OCPP technical capability corrections.
+
+    Current OCPP entity unique IDs encode connector state as
+    ``...status_connector.sensor``. This is integration-provided technical identity,
+    not a mutable HA entity_id. Requiring that capability also prevents the OCPP
+    central-system device from materializing as a physical charger. Measured power is
+    optional because valid chargers may not expose that meter value.
+    """
     if spec.get("builder_id") != "mobility.charger.full_evse.v1":
         return spec
     out = deepcopy(spec)
-    out["builder_version"] = "1.6.0"
+    out["builder_version"] = "1.7.0"
     inputs = (out.get("candidate_requirements") or {}).get("normalized_inputs") or []
     for row in inputs:
-        if str(row.get("input_id") or "") == "charger_power":
+        input_id = str(row.get("input_id") or "")
+        if input_id == "charger_operating_state":
+            for match in row.get("integration_matches") or []:
+                if match.get("integration_domain") != "ocpp" or match.get("source_kind") != "entity":
+                    continue
+                for predicate in match.get("all_of") or []:
+                    if (
+                        isinstance(predicate, dict)
+                        and predicate.get("field") == "source_identity.unique_id"
+                        and predicate.get("operator") == "ends_with"
+                        and predicate.get("value") == "status.sensor"
+                    ):
+                        predicate["value"] = "status_connector.sensor"
+        if input_id == "charger_power":
             row["required"] = False
             row["cardinality"] = "zero_or_one_per_group"
     return out
 
 
 def _normalize_current_vehicle_contract(spec: dict[str, Any]) -> dict[str, Any]:
-    """Keep the generated vehicle contract free of target-specific source rewrites."""
+    """Keep generated vehicle adapter capability rules authoritative at bind time."""
     if spec.get("builder_id") != "mobility.vehicle.connected_vehicle.v1":
         return spec
     out = deepcopy(spec)
-    out["builder_version"] = "1.6.0"
+    out["builder_version"] = "1.7.0"
     return out
 
 
@@ -69,7 +91,7 @@ class MobilityModelRegistry:
                 spec=json.loads(item.read_text(encoding="utf-8"))
                 spec=_normalize_current_ocpp_contract(spec)
                 spec=_normalize_current_vehicle_contract(spec)
-                spec=_separate_structural_evidence_from_name_hints(spec)
+                spec=_separate_runtime_names_from_capability_evidence(spec)
                 spec=canonicalize_presentation(spec)
                 self.specs[spec["builder_id"]]=spec
         model_root=files("custom_components.rhi_mobility.contracts.runtime")

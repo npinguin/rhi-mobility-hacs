@@ -1,5 +1,15 @@
 # Changelog
 
+## M0.6.5 — Fixed capability binding recovery
+
+- Restore integration-provided technical capability identifiers as authoritative evidence while Foundation creates or repairs a binding.
+- Keep mutable Home Assistant `current_entity_id` values out of semantic matching authority.
+- Preserve accepted source bindings as the fixed runtime source of truth after onboarding/discovery.
+- Restore target-proven Audi charging-state capability matching and OCPP physical connector state matching.
+- Keep OCPP measured power optional where the integration does not expose it.
+- Requires Foundation F1.7.5 and Shared Baseline 1.7.1.
+- Runtime validation remains pending until the target Home Assistant proves real accepted bindings, assets and normalized properties.
+
 ## M0.5.10 — Public runtime usability correction
 
 - Fix the Home Assistant options-flow HTTP 500 caused by assigning its read-only config-entry property.

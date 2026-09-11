@@ -1,11 +1,11 @@
 {
-  "distribution_release": "M0.6.3",
-  "distribution_version": "0.6.3",
+  "distribution_release": "M0.6.5",
+  "distribution_version": "0.6.5",
   "source_repository": "npinguin/rhi-mobility",
-  "source_commit": "a4bf1e4a6ae64201e7a9200633b101b29ae94b7d",
+  "source_commit": "a2cb74f61d4368750a9e4a74aeb85d2600b0852a",
   "source_branch": "main",
   "distribution_purpose": "HACS target Home Assistant test release",
-  "required_foundation_release": "F1.7.4",
+  "required_foundation_release": "F1.7.5",
   "required_shared_baseline": "1.7.1",
   "runtime_validation": "PENDING"
 }
