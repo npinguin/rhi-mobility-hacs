@@ -1,5 +1,19 @@
 # Changelog
 
+## M0.7.1 — Structural runtime chain recovery
+
+- Distribute the exact installable Mobility tree from canonical source main `dc285192e5b6dad967633157fc31d81770368d60`.
+- Remove hidden runtime mutation of DomainBuildSpecification matching, builder versions, aliases and presentation; `MobilityModelRegistry` is now a pure loader of canonical generated contracts.
+- Complete typed producer ownership for compatibility aliases and accepted logical-asset identity while keeping unresolved ownership and invalid normalization fail-closed.
+- Treat stale source observations as temporary unavailability rather than normalization failure.
+- Resolve Cupra/Data Act odometer semantics inside Mobility using the integration-native canonical mileage field; trip mileage is never promoted to vehicle odometer truth.
+- Keep OCPP physical connector status distinct from central-system status and measured charger power optional.
+- Preserve Audi central security/lock separately from charging-plug lock.
+- Preserve the full normalized property, profile, image, Guest Vehicle, relationship, command/write, Energy interop and deterministic V1 compatibility surfaces.
+- Source CI proves canonical source DBS = packaged DBS = registry output = Foundation publication and reports zero static semantic ownership gaps.
+- Requires Foundation F1.7.5 and Shared Baseline 1.7.1.
+- Target Home Assistant runtime validation remains mandatory before Mobility V2 is declared complete.
+
 ## M0.7.0 — Runtime truth architecture
 
 - Introduce typed `PropertyResolution` as the single canonical runtime result consumed by HA, V1, diagnostics/coverage and Mobility→Energy interop.
