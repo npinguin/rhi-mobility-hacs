@@ -24,8 +24,19 @@ def profile_image_key(manager: Any, asset_id: str) -> str | None:
     return "generic_charger" if getattr(asset, "concept_id", None) == "charger" else "generic_vehicle"
 
 
-def profile_image_url(manager: Any, asset_id: str) -> str | None:
+def resolved_profile_image_key(manager: Any, asset_id: str) -> str | None:
     key = profile_image_key(manager, asset_id)
+    asset = getattr(manager, "assets", {}).get(asset_id)
+    if key and (_PROFILE_ASSET_DIR / f"{key}.svg").is_file():
+        return key
+    if asset is None:
+        return None
+    fallback = "generic_charger" if getattr(asset, "concept_id", None) == "charger" else "generic_vehicle"
+    return fallback if (_PROFILE_ASSET_DIR / f"{fallback}.svg").is_file() else None
+
+
+def profile_image_url(manager: Any, asset_id: str) -> str | None:
+    key = resolved_profile_image_key(manager, asset_id)
     return None if not key else f"{PROFILE_IMAGE_URL_PREFIX}/{key}.svg"
 
 
@@ -38,6 +49,7 @@ def profile_metadata(manager: Any, asset_id: str) -> dict[str, Any]:
         "profile_id": None if profile is None else profile.get("profile_id"),
         "profile_type": getattr(asset, "concept_id", None),
         "profile_image_key": profile_image_key(manager, asset_id),
+        "resolved_profile_image_key": resolved_profile_image_key(manager, asset_id),
         "profile_image_url": profile_image_url(manager, asset_id),
     }
     if profile:
