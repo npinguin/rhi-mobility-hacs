@@ -102,8 +102,11 @@ def source_capability_coverage(manager: Any) -> dict[str, Any]:
         elif any(token in status for token in ("UNMAPPED", "NO_MATCH", "UNMATCHED")):
             unmapped.append(record)
         elif row.get("published_match"):
+            # A concrete domain-owned published match classifies the capability even when
+            # target scope/cardinality/availability prevents a current AcceptedSourceBinding.
             continue
         else:
+            # raw_capability_id alone is discovery evidence, not semantic classification.
             unclassified.append(record)
     return {
         "accepted_source_capability_count": len(accepted),
