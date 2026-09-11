@@ -54,6 +54,7 @@ def _binding_health(manager: Any, asset_id: str) -> tuple[HealthState, list[str]
     if asset is None:
         return HealthState.BLOCKED, ["asset_missing"]
     if not asset.source_bindings:
+        # Manual/guest assets deliberately have no technical binding.
         return HealthState.OK, []
     reasons: list[str] = []
     for row in getattr(manager, "_capability_diagnostics", ()) or ():
