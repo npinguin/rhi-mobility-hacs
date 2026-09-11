@@ -30,6 +30,8 @@ _PRODUCER_KIND = {
     "ALIAS": PropertyProducerKind.ALIAS,
 }
 
+_IDENTITY_SOURCE_PROPERTIES = {"asset.display_name", "asset.short_name"}
+
 
 def _quality(value: str | None, *, available: bool) -> PropertyQuality:
     raw = str(value or "").upper()
@@ -55,7 +57,7 @@ def _producer_from_evidence(
     declared = set(declared_producer_types(definition))
     q = str(quality or provenance.get("quality") or "").lower()
 
-    if provenance.get("candidate_id") or q.startswith("candidate:"):
+    if provenance.get("candidate_id") or q.startswith("candidate:") or q == "source_device_identity":
         return PropertyProducerKind.SOURCE if "SOURCE" in declared else None
     if provenance.get("profile_id") or q.startswith("mobility_profile:"):
         return PropertyProducerKind.PROFILE if "PROFILE" in declared else None
@@ -101,12 +103,7 @@ def _select_declared_candidate(
 
 
 class PropertyResolver:
-    """Single runtime authority for canonical Mobility property resolution.
-
-    M0.7.0 uses producer-native candidate evidence when available and applies the semantic
-    catalog's truth_precedence declaratively. Properties not yet migrated to the ledger keep
-    the proven M0.6 value/provenance adapter path until their producer is migrated.
-    """
+    """Single runtime authority for canonical Mobility property resolution."""
 
     def __init__(self, manager: Any, public: Any) -> None:
         self.manager = manager
@@ -116,7 +113,50 @@ class PropertyResolver:
         asset = self.manager.assets.get(asset_id)
         if asset is None:
             return None
-        return self.public.property_definition(property_id, asset.concept_id)
+        definition = self.public.property_definition(property_id, asset.concept_id)
+        if not isinstance(definition, dict):
+            return definition
+        out = dict(definition)
+        if property_id in _IDENTITY_SOURCE_PROPERTIES:
+            producers = list(out.get("producer_types") or [])
+            precedence = list(out.get("truth_precedence") or [])
+            if "SOURCE" not in producers:
+                producers.append("SOURCE")
+            if "SOURCE" not in precedence:
+                precedence.append("SOURCE")
+            out["producer_types"] = producers
+            out["truth_precedence"] = precedence
+        return out
+
+    def _capability_status(self, asset_id: str, property_id: str) -> str | None:
+        statuses: list[str] = []
+        for row in getattr(self.manager, "_capability_diagnostics", ()) or ():
+            if not isinstance(row, dict):
+                continue
+            row_asset = row.get("asset_id") or row.get("logical_asset_id")
+            if row_asset not in (None, "", asset_id):
+                continue
+            outputs = {str(value) for value in row.get("normalized_properties") or ()}
+            if property_id not in outputs:
+                continue
+            statuses.append(str(row.get("status") or "").upper())
+        if not statuses:
+            return None
+        priority = (
+            "AMBIGUOUS",
+            "CARDINALITY_ERROR",
+            "BLOCKED_BY_TARGET_SCOPE",
+            "INVALID_VALUE",
+            "NORMALIZATION_ERROR",
+            "STALE",
+            "UNAVAILABLE",
+            "NORMALIZED",
+            "MATCHED",
+        )
+        for wanted in priority:
+            if any(wanted in status for status in statuses):
+                return wanted
+        return statuses[0]
 
     def _absence_reason(
         self,
@@ -126,12 +166,23 @@ class PropertyResolver:
         provenance: dict[str, Any],
         raw_quality: str | None,
     ) -> str:
-        """Translate legacy M0.6 evidence once, at the resolver boundary."""
         asset = self.manager.assets.get(asset_id)
         if asset is None:
             return "BINDING_ERROR"
         if definition is None:
             return "NOT_APPLICABLE"
+
+        capability_status = self._capability_status(asset_id, property_id)
+        if capability_status == "AMBIGUOUS":
+            return "AMBIGUOUS_SOURCE"
+        if capability_status == "CARDINALITY_ERROR":
+            return "CARDINALITY_ERROR"
+        if capability_status == "BLOCKED_BY_TARGET_SCOPE":
+            return "TARGET_SCOPE_ERROR"
+        if capability_status in {"INVALID_VALUE", "NORMALIZATION_ERROR"}:
+            return "NORMALIZATION_ERROR"
+        if capability_status in {"STALE", "UNAVAILABLE"}:
+            return "UNAVAILABLE_TEMPORARY"
 
         status = str(provenance.get("normalization_status") or "").upper()
         quality = str(raw_quality or provenance.get("quality") or "").upper()
@@ -154,13 +205,33 @@ class PropertyResolver:
         if "CONFIGURATION" in evidence or "REVIEW" in evidence:
             return "CONFIGURATION_REQUIRED"
 
-        supported = getattr(self.manager, "supported_property_keys", lambda _aid: set())(asset_id)
-        if property_id in supported:
-            return "NORMALIZATION_ERROR"
         precedence = set(definition.get("truth_precedence") or [])
         if precedence & {"CONFIGURED", "PROFILE"} and "SOURCE" not in precedence:
             return "CONFIGURATION_REQUIRED"
+        if capability_status in {"NORMALIZED", "MATCHED"}:
+            return "UNAVAILABLE_TEMPORARY"
         return "UNSUPPORTED_BY_SOURCE"
+
+    def _alias_resolution(self, asset_id: str, property_id: str, canonical: str) -> PropertyResolution:
+        target = self.resolve(asset_id, canonical)
+        reference = dict(target.source_reference)
+        reference["compatibility_alias_of"] = canonical
+        return PropertyResolution(
+            asset_id=asset_id,
+            property_id=property_id,
+            value=target.value,
+            producer_kind=PropertyProducerKind.ALIAS,
+            status=target.status,
+            quality=target.quality,
+            reason_code=target.reason_code,
+            error_kind=target.error_kind,
+            observed_at=target.observed_at,
+            source_binding_id=target.source_binding_id,
+            source_reference=reference,
+            dependencies=(canonical,),
+            configuration_revision=target.configuration_revision,
+            build_input_revision=target.build_input_revision,
+        )
 
     def resolve(self, asset_id: str, property_id: str) -> PropertyResolution:
         asset = self.manager.assets.get(asset_id)
@@ -175,6 +246,11 @@ class PropertyResolver:
                 reason_code="asset_not_found",
                 error_kind=PropertyResolutionError.INVALID_BINDING,
             )
+
+        aliases = dict(getattr(self.manager.registry, "legacy_aliases", {}) or {})
+        canonical_alias = str(aliases.get(property_id, property_id))
+        if canonical_alias != property_id:
+            return self._alias_resolution(asset_id, property_id, canonical_alias)
 
         definition = self._definition(asset_id, property_id) or {}
         producer = None
