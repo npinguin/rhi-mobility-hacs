@@ -6,12 +6,15 @@ from .const import DOMAIN
 from .editable_projection import bounds as editable_bounds
 from .editable_projection import is_available as editable_is_available
 from .editable_projection import options as editable_options
+from .property_resolution import PropertyResolutionStatus
+from .property_resolver import PropertyResolver
 
 
 class MobilityPropertyProjection:
-    """Join canonical V2 semantics to HA/public representations only."""
+    """Project canonical PropertyResolution into HA/public representations only."""
     def __init__(self,hass,manager,controller,public_provider) -> None:
         self.hass=hass; self.manager=manager; self.controller=controller; self.public=public_provider; self.registry=manager.registry
+        self.resolver=PropertyResolver(manager,public_provider)
 
     def definition(self,asset_type: str,property_key: str) -> dict[str,Any] | None:
         definition=(self.registry.semantic_catalog.get("properties") or {}).get(property_key)
@@ -30,36 +33,20 @@ class MobilityPropertyProjection:
             if row is not None: rows.append(row)
         return sorted(rows,key=lambda r:(r.get("component_id") or "",r.get("section_id") or "",r.get("display_order",9999),r["property_key"]))
 
-    def value(self,asset_id: str,property_key: str) -> Any: return self.public.property_value(asset_id,property_key)
+    def value(self,asset_id: str,property_key: str) -> Any:
+        return self.resolver.resolve(asset_id,property_key).value
+
     def provenance(self,asset_id: str,property_key: str) -> dict[str,Any]:
-        fn=getattr(self.public,"property_provenance",None); return fn(asset_id,property_key) if callable(fn) else {}
+        return dict(self.resolver.resolve(asset_id,property_key).source_reference)
+
     def quality(self,asset_id: str,property_key: str) -> str | None:
-        fn=getattr(self.public,"property_quality",None); return fn(asset_id,property_key) if callable(fn) else None
+        return self.resolver.resolve(asset_id,property_key).quality.value
 
-    def availability_reason(self,asset_id: str,property_key: str,value: Any,provenance: dict[str,Any]) -> str:
-        if value is not None: return "AVAILABLE"
-        asset=self.manager.assets.get(asset_id)
-        if asset is None: return "BINDING_ERROR"
-        definition=self.definition(asset.concept_id,property_key)
-        if definition is None: return "NOT_APPLICABLE"
-
-        status=str(provenance.get("normalization_status") or "").upper()
-        quality=str(self.quality(asset_id,property_key) or provenance.get("quality") or "").upper()
-        evidence=" ".join((status,quality,str(provenance.get("reason") or "").upper()))
-        if "AMBIGUOUS" in evidence: return "AMBIGUOUS_SOURCE"
-        if "INVALID" in evidence or "NORMALIZATION" in evidence: return "NORMALIZATION_ERROR"
-        if "BINDING" in evidence or "BLOCKED_BY_TARGET_SCOPE" in evidence: return "BINDING_ERROR"
-        if "STALE" in evidence or "UNAVAILABLE" in evidence: return "UNAVAILABLE_TEMPORARY"
-        if "UNSUPPORTED" in evidence: return "UNSUPPORTED_BY_SOURCE"
-        if "CONFIGURATION" in evidence or "REVIEW" in evidence: return "CONFIGURATION_REQUIRED"
-
-        supported=getattr(self.manager,"supported_property_keys",lambda _aid:set())(asset_id)
-        if property_key in supported:
-            return "NORMALIZATION_ERROR"
-        precedence=set(definition.get("truth_precedence") or [])
-        if precedence & {"CONFIGURED","PROFILE"} and "SOURCE" not in precedence:
-            return "CONFIGURATION_REQUIRED"
-        return "UNSUPPORTED_BY_SOURCE"
+    def availability_reason(self,asset_id: str,property_key: str,value: Any=None,provenance: dict[str,Any]|None=None) -> str:
+        resolution=self.resolver.resolve(asset_id,property_key)
+        if resolution.status==PropertyResolutionStatus.RESOLUTION_ERROR:
+            return resolution.error_kind.value if resolution.error_kind is not None else resolution.status.value
+        return resolution.status.value
 
     def write_property_key(self,asset_id: str,property_key: str) -> str:
         asset=self.manager.assets.get(asset_id)
@@ -117,10 +104,14 @@ class MobilityPropertyProjection:
         if asset is None: return None
         definition=self.definition(asset.concept_id,property_key)
         if definition is None: return None
-        value=self.value(asset_id,property_key); provenance=self.provenance(asset_id,property_key); write=self.write_metadata(asset_id,property_key); available=value is not None
+        resolution=self.resolver.resolve(asset_id,property_key)
+        value=resolution.value; provenance=dict(resolution.source_reference); write=self.write_metadata(asset_id,property_key); available=resolution.available
+        reason=resolution.error_kind.value if resolution.status==PropertyResolutionStatus.RESOLUTION_ERROR and resolution.error_kind is not None else resolution.status.value
         return {"asset_id":asset_id,"asset_type":asset.concept_id,"property_key":property_key,"value":value,"display_value":value,
             "friendly_name":definition.get("friendly_name") or property_key,"display_name":definition.get("friendly_name") or property_key,"unit":definition.get("unit") or "",
             "component_id":definition.get("component_id"),"section_id":definition.get("section_id"),"ux_visibility":definition.get("ux_visibility",definition.get("visibility")),"render_as":definition.get("render_as"),"display_order":definition.get("display_order",9999),"empty_state_behavior":definition.get("empty_state_behavior"),
-            "available":available,"availability_reason":self.availability_reason(asset_id,property_key,value,provenance),"quality":self.quality(asset_id,property_key) or ("unavailable" if not available else "v2_projection"),
+            "available":available,"availability_reason":reason,"quality":resolution.quality.value,
             "source_provenance":provenance,"source_entity_id":provenance.get("source_entity_id",""),"source_integration":provenance.get("source_integration",""),"source_device_id":provenance.get("source_device_id",""),"raw_capability_id":provenance.get("raw_capability_id",""),"candidate_id":provenance.get("candidate_id",""),"source_input_id":provenance.get("source_input_id",""),
+            "producer_kind":None if resolution.producer_kind is None else resolution.producer_kind.value,
+            "resolution_status":resolution.status.value,"resolution_error":None if resolution.error_kind is None else resolution.error_kind.value,
             "canonical_contract":"MOBILITY_PUBLIC_RUNTIME_V2","access":"editable" if write.get("editable") else "read_only","editor":write.get("write_binding_type","") if write.get("editable") else "",**write}
