@@ -7,7 +7,7 @@
   "builders": [
     {
       "builder_id": "mobility.charger.full_evse.v1",
-      "builder_version": "1.5.1",
+      "builder_version": "1.7.0",
       "file": "mobility_charger_full_evse_v1.json"
     },
     {
@@ -22,7 +22,7 @@
     },
     {
       "builder_id": "mobility.vehicle.connected_vehicle.v1",
-      "builder_version": "1.5.2",
+      "builder_version": "1.8.0",
       "file": "mobility_vehicle_connected_vehicle_v1.json"
     },
     {
@@ -42,7 +42,7 @@
     "creates_public_contract": false,
     "executes_commands": false
   },
-  "release": "M0.5.9",
+  "release": "M0.7.1",
   "closure": {
     "step": 3,
     "full_feature_migration": true,
@@ -61,12 +61,12 @@
     "runtime_convergence_release": "M0.5.7",
     "static_semantic_feature_parity_proven": true
   },
-  "builder_version": "1.5.2",
+  "builder_version": "1.8.0",
   "specification_versions": {
-    "mobility.charger.full_evse.v1": "1.5.0",
+    "mobility.charger.full_evse.v1": "1.7.0",
     "mobility.charger.utility_surface.v1": "1.5.0",
     "mobility.person.presence.v1": "1.5.0",
-    "mobility.vehicle.connected_vehicle.v1": "1.5.2",
+    "mobility.vehicle.connected_vehicle.v1": "1.8.0",
     "mobility.vehicle.manual_profile.v1": "1.5.0"
   },
   "legacy_adapter_consolidation": {
@@ -76,7 +76,7 @@
     "legacy_compatibility": "exact_public_entity_facade",
     "entity_id_drop_in": true
   },
-  "shared_baseline": "1.7.0",
+  "shared_baseline": "1.7.1",
   "selected_domain_build_input_contract": "1.2.0",
   "foundation_capability_candidate_contract": "1.1.0"
 }
