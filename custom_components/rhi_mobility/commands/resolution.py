@@ -13,7 +13,50 @@ def _entity_service(entity_id: str, command_key: str) -> tuple[str,str,dict[str,
         if domain not in {'switch','input_boolean'}: raise ValueError('stop entity surface must be switch-like')
         return domain,'turn_off',target,{}
     if domain=='button': return 'button','press',target,{}
+    if domain=='lock' and command_key=='vehicle.command.lock': return 'lock','lock',target,{}
+    if domain=='lock' and command_key=='vehicle.command.unlock': return 'lock','unlock',target,{}
     raise ValueError(f'unsupported entity command surface {domain} for {command_key}')
+
+
+def _service_route(source, command_key: str) -> tuple[str,str,dict[str,Any],dict[str,Any]]:
+    ident=source.identity
+    domain=str(ident['service_domain']); action=str(ident['service_name'])
+    if source.integration_domain=='audiconnect':
+        device_id=source.device_id
+        if not device_id:
+            raise ValueError('AudiConnect vehicle service requires accepted device identity')
+        if action=='execute_vehicle_action':
+            action_by_command={
+                'vehicle.command.lock':'lock',
+                'vehicle.command.unlock':'unlock',
+                'vehicle.command.climate_start':'start_climatisation',
+                'vehicle.command.climate_stop':'stop_climatisation',
+            }
+            vehicle_action=action_by_command.get(command_key)
+            if vehicle_action is None:
+                raise ValueError(f'unsupported AudiConnect vehicle action for {command_key}')
+            return domain,action,{}, {'device_id':device_id,'action':vehicle_action}
+        if action=='refresh_vehicle_data':
+            return domain,action,{}, {'device_id':device_id}
+        if action=='start_climate_control' and command_key=='vehicle.command.climate_start':
+            return domain,action,{}, {'device_id':device_id}
+        raise ValueError(f'unsupported AudiConnect service route {action} for {command_key}')
+    if source.integration_domain=='mbapi2020':
+        resource_id=ident.get('resource_id')
+        if not resource_id:
+            raise ValueError('Mercedes vehicle service requires accepted vehicle resource identity')
+        if ident.get('requires_security_pin'):
+            raise ValueError('Mercedes vehicle service requires integration-managed authorization')
+        expected={
+            'vehicle.command.lock':'doors_lock',
+            'vehicle.command.climate_start':'preheat_start',
+            'vehicle.command.climate_stop':'preheat_stop',
+        }.get(command_key)
+        if expected is None or action!=expected:
+            raise ValueError(f'unsupported Mercedes service route {action} for {command_key}')
+        return domain,action,{}, {'vin':str(resource_id)}
+    target={'device_id':source.device_id} if source.device_id else {}
+    return domain,action,target,{}
 
 
 def command_request(descriptor: CommandDescriptor, request_id: str) -> ExecutionRequest:
@@ -24,8 +67,7 @@ def command_request(descriptor: CommandDescriptor, request_id: str) -> Execution
         if descriptor.command_key.endswith('.stop') and domain in {'switch','input_boolean'}:
             confirmation={'mode':'entity_state','entity_id':source.entity_id,'expected':'off','tolerance':0.0,'timeout_s':10.0}
     elif source.source_kind=='service':
-        ident=source.identity; domain=str(ident['service_domain']); action=str(ident['service_name'])
-        target={'device_id':str(ident['target']['device_registry_id'])}; data={}
+        domain,action,target,data=_service_route(source,descriptor.command_key)
     else:
         raise ValueError(f'unsupported command source kind: {source.source_kind}')
     return ExecutionRequest(

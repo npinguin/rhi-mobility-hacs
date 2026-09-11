@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from .const import DOMAIN, RELEASE
+from .profile_presentation import profile_metadata
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,11 +44,14 @@ def logical_device_info(hass: Any, entry_id: str, manager: Any, asset_id: str, *
         name = str(snap.values["asset.display_name"])
     source_device_id = None if asset is None else asset.source_device_id
     via = _source_via_identifier(hass, source_device_id) or (DOMAIN, entry_id)
+    profile = profile_metadata(manager, asset_id)
+    manufacturer = profile.get("manufacturer") or profile.get("vendor") or "Robotix"
+    profile_model = profile.get("model") or profile.get("display_name") or model
     return {
         "identifiers": {(DOMAIN, asset_id)},
         "name": name,
-        "manufacturer": "Robotix",
-        "model": model,
+        "manufacturer": str(manufacturer),
+        "model": str(profile_model),
         "sw_version": RELEASE,
         "via_device": via,
     }
