@@ -118,13 +118,14 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     from .commands.controller import MobilityControlController
     from .commands.interop import MobilityCommandProvider
     from .domain_config import MobilityDomainConfiguration
-    from .interop import MobilityEnergyReadOnlyProvider,MobilityEnergyV2Provider
+    from .energy_v070 import MobilityEnergyV2Provider
+    from .interop import MobilityEnergyReadOnlyProvider
     from .legacy_compat_v2 import MobilityLegacyV1ProjectedFacadeProvider
     from .legacy_state import MobilityLegacyV1StatePublisher
     from .model_registry import MobilityModelRegistry
     from .publication import MobilityBuildSpecificationProvider
     from .public_runtime import MobilityActivityProvider,MobilityExperienceProvider,MobilityPublicRuntimeProvider
-    from .runtime.manager import MobilityRuntimeManager
+    from .runtime.manager_v070 import MobilityRuntimeManager
 
     register_provider,unregister_provider=_load_foundation_registry_api()
     registry=MobilityModelRegistry(); provider=MobilityBuildSpecificationProvider(registry)
