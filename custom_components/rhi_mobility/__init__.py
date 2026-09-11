@@ -22,7 +22,7 @@ LEGACY_SCRIPT_DOMAIN="script"
 LEGACY_EXECUTE="mobility_execute_command"
 LEGACY_SETPOINT="mobility_apply_effective_charger_setpoint"
 _LOGGER=logging.getLogger(__name__)
-_REQUIRED_FOUNDATION_RELEASE="F1.7.4"
+_REQUIRED_FOUNDATION_RELEASE="F1.7.5"
 _REQUIRED_FOUNDATION_BASELINE="1.7.1"
 
 
@@ -94,8 +94,8 @@ def _load_foundation_registry_api() -> tuple[Any,Any]:
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
         except ImportError:
-            raise RuntimeError("RHI Mobility requires RHI Foundation F1.7.4 / Shared Baseline 1.7.1 before runtime setup") from exc
-        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.7.4 / Shared Baseline 1.7.1. Install/update Foundation and retry setup.") from exc
+            raise RuntimeError("RHI Mobility requires RHI Foundation F1.7.5 / Shared Baseline 1.7.1 before runtime setup") from exc
+        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.7.5 / Shared Baseline 1.7.1. Install/update Foundation and retry setup.") from exc
 
     if foundation_release != _REQUIRED_FOUNDATION_RELEASE or foundation_baseline != _REQUIRED_FOUNDATION_BASELINE:
         message=(
