@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from .const import DOMAIN, RELEASE
+from .profile_presentation import profile_metadata
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,11 +44,14 @@ def logical_device_info(hass: Any, entry_id: str, manager: Any, asset_id: str, *
         name = str(snap.values["asset.display_name"])
     source_device_id = None if asset is None else asset.source_device_id
     via = _source_via_identifier(hass, source_device_id) or (DOMAIN, entry_id)
+    profile = profile_metadata(manager, asset_id)
+    manufacturer = profile.get("manufacturer") or profile.get("vendor") or "Robotix"
+    profile_model = profile.get("model") or profile.get("display_name") or model
     return {
         "identifiers": {(DOMAIN, asset_id)},
         "name": name,
-        "manufacturer": "Robotix",
-        "model": model,
+        "manufacturer": str(manufacturer),
+        "model": str(profile_model),
         "sw_version": RELEASE,
         "via_device": via,
     }
@@ -63,12 +67,6 @@ def _asset_id_from_unique_id(unique_id: str | None) -> str | None:
 
 
 async def async_reconcile_projection(hass: Any, entry_id: str, current_asset_ids: set[str]) -> dict[str, int]:
-    """Remove stale Mobility-owned dynamic entities/devices from prior materialisations.
-
-    Registry access here is projection cleanup only. It does not discover technical
-    sources, candidates or bindings. The authoritative runtime asset set remains the
-    manager output built from SelectedDomainBuildInput.
-    """
     removed_entities = 0
     removed_devices = 0
     stale_device_ids: set[str] = set()
@@ -100,9 +98,5 @@ async def async_reconcile_projection(hass: Any, entry_id: str, current_asset_ids
     except Exception as exc:
         _LOGGER.warning("Mobility projection reconciliation could not complete: %s", exc)
     if removed_entities or removed_devices:
-        _LOGGER.info(
-            "Mobility projection reconciled stale_entities=%s stale_devices=%s",
-            removed_entities,
-            removed_devices,
-        )
+        _LOGGER.info("Mobility projection reconciled stale_entities=%s stale_devices=%s", removed_entities, removed_devices)
     return {"removed_entities": removed_entities, "removed_devices": removed_devices}
