@@ -67,6 +67,12 @@ def _asset_id_from_unique_id(unique_id: str | None) -> str | None:
 
 
 async def async_reconcile_projection(hass: Any, entry_id: str, current_asset_ids: set[str]) -> dict[str, int]:
+    """Remove stale Mobility-owned dynamic entities/devices from prior materialisations.
+
+    Registry access here is projection cleanup only. It does not discover technical
+    sources, candidates or bindings. The authoritative runtime asset set remains the
+    manager output built from SelectedDomainBuildInput.
+    """
     removed_entities = 0
     removed_devices = 0
     stale_device_ids: set[str] = set()
@@ -98,5 +104,9 @@ async def async_reconcile_projection(hass: Any, entry_id: str, current_asset_ids
     except Exception as exc:
         _LOGGER.warning("Mobility projection reconciliation could not complete: %s", exc)
     if removed_entities or removed_devices:
-        _LOGGER.info("Mobility projection reconciled stale_entities=%s stale_devices=%s", removed_entities, removed_devices)
+        _LOGGER.info(
+            "Mobility projection reconciled stale_entities=%s stale_devices=%s",
+            removed_entities,
+            removed_devices,
+        )
     return {"removed_entities": removed_entities, "removed_devices": removed_devices}
