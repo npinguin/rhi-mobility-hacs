@@ -5,23 +5,11 @@ from importlib.resources import files
 from typing import Any
 from .contracts.presentation import canonicalize_presentation
 
-_MUTABLE_RUNTIME_NAME_FIELDS = {
-    "source_identity.current_entity_id",
-}
+_MUTABLE_RUNTIME_NAME_FIELDS = {"source_identity.current_entity_id"}
 
 
 def _separate_runtime_names_from_capability_evidence(spec: dict[str, Any]) -> dict[str, Any]:
-    """Keep stable integration capability identity structural; demote only HA runtime names.
-
-    ``source_identity.unique_id`` and ``source_identity.service_name`` are integration-
-    provided technical identifiers used only while Foundation creates or repairs a
-    binding. They are not Home Assistant display/entity names and must remain in
-    authoritative ``all_of`` predicates so one domain input resolves to one technical
-    capability. ``current_entity_id`` is a mutable HA runtime name and is therefore
-    supporting evidence only. Once Mobility accepts the selected candidate it persists
-    the concrete source identity in ``AcceptedSourceBinding``; normal runtime does not
-    repeat semantic discovery.
-    """
+    """Keep stable integration capability identity structural; demote only HA runtime names."""
     out = deepcopy(spec)
     inputs = (out.get("candidate_requirements") or {}).get("normalized_inputs") or []
     for row in inputs:
@@ -39,15 +27,119 @@ def _separate_runtime_names_from_capability_evidence(spec: dict[str, Any]) -> di
     return out
 
 
-def _normalize_current_ocpp_contract(spec: dict[str, Any]) -> dict[str, Any]:
-    """Apply target-proven OCPP technical capability corrections.
+def _replace_entity_matches(row: dict[str, Any], domain: str, suffixes: tuple[str, ...]) -> None:
+    matches = list(row.get("integration_matches") or [])
+    owned = [m for m in matches if m.get("integration_domain") == domain and m.get("source_kind") == "entity"]
+    if not owned:
+        return
+    raw_id = str(owned[0].get("raw_capability_id") or row.get("input_id") or "")
+    matches = [m for m in matches if not (m.get("integration_domain") == domain and m.get("source_kind") == "entity")]
+    for suffix in suffixes:
+        matches.append({
+            "integration_domain": domain,
+            "raw_capability_id": raw_id,
+            "source_kind": "entity",
+            "all_of": [{"field": "source_identity.unique_id", "operator": "ends_with", "value": suffix}],
+        })
+    row["integration_matches"] = matches
 
-    Current OCPP entity unique IDs encode connector state as
-    ``...status_connector.sensor``. This is integration-provided technical identity,
-    not a mutable HA entity_id. Requiring that capability also prevents the OCPP
-    central-system device from materializing as a physical charger. Measured power is
-    optional because valid chargers may not expose that meter value.
-    """
+
+def _replace_service_match(row: dict[str, Any], domain: str, service_name: str) -> None:
+    matches = list(row.get("integration_matches") or [])
+    owned = [m for m in matches if m.get("integration_domain") == domain and m.get("source_kind") == "service"]
+    if not owned:
+        return
+    raw_id = str(owned[0].get("raw_capability_id") or row.get("input_id") or "")
+    matches = [m for m in matches if not (m.get("integration_domain") == domain and m.get("source_kind") == "service")]
+    matches.append({
+        "integration_domain": domain,
+        "raw_capability_id": raw_id,
+        "source_kind": "service",
+        "all_of": [{"field": "source_identity.service_name", "operator": "equals", "value": service_name}],
+    })
+    row["integration_matches"] = matches
+
+
+_AUDI_ENTITY_SUFFIXES: dict[str, tuple[str, ...]] = {
+    "vehicle_range": ("sensor_range",),
+    "vehicle_location": ("device_tracker_position",),
+    "vehicle_odometer": ("sensor_mileage",),
+    "vehicle_security_state": ("lock_lock",),
+    "vehicle_climate_state": ("sensor_climatisation_state",),
+    "vehicle_plug_state": ("binary_sensor_plug_state",),
+    "vehicle_remaining_charge_time": ("sensor_remaining_charging_time",),
+    "vehicle_charging_complete_time": ("sensor_charging_complete_time",),
+    "vehicle_doors_locked": ("lock_lock",),
+    "vehicle_trunk_state": ("binary_sensor_trunk_open",),
+    "vehicle_hood_state": ("binary_sensor_hood_open",),
+    "vehicle_door_front_left_state": ("binary_sensor_left_front_door_open",),
+    "vehicle_door_front_right_state": ("binary_sensor_right_front_door_open",),
+    "vehicle_door_rear_left_state": ("binary_sensor_left_rear_door_open",),
+    "vehicle_door_rear_right_state": ("binary_sensor_right_rear_door_open",),
+    "vehicle_window_fl_state": ("binary_sensor_left_front_window_open",),
+    "vehicle_window_fr_state": ("binary_sensor_right_front_window_open",),
+    "vehicle_window_rl_state": ("binary_sensor_left_rear_window_open",),
+    "vehicle_window_rr_state": ("binary_sensor_right_rear_window_open",),
+    "vehicle_remaining_climate_time": ("sensor_remaining_climatisation_time",),
+    "vehicle_inspection_due_days": ("sensor_service_inspection_time",),
+    "vehicle_inspection_due_km": ("sensor_service_inspection_distance",),
+    "vehicle_oil_service_due_days": ("sensor_oil_change_time",),
+    "vehicle_oil_service_due_km": ("sensor_oil_change_distance",),
+    "compat_vehicle_lock_state": ("lock_lock",),
+    "compat_vehicle_plug_lock_state": ("binary_sensor_plug_lock_state",),
+    "compat_vehicle_charge_mode": ("sensor_charging_mode",),
+    "compat_vehicle_primary_engine_range": ("sensor_primary_engine_range",),
+    "compat_vehicle_secondary_engine_range": ("sensor_secondary_engine_range",),
+    "compat_vehicle_doors_trunk_state": ("sensor_doors_trunk_status",),
+}
+
+_CUPRA_ENTITY_SUFFIXES: dict[str, tuple[str, ...]] = {
+    "vehicle_range": ("cruising_range_combined", "value_of_the_primary_range"),
+    "vehicle_charging_state": ("charging_state", "charging_state_report.current_charge_state"),
+    "vehicle_odometer": ("_mileage",),
+    "vehicle_security_state": ("_lock_state", "_locked"),
+    "vehicle_charge_power": ("battery_state_report.charge_power",),
+    "vehicle_remaining_charge_time": ("remaining_charging_time", "battery_state_report.remaining_charging_time_complete"),
+    "vehicle_remaining_climate_time": ("remaining_climate_time",),
+    "vehicle_trunk_state": ("open_state_tailgate",),
+    "vehicle_hood_state": ("open_state_front_engine_bonnet",),
+    "vehicle_door_front_left_state": ("open_state_front_left_door",),
+    "vehicle_door_front_right_state": ("open_state_front_right_door",),
+    "vehicle_door_rear_left_state": ("open_state_rear_left_door",),
+    "vehicle_door_rear_right_state": ("open_state_rear_right_door",),
+    "vehicle_window_fl_state": ("state_front_left_door_window_lifter",),
+    "vehicle_window_fr_state": ("state_front_right_door_window_lifter",),
+    "vehicle_window_rl_state": ("state_rear_left_door_window_lifter",),
+    "vehicle_window_rr_state": ("state_rear_right_door_window_lifter",),
+    "vehicle_inspection_due_days": ("maintenance_interval__time_until_inspection",),
+    "vehicle_inspection_due_km": ("maintenance_interval_distance_until_inspection",),
+    "vehicle_oil_service_due_days": ("maintenance_interval__time_until_oil_change",),
+    "vehicle_oil_service_due_km": ("maintenance_interval_distance_until_oil_change",),
+    "compat_vehicle_charge_mode": ("charging_mode", "charging_state_report.charge_mode"),
+    "compat_vehicle_primary_engine_range": ("cruising_range_primary_engine", "value_of_the_primary_range"),
+    "compat_vehicle_secondary_engine_range": ("cruising_range_secondary_engine",),
+}
+
+_MERCEDES_ENTITY_SUFFIXES: dict[str, tuple[str, ...]] = {
+    "vehicle_range": ("_rangeelectrickm",),
+    "vehicle_charging_state": ("_chargingstatus",),
+    "vehicle_odometer": ("_odometer",),
+    "vehicle_security_state": ("_lock",),
+    "vehicle_climate_state": ("_preclimatestatus",),
+    "vehicle_charge_power": ("_chargingpowerkw",),
+    "vehicle_charging_complete_time": ("_endofchargetime",),
+    "vehicle_trunk_state": ("_decklidstatus",),
+    "vehicle_window_fl_state": ("_windowstatusfrontleft",),
+    "vehicle_window_fr_state": ("_windowstatusfrontright",),
+    "vehicle_window_rl_state": ("_windowstatusrearleft",),
+    "vehicle_window_rr_state": ("_windowstatusrearright",),
+    "compat_vehicle_lock_state": ("_lock",),
+    "compat_vehicle_primary_engine_range": ("_rangeelectrickm",),
+    "compat_vehicle_secondary_engine_range": ("_rangeliquid",),
+}
+
+
+def _normalize_current_ocpp_contract(spec: dict[str, Any]) -> dict[str, Any]:
     if spec.get("builder_id") != "mobility.charger.full_evse.v1":
         return spec
     out = deepcopy(spec)
@@ -60,12 +152,7 @@ def _normalize_current_ocpp_contract(spec: dict[str, Any]) -> dict[str, Any]:
                 if match.get("integration_domain") != "ocpp" or match.get("source_kind") != "entity":
                     continue
                 for predicate in match.get("all_of") or []:
-                    if (
-                        isinstance(predicate, dict)
-                        and predicate.get("field") == "source_identity.unique_id"
-                        and predicate.get("operator") == "ends_with"
-                        and predicate.get("value") == "status.sensor"
-                    ):
+                    if isinstance(predicate, dict) and predicate.get("field") == "source_identity.unique_id" and predicate.get("operator") == "ends_with" and predicate.get("value") == "status.sensor":
                         predicate["value"] = "status_connector.sensor"
         if input_id == "charger_power":
             row["required"] = False
@@ -74,11 +161,33 @@ def _normalize_current_ocpp_contract(spec: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_current_vehicle_contract(spec: dict[str, Any]) -> dict[str, Any]:
-    """Keep generated vehicle adapter capability rules authoritative at bind time."""
+    """Align generated aliases with technical identities observed on supported integrations."""
     if spec.get("builder_id") != "mobility.vehicle.connected_vehicle.v1":
         return spec
     out = deepcopy(spec)
-    out["builder_version"] = "1.7.0"
+    out["builder_version"] = "1.8.0"
+    inputs = (out.get("candidate_requirements") or {}).get("normalized_inputs") or []
+    for row in inputs:
+        input_id = str(row.get("input_id") or "")
+        if input_id in _AUDI_ENTITY_SUFFIXES:
+            _replace_entity_matches(row, "audiconnect", _AUDI_ENTITY_SUFFIXES[input_id])
+        if input_id in _CUPRA_ENTITY_SUFFIXES:
+            _replace_entity_matches(row, "cupra_eu_data_act", _CUPRA_ENTITY_SUFFIXES[input_id])
+        if input_id in _MERCEDES_ENTITY_SUFFIXES:
+            _replace_entity_matches(row, "mbapi2020", _MERCEDES_ENTITY_SUFFIXES[input_id])
+        if input_id in {"vehicle_lock_surface", "vehicle_unlock_surface", "vehicle_climate_start_surface", "vehicle_climate_stop_surface"}:
+            _replace_service_match(row, "audiconnect", "execute_vehicle_action")
+        if input_id == "vehicle_refresh_surface":
+            _replace_service_match(row, "audiconnect", "refresh_vehicle_data")
+            _replace_service_match(row, "cupra_eu_data_act", "refresh_now")
+        if input_id == "vehicle_lock_surface":
+            _replace_service_match(row, "mbapi2020", "doors_lock")
+        elif input_id == "vehicle_unlock_surface":
+            _replace_service_match(row, "mbapi2020", "doors_unlock")
+        elif input_id == "vehicle_climate_start_surface":
+            _replace_service_match(row, "mbapi2020", "preheat_start")
+        elif input_id == "vehicle_climate_stop_surface":
+            _replace_service_match(row, "mbapi2020", "preheat_stop")
     return out
 
 
