@@ -22,6 +22,8 @@ LEGACY_SCRIPT_DOMAIN="script"
 LEGACY_EXECUTE="mobility_execute_command"
 LEGACY_SETPOINT="mobility_apply_effective_charger_setpoint"
 _LOGGER=logging.getLogger(__name__)
+_REQUIRED_FOUNDATION_RELEASE="F1.7.4"
+_REQUIRED_FOUNDATION_BASELINE="1.7.1"
 
 
 def _legacy_script_collision(hass: Any) -> list[str]:
@@ -86,13 +88,28 @@ def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any)
 
 def _load_foundation_registry_api() -> tuple[Any,Any]:
     try:
+        from custom_components.rhi_foundation.const import RELEASE as foundation_release, SHARED_BASELINE_VERSION as foundation_baseline
         from custom_components.rhi_foundation.shared_registry import register_domain_build_specification_provider, unregister_domain_build_specification_provider
     except (ImportError,ModuleNotFoundError) as exc:
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
         except ImportError:
-            raise RuntimeError("RHI Mobility requires RHI Foundation F1.7.4 / Shared Baseline 1.7.1 shared_registry.py before runtime setup") from exc
-        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.7.4 / Shared Baseline 1.7.1 shared_registry.py. Install/update Foundation and retry setup.") from exc
+            raise RuntimeError("RHI Mobility requires RHI Foundation F1.7.4 / Shared Baseline 1.7.1 before runtime setup") from exc
+        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.7.4 / Shared Baseline 1.7.1. Install/update Foundation and retry setup.") from exc
+
+    if foundation_release != _REQUIRED_FOUNDATION_RELEASE or foundation_baseline != _REQUIRED_FOUNDATION_BASELINE:
+        message=(
+            "RHI Mobility requires RHI Foundation "
+            f"{_REQUIRED_FOUNDATION_RELEASE} / Shared Baseline {_REQUIRED_FOUNDATION_BASELINE}; "
+            f"loaded Foundation is {foundation_release} / {foundation_baseline}. "
+            "Bindings are intentionally not started against an incompatible discovery contract."
+        )
+        try:
+            from homeassistant.exceptions import ConfigEntryNotReady
+        except ImportError as exc:
+            raise RuntimeError(message) from exc
+        raise ConfigEntryNotReady(message)
+
     return register_domain_build_specification_provider,unregister_domain_build_specification_provider
 
 

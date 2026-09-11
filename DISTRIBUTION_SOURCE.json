@@ -1,14 +1,11 @@
 {
+  "distribution_release": "M0.6.3",
+  "distribution_version": "0.6.3",
   "source_repository": "npinguin/rhi-mobility",
-  "source_commit": "88cc6d26825d3e1f4be284a476e9655ef0519939",
-  "source_release": "M0.6.2",
-  "manifest_version": "0.6.2",
-  "channel": "test-candidate",
-  "approved_release": false,
-  "shared_baseline": "1.7.1",
-  "builder_version": "1.6.0",
-  "engineering_repository_visibility": "private",
-  "distribution_license": "GPL-3.0-only",
-  "runtime_file_count": 63,
-  "runtime_aggregate_sha256": "PENDING_TARGET_RUNTIME_ACCEPTANCE"
+  "source_commit": "a4bf1e4a6ae64201e7a9200633b101b29ae94b7d",
+  "source_branch": "main",
+  "distribution_purpose": "HACS target Home Assistant test release",
+  "required_foundation_release": "F1.7.4",
+  "required_shared_baseline": "1.7.1",
+  "runtime_validation": "PENDING"
 }
