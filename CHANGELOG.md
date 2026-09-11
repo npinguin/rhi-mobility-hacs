@@ -1,5 +1,20 @@
 # Changelog
 
+## M0.7.0 — Runtime truth architecture
+
+- Introduce typed `PropertyResolution` as the single canonical runtime result consumed by HA, V1, diagnostics/coverage and Mobility→Energy interop.
+- Add typed resolution status, quality, producer ownership and error classification; unresolved ownership fails closed.
+- Preserve producer candidates before truth precedence and execute `truth_precedence` declaratively in the resolver.
+- Make `producer_types` the canonical producer authority; singular `producer_type` becomes compatibility metadata only.
+- Add typed binding, observation, property and control health plus product readiness.
+- Distinguish configured, effective and physically observed vehicle/charger relationships without fabricating vehicle identity from connector state.
+- Reject broad all-matching object creation for generic MQTT, Z-Wave JS and Shelly selections while keeping explicit concrete-device selections.
+- Remove model-specific default-profile inference from integration identity alone.
+- Keep V1 as a projection over V2 truth instead of a second value-resolution implementation.
+- Publish resolved Mobility facts and command references to Energy rather than raw HA target details.
+- Preserve the complete M0.6.7 property/profile/image/presentation surface; target Home Assistant runtime acceptance remains mandatory.
+- Canonical source main: `40b3e8c8b78013090cde7bfbd23f8371a9fd0c96`.
+
 ## M0.6.7 — Completeness and presentation recovery
 
 - Carry forward the M0.6.6 vehicle property-family and command recovery for AudiConnect, Cupra/Data Act and Mercedes sources.

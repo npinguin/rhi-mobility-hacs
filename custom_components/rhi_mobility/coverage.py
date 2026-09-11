@@ -3,62 +3,73 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-_ALLOWED_ABSENCE = {"UNSUPPORTED_BY_SOURCE", "CONFIGURATION_REQUIRED", "UNAVAILABLE_TEMPORARY", "NOT_APPLICABLE"}
-_HARD_FAILURE = {"AMBIGUOUS_SOURCE", "BINDING_ERROR", "NORMALIZATION_ERROR"}
+from .property_resolution import PropertyProducerKind, PropertyResolutionStatus
+from .property_resolver import PropertyResolver
 
 
-def _producer_bucket(quality: str | None, provenance: dict[str, Any]) -> str:
-    q = str(quality or provenance.get("quality") or "").lower()
-    if q.startswith("candidate:") or provenance.get("candidate_id"):
-        return "resolved_source"
-    if q.startswith("mobility_profile:") or "profile" in q:
-        return "resolved_profile"
-    if "configuration" in q or "manual_profile" in q:
-        return "resolved_configuration"
-    if q or provenance.get("derived_from"):
-        return "resolved_derived"
-    return "resolved_derived"
-
-
-def normalized_property_coverage(manager: Any, public: Any, projection: Any) -> dict[str, Any]:
+def normalized_property_coverage(manager: Any, public: Any, projection: Any = None) -> dict[str, Any]:
+    """Audit canonical properties from typed PropertyResolution only."""
     totals = Counter()
     by_asset: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
+    resolver = PropertyResolver(manager, public)
+    bucket_by_producer = {
+        PropertyProducerKind.SOURCE: "resolved_source",
+        PropertyProducerKind.PROFILE: "resolved_profile",
+        PropertyProducerKind.CONFIGURATION: "resolved_configuration",
+        PropertyProducerKind.RELATIONSHIP: "resolved_relationship",
+        PropertyProducerKind.CONTROL_READBACK: "resolved_control_readback",
+        PropertyProducerKind.DERIVED: "resolved_derived",
+        PropertyProducerKind.ALIAS: "resolved_alias",
+    }
+
     for asset_id, asset in sorted(manager.assets.items()):
         rows = Counter()
-        keys = public.available_property_keys(asset_id)
-        for key in keys:
-            value = public.property_value(asset_id, key)
-            provenance = public.property_provenance(asset_id, key)
-            quality = public.property_quality(asset_id, key)
+        resolutions = resolver.resolve_asset(asset_id)
+        for key, resolution in resolutions.items():
             totals["normalized_properties_total"] += 1
             rows["normalized_properties_total"] += 1
-            if value is not None:
-                bucket = _producer_bucket(quality, provenance)
+
+            if resolution.status == PropertyResolutionStatus.AVAILABLE:
+                bucket = bucket_by_producer.get(resolution.producer_kind)
+                if bucket is None:
+                    bucket = "unresolved_owner"
+                    failures.append({"asset_id": asset_id, "property_key": key, "reason": "UNRESOLVED_OWNER"})
                 totals[bucket] += 1
                 rows[bucket] += 1
                 continue
-            reason = projection.availability_reason(asset_id, key, value, provenance)
-            if reason == "UNSUPPORTED_BY_SOURCE":
+
+            if resolution.status == PropertyResolutionStatus.UNSUPPORTED_BY_SOURCE:
                 bucket = "not_available_source"
-            elif reason == "CONFIGURATION_REQUIRED":
+            elif resolution.status == PropertyResolutionStatus.CONFIGURATION_REQUIRED:
                 bucket = "not_available_profile_or_configuration"
-            elif reason == "UNAVAILABLE_TEMPORARY":
+            elif resolution.status == PropertyResolutionStatus.UNAVAILABLE_TEMPORARY:
                 bucket = "temporarily_unavailable"
-            elif reason in _HARD_FAILURE:
-                bucket = "hard_resolution_errors"
-                failures.append({"asset_id": asset_id, "property_key": key, "reason": reason})
-            elif reason in _ALLOWED_ABSENCE:
+            elif resolution.status == PropertyResolutionStatus.NOT_APPLICABLE:
                 bucket = "explicitly_unavailable"
+            elif resolution.status == PropertyResolutionStatus.RESOLUTION_ERROR:
+                bucket = "hard_resolution_errors"
+                failures.append({
+                    "asset_id": asset_id,
+                    "property_key": key,
+                    "reason": None if resolution.error_kind is None else resolution.error_kind.value,
+                })
             else:
                 bucket = "unresolved_without_reason"
-                failures.append({"asset_id": asset_id, "property_key": key, "reason": reason})
+                failures.append({"asset_id": asset_id, "property_key": key, "reason": resolution.status.value})
             totals[bucket] += 1
             rows[bucket] += 1
+
         by_asset.append({"asset_id": asset_id, "asset_type": asset.concept_id, **dict(rows)})
-    totals.setdefault("hard_resolution_errors", 0)
-    totals.setdefault("unresolved_without_reason", 0)
-    return {**dict(totals), "by_asset": by_asset, "resolution_failures": failures[:100], "truncated_failures": len(failures) > 100}
+
+    for key in ("hard_resolution_errors", "unresolved_without_reason", "unresolved_owner"):
+        totals.setdefault(key, 0)
+    return {
+        **dict(totals),
+        "by_asset": by_asset,
+        "resolution_failures": failures[:100],
+        "truncated_failures": len(failures) > 100,
+    }
 
 
 def source_capability_coverage(manager: Any) -> dict[str, Any]:
@@ -102,11 +113,8 @@ def source_capability_coverage(manager: Any) -> dict[str, Any]:
         elif any(token in status for token in ("UNMAPPED", "NO_MATCH", "UNMATCHED")):
             unmapped.append(record)
         elif row.get("published_match"):
-            # A concrete domain-owned published match classifies the capability even when
-            # target scope/cardinality/availability prevents a current AcceptedSourceBinding.
             continue
         else:
-            # raw_capability_id alone is discovery evidence, not semantic classification.
             unclassified.append(record)
     return {
         "accepted_source_capability_count": len(accepted),
@@ -127,6 +135,7 @@ def completeness_gate(normalized: dict[str, Any], sources: dict[str, Any]) -> di
         "unmapped_source_capabilities": int(sources.get("unmapped_source_capability_count", 0) or 0),
         "unclassified_source_capabilities": int(sources.get("unclassified_source_capability_count", 0) or 0),
         "hard_resolution_errors": int(normalized.get("hard_resolution_errors", 0) or 0),
+        "unresolved_owner": int(normalized.get("unresolved_owner", 0) or 0),
         "unresolved_without_reason": int(normalized.get("unresolved_without_reason", 0) or 0),
     }
     return {"status": "PASS" if not any(blockers.values()) else "FAIL", **blockers}

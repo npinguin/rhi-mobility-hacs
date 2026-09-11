@@ -9,6 +9,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .profile_presentation import profile_image_url, profile_metadata
 from .projection import logical_device_info
 from .property_projection import MobilityPropertyProjection
+from .property_resolver import PropertyResolver
+from .readiness import ProductReadiness, evaluate_asset_readiness
 from .const import (
     DOMAIN,
     FOUNDATION_DOMAIN_ID,
@@ -32,7 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(
         [
             ReleaseSensor(entry.entry_id),
-            HealthSensor(entry.entry_id, manager, controller),
+            HealthSensor(entry.entry_id, manager, controller, public),
             ConfigurationSensor(hass, entry.entry_id, manager),
             BuildSensor(entry.entry_id, manager, provider),
         ],
@@ -120,52 +122,55 @@ class ReleaseSensor(MonitoringSensor):
 class HealthSensor(RuntimeMonitoringSensor):
     _attr_icon = "mdi:shield-check-outline"
 
-    def __init__(self, entry_id: str, manager, controller) -> None:
+    def __init__(self, entry_id: str, manager, controller, public) -> None:
         super().__init__(entry_id, "health", "Health", manager)
         self.controller = controller
+        self.resolver = PropertyResolver(manager, public)
+
+    def _asset_readiness(self):
+        rows = []
+        for asset_id in sorted(self.manager.assets):
+            resolutions = self.resolver.resolve_asset(asset_id)
+            rows.append(evaluate_asset_readiness(self.manager, self.controller, asset_id, resolutions.values()))
+        return rows
 
     @property
     def native_value(self):
         attempt = self.manager.last_build_attempt
-        execution = self.controller.executor.snapshot()
-        if attempt.get("status") == "REJECTED":
-            return "DEGRADED" if self.manager.snapshots else "INVALID"
-        if attempt.get("status") == "PARTIAL":
-            return "DEGRADED"
-        if execution.get("blocked_unknown_scopes"):
-            return "DEGRADED"
-        if attempt.get("status") == "REMOVED":
-            return "OK"
-        if not self.manager.snapshots:
-            return "UNKNOWN"
-        if any(s.health != "OK" for s in self.manager.snapshots.values()):
-            return "DEGRADED"
-        return "OK"
+        if attempt.get("status") == "REJECTED" and not self.manager.snapshots:
+            return ProductReadiness.BLOCKED.value
+        rows = self._asset_readiness()
+        if not rows:
+            if attempt.get("status") == "REMOVED":
+                return ProductReadiness.READY.value
+            return ProductReadiness.CONFIGURATION_REQUIRED.value
+        precedence = {
+            ProductReadiness.READY: 0,
+            ProductReadiness.READY_WITH_LIMITATIONS: 1,
+            ProductReadiness.CONFIGURATION_REQUIRED: 2,
+            ProductReadiness.DEGRADED: 3,
+            ProductReadiness.BLOCKED: 4,
+        }
+        return max((row.product_readiness for row in rows), key=lambda state: precedence[state]).value
 
     @property
     def extra_state_attributes(self):
-        state = self.native_value
         attempt = self.manager.last_build_attempt
-        if attempt.get("status") == "REJECTED":
-            reason = "latest_build_rejected_last_good_retained" if self.manager.snapshots else "build_input_invalid"
-        elif attempt.get("status") == "PARTIAL":
-            reason = "runtime_partial_with_diagnostic_capability_issues"
-        elif self.controller.executor.snapshot().get("blocked_unknown_scopes"):
-            reason = "execution_scope_unknown"
-        elif attempt.get("status") == "REMOVED":
-            reason = "valid_empty_mobility_configuration"
-        elif not self.manager.snapshots:
-            reason = "awaiting_selected_domain_build_input"
-        elif state == "DEGRADED":
-            reason = "one_or_more_assets_degraded"
-        else:
-            reason = "runtime_operational"
+        readiness = self._asset_readiness()
         revision = max((s.build_input_revision for s in self.manager.snapshots.values()), default=0)
         return {
-            "reason": reason,
+            "product_readiness": self.native_value,
             "revision": revision,
             "last_success": attempt.get("observed_at") if attempt.get("status") in {"ACCEPTED", "PARTIAL", "REMOVED"} else None,
-            "affected_scope": [] if state == "OK" else [FOUNDATION_DOMAIN_ID],
+            "binding_health": {row.asset_id: row.binding_health.value for row in readiness},
+            "observation_health": {row.asset_id: row.observation_health.value for row in readiness},
+            "property_health": {row.asset_id: row.property_health.value for row in readiness},
+            "control_health": {row.asset_id: row.control_health.value for row in readiness},
+            "asset_readiness": [row.as_dict() for row in readiness],
+            "legacy_snapshot_health": {
+                aid: snap.health for aid, snap in sorted(self.manager.snapshots.items())
+            },
+            "affected_scope": [] if self.native_value == ProductReadiness.READY.value else [FOUNDATION_DOMAIN_ID],
         }
 
 
@@ -225,7 +230,7 @@ class BuildSensor(RuntimeMonitoringSensor):
             "accepted_binding_count": len(self.manager.bindings),
             "asset_count": len(self.manager.assets),
             "reason": attempt.get("error") if attempt.get("status") == "REJECTED" else attempt.get("status", "WAITING_FOR_FOUNDATION").lower(),
-            "degraded_asset_count": sum(1 for s in self.manager.snapshots.values() if s.health != "OK"),
+            "legacy_snapshot_degraded_asset_count": sum(1 for s in self.manager.snapshots.values() if s.health != "OK"),
             "selection_error_count": int(attempt.get("selection_error_count", 0) or 0),
         }
 
@@ -261,10 +266,11 @@ class MobilityPropertySensor(SensorEntity):
 
     @property
     def native_value(self):
-        return self.provider.property_value(self.asset_id, self.property_key)
+        return self.projection.value(self.asset_id, self.property_key)
 
     @property
     def available(self):
+        # Keep the canonical property entity stable while value/status describe absence.
         return self.asset_id in self.manager.assets
 
     @property
@@ -277,16 +283,17 @@ class MobilityPropertySensor(SensorEntity):
     def extra_state_attributes(self):
         asset = self.manager.assets.get(self.asset_id)
         definition = self.provider.property_definition(self.property_key, None if asset is None else asset.concept_id) or {}
-        provenance = self.provider.property_provenance(self.asset_id, self.property_key)
-        value = self.native_value
-        resolution = self.projection.availability_reason(self.asset_id, self.property_key, value, provenance)
+        projected = self.projection.row(self.asset_id, self.property_key) or {}
+        provenance = dict(projected.get("source_provenance") or {})
         attrs = {
             "property_key": self.property_key,
             "component_id": definition.get("component_id"),
             "section_id": definition.get("section_id"),
             "visibility": definition.get("visibility"),
-            "quality": self.provider.property_quality(self.asset_id, self.property_key),
-            "resolution_status": resolution,
+            "quality": projected.get("quality"),
+            "resolution_status": projected.get("resolution_status"),
+            "resolution_error": projected.get("resolution_error"),
+            "producer_kind": projected.get("producer_kind"),
             **provenance,
             "canonical_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
         }

@@ -3,14 +3,14 @@ from typing import Any
 
 
 class MobilityBuildSpecificationProvider:
-    """Bounded Shared Baseline 1.7.0 DomainBuildSpecification provider.
+    """Bounded Shared Baseline 1.7.1 DomainBuildSpecification provider.
 
     Foundation owns ingestion and validation. Mobility only exposes immutable
     build specifications through the canonical synchronous provider surface.
     """
 
     publisher_domain = "rhi_mobility"
-    publication_revision = 10
+    publication_revision = 11
 
     def __init__(self, registry) -> None:
         self.registry = registry

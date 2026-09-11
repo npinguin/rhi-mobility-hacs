@@ -6,6 +6,9 @@ from typing import Any
 from .const import DOMAIN, FOUNDATION_DOMAIN_ID, RELEASE, SHARED_BASELINE_VERSION, SELECTED_BUILD_INPUT_REGISTRY_KEY
 from .coverage import completeness_gate, normalized_property_coverage, source_capability_coverage
 from .profile_presentation import profile_metadata
+from .property_resolver import PropertyResolver
+from .readiness import evaluate_asset_readiness
+from .relationship_resolution import resolve_vehicle_charger_relationship
 
 
 def _bounded_handoff(hass: Any) -> dict[str, Any]:
@@ -53,16 +56,31 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
     sources: dict[str, Any] = {}
     completeness: dict[str, Any] = {"status": "NOT_READY"}
     profiles: list[dict[str, Any]] = []
+    readiness: list[dict[str, Any]] = []
+    relationships: list[dict[str, Any]] = []
+    resolution_evidence: list[dict[str, Any]] = []
     if manager is not None and public is not None and controller is not None:
-        from .property_projection import MobilityPropertyProjection
-        projection = MobilityPropertyProjection(hass, manager, controller, public)
-        normalized = normalized_property_coverage(manager, public, projection)
+        resolver = PropertyResolver(manager, public)
+        normalized = normalized_property_coverage(manager, public)
         sources = source_capability_coverage(manager)
         completeness = completeness_gate(normalized, sources)
         profiles = [
             {"asset_id": asset_id, "asset_type": asset.concept_id, **profile_metadata(manager, asset_id)}
             for asset_id, asset in sorted(manager.assets.items())
         ]
+        relationships = [
+            resolve_vehicle_charger_relationship(manager, asset_id).as_dict()
+            for asset_id, asset in sorted(manager.assets.items())
+            if asset.concept_id == "vehicle"
+        ]
+        for asset_id in sorted(manager.assets):
+            resolutions = resolver.resolve_asset(asset_id)
+            readiness.append(evaluate_asset_readiness(manager, controller, asset_id, resolutions.values()).as_dict())
+            for property_id, resolution in resolutions.items():
+                if len(resolution_evidence) >= 200:
+                    break
+                if resolution.failed or not resolution.available:
+                    resolution_evidence.append(resolution.as_dict())
     return {
         "identity": {
             "domain": DOMAIN,
@@ -73,7 +91,8 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
         "health": {
             "last_build_attempt": {} if manager is None else dict(manager.last_build_attempt),
             "runtime_asset_count": 0 if manager is None else len(manager.assets),
-            "degraded_asset_count": 0 if manager is None else sum(1 for s in manager.snapshots.values() if s.health != "OK"),
+            "legacy_snapshot_degraded_asset_count": 0 if manager is None else sum(1 for s in manager.snapshots.values() if s.health != "OK"),
+            "asset_readiness": readiness,
         },
         "configuration": {
             "foundation_handoff": _bounded_handoff(hass),
@@ -88,10 +107,16 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
             "runtime_snapshot_count": 0 if manager is None else len(manager.snapshots),
             "relationship_count": 0 if manager is None else len(manager.effective_relationships),
         },
+        "relationships": {
+            "vehicle_charger": relationships,
+            "typed_relationship_count": len(relationships),
+        },
         "coverage": {
             "gate": completeness,
             "normalized_properties": normalized,
             "source_capabilities": sources,
+            "typed_resolution_evidence": resolution_evidence,
+            "typed_resolution_evidence_truncated": len(resolution_evidence) >= 200,
         },
         "presentation": {
             "profiles": profiles,
