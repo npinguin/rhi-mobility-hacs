@@ -3,6 +3,11 @@ name: Release
 on:
   push:
     branches: [main]
+    paths:
+      - 'custom_components/rhi_mobility/**'
+      - 'DISTRIBUTION_SOURCE.json'
+      - 'hacs.json'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
