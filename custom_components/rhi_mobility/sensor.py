@@ -6,6 +6,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .device_surfaces import logical_surface_device_info
 from .profile_presentation import profile_image_url, profile_metadata
 from .projection import logical_device_info
 from .property_projection import MobilityPropertyProjection
@@ -30,6 +31,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     public = data["public_provider"]
     controller = data["controller"]
     provider = data["provider"]
+    source_diagnostics = data["source_diagnostics_provider"]
+    device_surfaces = data["device_surface_provider"]
     projection = MobilityPropertyProjection(hass, manager, controller, public)
     async_add_entities(
         [
@@ -37,11 +40,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             HealthSensor(entry.entry_id, manager, controller, public),
             ConfigurationSensor(hass, entry.entry_id, manager),
             BuildSensor(entry.entry_id, manager, provider),
+            BroadDeviceSurfaceSensor("mobility", NAME, "Mobility Module V2", device_surfaces, manager, controller, diagnostic=True, device_identifier=entry.entry_id),
+            BroadDeviceSurfaceSensor("mobility_intelligence", "Mobility Intelligence", "Mobility Intelligence", device_surfaces, manager, controller),
+            BroadDeviceSurfaceSensor("vehicle_intelligence", "Vehicle Intelligence", "Vehicle Intelligence", device_surfaces, manager, controller),
+            BroadDeviceSurfaceSensor("charger_intelligence", "Charger Intelligence", "Charger Intelligence", device_surfaces, manager, controller),
         ],
         True,
     )
 
     created: dict[tuple[str, str], MobilityPropertySensor] = {}
+    created_source_diagnostics: dict[tuple[str, str], SourceDiagnosticSensor] = {}
 
     @callback
     def sync_properties() -> None:
@@ -59,6 +67,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 continue
             entity = MobilityPropertySensor(entry.entry_id, row["asset_id"], row["property_key"], public, manager, projection)
             created[key] = entity
+            new.append(entity)
+        diagnostic_wanted = {(asset_id, role) for asset_id in manager.assets for role in ("integration", "device", "status")}
+        for key in list(created_source_diagnostics):
+            if key in diagnostic_wanted:
+                continue
+            entity = created_source_diagnostics.pop(key)
+            hass.async_create_task(entity.async_remove(force_remove=True))
+        for asset_id, role in sorted(diagnostic_wanted):
+            key = (asset_id, role)
+            if key in created_source_diagnostics:
+                continue
+            entity = SourceDiagnosticSensor(entry.entry_id, asset_id, role, source_diagnostics, manager)
+            created_source_diagnostics[key] = entity
             new.append(entity)
         if new:
             async_add_entities(new, True)
@@ -300,3 +321,98 @@ class MobilityPropertySensor(SensorEntity):
         if self.property_key in {"asset.profile_id", "vehicle.image_key", "charger.image_key"}:
             attrs.update(profile_metadata(self.manager, self.asset_id))
         return attrs
+
+
+class BroadDeviceSurfaceSensor(SensorEntity):
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_icon = "mdi:brain"
+
+    def __init__(self, surface_id, name, model, provider, manager, controller, diagnostic=False, device_identifier=None):
+        self.surface_id=surface_id
+        self.provider=provider
+        self.manager=manager
+        self.controller=controller
+        self._attr_name="Status"
+        self._attr_unique_id=f"{DOMAIN}:surface:{surface_id}:status"
+        self._attr_suggested_object_id=f"{DOMAIN}_{surface_id}_status"
+        self._attr_device_info=logical_surface_device_info(surface_id,name,model,device_identifier=device_identifier)
+        if diagnostic:
+            self._attr_entity_category=EntityCategory.DIAGNOSTIC
+            self._attr_icon="mdi:shield-search"
+
+    async def async_added_to_hass(self):
+        add_runtime=getattr(self.manager,"add_runtime_listener",self.manager.add_listener)
+        self.async_on_remove(add_runtime(self._changed))
+        add_control=getattr(self.controller,"add_listener",None)
+        if callable(add_control): self.async_on_remove(add_control(self._changed))
+
+    @callback
+    def _changed(self): self.async_write_ha_state()
+
+    def _row(self):
+        return dict((self.provider.snapshot() or {}).get(self.surface_id) or {})
+
+    @property
+    def native_value(self): return self._row().get("state") or "UNKNOWN"
+
+    @property
+    def extra_state_attributes(self):
+        row=self._row(); row.pop("state",None)
+        return {**row,"surface_id":self.surface_id,"owner":DOMAIN,"projection_contract":self.provider.CONTRACT_ID,"ha_projection_inference":False}
+
+
+class SourceDiagnosticSensor(SensorEntity):
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:source-branch"
+
+    _NAMES={"integration":"Source Integration","device":"Source Device","status":"Source Status"}
+
+    def __init__(self, entry_id, asset_id, role, provider, manager):
+        self.asset_id=asset_id
+        self.role=role
+        self.provider=provider
+        self.manager=manager
+        self._attr_name=self._NAMES[role]
+        self._attr_unique_id=f"{DOMAIN}:{asset_id}:source_diag:{role}"
+        self._attr_suggested_object_id=f"{DOMAIN}_{asset_id}_source_{role}"
+        self._attr_device_info=logical_device_info(manager.hass,entry_id,manager,asset_id)
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
+
+    @callback
+    def _changed(self): self.async_write_ha_state()
+
+    def _row(self):
+        summary=self.provider.asset(self.asset_id)
+        return {} if summary is None else summary.as_dict()
+
+    @property
+    def available(self): return self.asset_id in self.manager.assets
+
+    @property
+    def native_value(self):
+        row=self._row()
+        if self.role=="integration": return row.get("integration") or "Unavailable"
+        if self.role=="device": return row.get("device_name") or row.get("device_registry_id") or "Unavailable"
+        return row.get("status") or "UNBOUND"
+
+    @property
+    def extra_state_attributes(self):
+        row=self._row()
+        common={
+            "source_device_url":row.get("source_device_url"),
+            "source_integration_url":row.get("source_integration_url"),
+            "source_integration_documentation_url":row.get("source_integration_documentation_url"),
+            "mobility_repository_url":row.get("mobility_repository_url"),
+            "owner":row.get("owner"),
+            "authority":row.get("authority"),
+        }
+        if self.role=="status":
+            common.update({"binding_count":row.get("binding_count"),"observed_at":row.get("observed_at"),"config_entry_id":row.get("config_entry_id")})
+        elif self.role=="device":
+            common.update({"device_registry_id":row.get("device_registry_id"),"config_entry_id":row.get("config_entry_id")})
+        return {k:v for k,v in common.items() if v is not None}

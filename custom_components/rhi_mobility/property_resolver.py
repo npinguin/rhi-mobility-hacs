@@ -12,14 +12,6 @@ from .property_resolution import (
 )
 
 
-_STATUS_ERROR_MAP = {
-    "AMBIGUOUS_SOURCE": PropertyResolutionError.AMBIGUOUS_SOURCE,
-    "BINDING_ERROR": PropertyResolutionError.INVALID_BINDING,
-    "NORMALIZATION_ERROR": PropertyResolutionError.NORMALIZATION_ERROR,
-    "CARDINALITY_ERROR": PropertyResolutionError.CARDINALITY_ERROR,
-    "TARGET_SCOPE_ERROR": PropertyResolutionError.TARGET_SCOPE_ERROR,
-}
-
 _PRODUCER_KIND = {
     "SOURCE": PropertyProducerKind.SOURCE,
     "PROFILE": PropertyProducerKind.PROFILE,
@@ -30,49 +22,30 @@ _PRODUCER_KIND = {
     "ALIAS": PropertyProducerKind.ALIAS,
 }
 
+_CAPABILITY_FAILURES = {
+    "AMBIGUOUS": PropertyResolutionError.AMBIGUOUS_SOURCE,
+    "CARDINALITY_ERROR": PropertyResolutionError.CARDINALITY_ERROR,
+    "BLOCKED_BY_TARGET_SCOPE": PropertyResolutionError.TARGET_SCOPE_ERROR,
+    "INVALID_VALUE": PropertyResolutionError.NORMALIZATION_ERROR,
+    "NORMALIZATION_ERROR": PropertyResolutionError.NORMALIZATION_ERROR,
+    "INVALID_EVIDENCE": PropertyResolutionError.NORMALIZATION_ERROR,
+}
 
-def _quality(value: str | None, *, available: bool) -> PropertyQuality:
-    raw = str(value or "").upper()
-    if "STALE" in raw:
-        return PropertyQuality.STALE
-    if "INVALID" in raw or "ERROR" in raw:
-        return PropertyQuality.INVALID
-    if "PARTIAL" in raw:
-        return PropertyQuality.PARTIAL
-    if "ESTIMAT" in raw or "DERIVED" in raw:
-        return PropertyQuality.ESTIMATED
-    if available:
-        return PropertyQuality.VALID
-    return PropertyQuality.UNKNOWN
-
-
-def _producer_from_evidence(
-    definition: dict[str, Any],
-    quality: str | None,
-    provenance: dict[str, Any],
-) -> PropertyProducerKind | None:
-    """Resolve ownership only from explicit evidence and authoritative producer_types."""
-    declared = set(declared_producer_types(definition))
-    q = str(quality or provenance.get("quality") or "").lower()
-
-    if provenance.get("candidate_id") or q.startswith("candidate:"):
-        return PropertyProducerKind.SOURCE if "SOURCE" in declared else None
-    if provenance.get("profile_id") or q.startswith("mobility_profile:"):
-        return PropertyProducerKind.PROFILE if "PROFILE" in declared else None
-    if "configuration" in q or "manual_profile" in q or provenance.get("configuration_revision"):
-        return PropertyProducerKind.CONFIGURATION if "CONFIGURED" in declared else None
-    if provenance.get("relationship_id") or "relationship" in q:
-        return PropertyProducerKind.RELATIONSHIP if "RELATIONSHIP" in declared else None
-    if "readback" in q or provenance.get("command_reference"):
-        return PropertyProducerKind.CONTROL_READBACK if "CONTROL_READBACK" in declared else None
-    if provenance.get("compatibility_alias_of"):
-        return PropertyProducerKind.ALIAS if "ALIAS" in declared else None
-    if provenance.get("derived_from"):
-        return PropertyProducerKind.DERIVED if "DERIVED" in declared else None
-
-    if len(declared) == 1:
-        return _PRODUCER_KIND.get(next(iter(declared)))
-    return None
+_CAPABILITY_PRIORITY = (
+    "AMBIGUOUS",
+    "CARDINALITY_ERROR",
+    "BLOCKED_BY_TARGET_SCOPE",
+    "INVALID_VALUE",
+    "NORMALIZATION_ERROR",
+    "INVALID_EVIDENCE",
+    "BLOCKED_BY_REVIEW",
+    "REJECTED_REVIEW_REQUIRED",
+    "STALE",
+    "UNAVAILABLE",
+    "NORMALIZED",
+    "MATCHED",
+    "MISSING",
+)
 
 
 def _select_declared_candidate(
@@ -100,12 +73,36 @@ def _select_declared_candidate(
     raise ValueError("producer candidates exist but none are selectable by truth_precedence")
 
 
+def _single_declared_producer(definition: dict[str, Any]) -> PropertyProducerKind | None:
+    """Allow non-ledger producers only when ownership is unambiguous in the catalog."""
+    declared = declared_producer_types(definition)
+    if len(declared) != 1:
+        return None
+    return _PRODUCER_KIND.get(declared[0])
+
+
+def _quality_for(
+    *,
+    producer: PropertyProducerKind | None,
+    status: PropertyResolutionStatus,
+    capability_status: str | None,
+) -> PropertyQuality:
+    """Derive quality from typed ownership/status only; never parse free-form strings."""
+    if status == PropertyResolutionStatus.RESOLUTION_ERROR:
+        return PropertyQuality.INVALID
+    if status != PropertyResolutionStatus.AVAILABLE:
+        return PropertyQuality.STALE if capability_status == "STALE" else PropertyQuality.UNKNOWN
+    if producer in {PropertyProducerKind.PROFILE, PropertyProducerKind.DERIVED}:
+        return PropertyQuality.ESTIMATED
+    return PropertyQuality.VALID
+
+
 class PropertyResolver:
     """Single runtime authority for canonical Mobility property resolution.
 
-    M0.7.0 uses producer-native candidate evidence when available and applies the semantic
-    catalog's truth_precedence declaratively. Properties not yet migrated to the ledger keep
-    the proven M0.6 value/provenance adapter path until their producer is migrated.
+    Resolution is deliberately strict: producer candidates and the semantic catalog own
+    precedence; capability diagnostics own absence/error classification. Public projection
+    text such as quality/reason labels is never interpreted as semantic evidence.
     """
 
     def __init__(self, manager: Any, public: Any) -> None:
@@ -116,51 +113,76 @@ class PropertyResolver:
         asset = self.manager.assets.get(asset_id)
         if asset is None:
             return None
-        return self.public.property_definition(property_id, asset.concept_id)
+        definition = self.public.property_definition(property_id, asset.concept_id)
+        return dict(definition) if isinstance(definition, dict) else None
 
-    def _absence_reason(
-        self,
-        asset_id: str,
-        property_id: str,
-        definition: dict[str, Any] | None,
-        provenance: dict[str, Any],
-        raw_quality: str | None,
-    ) -> str:
-        """Translate legacy M0.6 evidence once, at the resolver boundary."""
-        asset = self.manager.assets.get(asset_id)
-        if asset is None:
-            return "BINDING_ERROR"
-        if definition is None:
-            return "NOT_APPLICABLE"
+    def _capability_status(self, asset_id: str, property_id: str) -> str | None:
+        statuses: set[str] = set()
+        for row in getattr(self.manager, "_capability_diagnostics", ()) or ():
+            if not isinstance(row, dict):
+                continue
+            row_asset = row.get("asset_id") or row.get("logical_asset_id")
+            if row_asset not in (None, "", asset_id):
+                continue
+            outputs = {str(value) for value in row.get("normalized_properties") or ()}
+            if property_id not in outputs:
+                continue
+            status = str(row.get("status") or "").upper()
+            if status:
+                statuses.add(status)
+        for wanted in _CAPABILITY_PRIORITY:
+            if wanted in statuses:
+                return wanted
+        return sorted(statuses)[0] if statuses else None
 
-        status = str(provenance.get("normalization_status") or "").upper()
-        quality = str(raw_quality or provenance.get("quality") or "").upper()
-        reason = str(provenance.get("reason") or "").upper()
-        evidence = " ".join((status, quality, reason))
-        if "AMBIGUOUS" in evidence:
-            return "AMBIGUOUS_SOURCE"
-        if "CARDINALITY" in evidence:
-            return "CARDINALITY_ERROR"
-        if "TARGET_SCOPE" in evidence:
-            return "TARGET_SCOPE_ERROR"
-        if "INVALID" in evidence or "NORMALIZATION" in evidence:
-            return "NORMALIZATION_ERROR"
-        if "BINDING" in evidence:
-            return "BINDING_ERROR"
-        if "STALE" in evidence or "UNAVAILABLE" in evidence:
-            return "UNAVAILABLE_TEMPORARY"
-        if "UNSUPPORTED" in evidence:
-            return "UNSUPPORTED_BY_SOURCE"
-        if "CONFIGURATION" in evidence or "REVIEW" in evidence:
-            return "CONFIGURATION_REQUIRED"
+    @staticmethod
+    def _absence_status(
+        definition: dict[str, Any], capability_status: str | None
+    ) -> tuple[PropertyResolutionStatus, PropertyResolutionError | None, str]:
+        if capability_status in _CAPABILITY_FAILURES:
+            return (
+                PropertyResolutionStatus.RESOLUTION_ERROR,
+                _CAPABILITY_FAILURES[capability_status],
+                capability_status.lower(),
+            )
+        if capability_status in {"BLOCKED_BY_REVIEW", "REJECTED_REVIEW_REQUIRED"}:
+            return PropertyResolutionStatus.CONFIGURATION_REQUIRED, None, "configuration_review_required"
+        if capability_status in {"STALE", "UNAVAILABLE", "NORMALIZED", "MATCHED"}:
+            return PropertyResolutionStatus.UNAVAILABLE_TEMPORARY, None, "temporarily_unavailable"
+        if capability_status == "MISSING":
+            return PropertyResolutionStatus.UNSUPPORTED_BY_SOURCE, None, "source_capability_missing"
 
-        supported = getattr(self.manager, "supported_property_keys", lambda _aid: set())(asset_id)
-        if property_id in supported:
-            return "NORMALIZATION_ERROR"
-        precedence = set(definition.get("truth_precedence") or [])
-        if precedence & {"CONFIGURED", "PROFILE"} and "SOURCE" not in precedence:
-            return "CONFIGURATION_REQUIRED"
-        return "UNSUPPORTED_BY_SOURCE"
+        declared = set(declared_producer_types(definition))
+        if declared and declared <= {"CONFIGURED", "PROFILE"}:
+            return PropertyResolutionStatus.CONFIGURATION_REQUIRED, None, "configuration_required"
+        if "RELATIONSHIP" in declared and not (declared & {"SOURCE", "CONTROL_READBACK", "DERIVED"}):
+            return PropertyResolutionStatus.CONFIGURATION_REQUIRED, None, "relationship_required"
+        if declared & {"SOURCE", "CONTROL_READBACK"}:
+            return PropertyResolutionStatus.UNSUPPORTED_BY_SOURCE, None, "unsupported_by_source"
+        if "DERIVED" in declared:
+            return PropertyResolutionStatus.UNAVAILABLE_TEMPORARY, None, "derived_dependencies_unavailable"
+        return PropertyResolutionStatus.UNSUPPORTED_BY_SOURCE, None, "no_available_producer"
+
+    def _alias_resolution(self, asset_id: str, property_id: str, canonical: str) -> PropertyResolution:
+        target = self.resolve(asset_id, canonical)
+        reference = dict(target.source_reference)
+        reference["compatibility_alias_of"] = canonical
+        return PropertyResolution(
+            asset_id=asset_id,
+            property_id=property_id,
+            value=target.value,
+            producer_kind=PropertyProducerKind.ALIAS,
+            status=target.status,
+            quality=target.quality,
+            reason_code=target.reason_code,
+            error_kind=target.error_kind,
+            observed_at=target.observed_at,
+            source_binding_id=target.source_binding_id,
+            source_reference=reference,
+            dependencies=(canonical,),
+            configuration_revision=target.configuration_revision,
+            build_input_revision=target.build_input_revision,
+        )
 
     def resolve(self, asset_id: str, property_id: str) -> PropertyResolution:
         asset = self.manager.assets.get(asset_id)
@@ -176,14 +198,29 @@ class PropertyResolver:
                 error_kind=PropertyResolutionError.INVALID_BINDING,
             )
 
-        definition = self._definition(asset_id, property_id) or {}
-        producer = None
+        aliases = dict(getattr(self.manager.registry, "legacy_aliases", {}) or {})
+        canonical_alias = str(aliases.get(property_id, property_id))
+        if canonical_alias != property_id:
+            return self._alias_resolution(asset_id, property_id, canonical_alias)
+
+        definition = self._definition(asset_id, property_id)
+        if definition is None:
+            return PropertyResolution(
+                asset_id=asset_id,
+                property_id=property_id,
+                value=None,
+                producer_kind=None,
+                status=PropertyResolutionStatus.NOT_APPLICABLE,
+                quality=PropertyQuality.UNKNOWN,
+                reason_code="not_applicable",
+            )
+
+        snap = self.manager.snapshots.get(asset_id)
         candidate_provider = getattr(self.manager, "producer_candidates", None)
         candidates = candidate_provider(asset_id, property_id) if callable(candidate_provider) else {}
         try:
             selected = _select_declared_candidate(definition, dict(candidates or {}))
         except ValueError as exc:
-            snap = self.manager.snapshots.get(asset_id)
             return PropertyResolution(
                 asset_id=asset_id,
                 property_id=property_id,
@@ -200,68 +237,39 @@ class PropertyResolver:
         if selected is not None:
             candidate, producer = selected
             value = candidate.get("value")
-            provenance = dict(candidate.get("source_reference") or {})
-            provenance["selected_by_truth_precedence"] = True
-            raw_quality = str(candidate.get("quality") or "") or None
+            reference = dict(candidate.get("source_reference") or {})
+            reference["selected_by_truth_precedence"] = True
         else:
             value = self.public.property_value(asset_id, property_id)
-            provenance = dict(self.public.property_provenance(asset_id, property_id) or {})
-            raw_quality = self.public.property_quality(asset_id, property_id)
-            try:
-                producer = _producer_from_evidence(definition, raw_quality, provenance)
-            except ValueError as exc:
-                producer = None
-                provenance = {**provenance, "producer_policy_error": str(exc)}
+            reference = dict(self.public.property_provenance(asset_id, property_id) or {})
+            producer = _single_declared_producer(definition) if value is not None else None
 
-        availability = "AVAILABLE" if value is not None else self._absence_reason(
-            asset_id, property_id, definition or None, provenance, raw_quality
-        )
-        available = availability == "AVAILABLE" and value is not None
-
-        if available and producer is None:
+        capability_status = self._capability_status(asset_id, property_id)
+        if value is not None and producer is None:
             status = PropertyResolutionStatus.RESOLUTION_ERROR
             error_kind = PropertyResolutionError.UNRESOLVED_OWNER
             reason = "available_value_without_explicit_producer"
-        elif availability == "AVAILABLE":
+        elif value is not None:
             status = PropertyResolutionStatus.AVAILABLE
             error_kind = None
             reason = None
-        elif availability == "NOT_APPLICABLE":
-            status = PropertyResolutionStatus.NOT_APPLICABLE
-            error_kind = None
-            reason = "not_applicable"
-        elif availability == "UNSUPPORTED_BY_SOURCE":
-            status = PropertyResolutionStatus.UNSUPPORTED_BY_SOURCE
-            error_kind = None
-            reason = "unsupported_by_source"
-        elif availability == "CONFIGURATION_REQUIRED":
-            status = PropertyResolutionStatus.CONFIGURATION_REQUIRED
-            error_kind = None
-            reason = "configuration_required"
-        elif availability == "UNAVAILABLE_TEMPORARY":
-            status = PropertyResolutionStatus.UNAVAILABLE_TEMPORARY
-            error_kind = None
-            reason = "temporarily_unavailable"
         else:
-            status = PropertyResolutionStatus.RESOLUTION_ERROR
-            error_kind = _STATUS_ERROR_MAP.get(availability, PropertyResolutionError.UNRESOLVED_OWNER)
-            reason = availability.lower() if availability else "unresolved"
+            status, error_kind, reason = self._absence_status(definition, capability_status)
 
-        snap = self.manager.snapshots.get(asset_id)
         return PropertyResolution(
             asset_id=asset_id,
             property_id=property_id,
-            value=value,
+            value=value if status == PropertyResolutionStatus.AVAILABLE else None,
             producer_kind=producer,
             status=status,
-            quality=_quality(raw_quality, available=value is not None),
+            quality=_quality_for(producer=producer, status=status, capability_status=capability_status),
             reason_code=reason,
             error_kind=error_kind,
-            observed_at=provenance.get("observed_at"),
-            source_binding_id=provenance.get("source_binding_id"),
-            source_reference=provenance,
-            dependencies=tuple(str(x) for x in provenance.get("derived_from") or ()),
-            configuration_revision=int(provenance.get("configuration_revision", 0) or 0),
+            observed_at=reference.get("observed_at"),
+            source_binding_id=reference.get("source_binding_id"),
+            source_reference=reference,
+            dependencies=tuple(str(x) for x in reference.get("derived_from") or ()),
+            configuration_revision=int(reference.get("configuration_revision", 0) or 0),
             build_input_revision=0 if snap is None else int(getattr(snap, "build_input_revision", 0) or 0),
         )
 

@@ -51,18 +51,42 @@ def _source_candidates(manager: Any, asset_id: str) -> dict[str, dict[str, Any]]
     return {key: row[1] for key, row in chosen.items()}
 
 
-def collect_producer_candidates(manager: Any, asset_id: str) -> dict[str, dict[str, dict[str, Any]]]:
-    """Return producer-native candidates before truth_precedence chooses a winner.
+def _identity_source_candidates(manager: Any, asset_id: str) -> dict[str, dict[str, Any]]:
+    """Expose accepted logical asset identity as typed SOURCE evidence."""
+    asset = manager.assets.get(asset_id)
+    display_name = None if asset is None else getattr(asset, "display_name", None)
+    if not display_name:
+        return {}
+    primary = manager.primary_source_metadata(asset_id) if callable(getattr(manager, "primary_source_metadata", None)) else {}
+    reference = {
+        "source_integration": primary.get("integration_domain"),
+        "source_device_id": primary.get("device_id"),
+        "source_config_entry_id": primary.get("config_entry_id"),
+        "identity_kind": "accepted_logical_asset_identity",
+    }
+    reference = {key: value for key, value in reference.items() if value not in (None, "")}
+    candidate = {
+        "producer_kind": "SOURCE",
+        "value": display_name,
+        "quality": "source_device_identity",
+        "source_reference": reference,
+    }
+    return {
+        "asset.display_name": dict(candidate),
+        "asset.short_name": dict(candidate),
+    }
 
-    This ledger is intentionally separate from RuntimeSnapshot.values during the first
-    M0.7 checkpoint. It records evidence only and therefore cannot change product output.
-    """
+
+def collect_producer_candidates(manager: Any, asset_id: str) -> dict[str, dict[str, dict[str, Any]]]:
+    """Return producer-native candidates before truth_precedence chooses a winner."""
     asset = manager.assets.get(asset_id)
     if asset is None:
         return {}
 
     ledger: dict[str, dict[str, dict[str, Any]]] = {}
     for property_id, candidate in _source_candidates(manager, asset_id).items():
+        ledger.setdefault(property_id, {})["SOURCE"] = candidate
+    for property_id, candidate in _identity_source_candidates(manager, asset_id).items():
         ledger.setdefault(property_id, {})["SOURCE"] = candidate
 
     semantic = (getattr(manager.registry, "semantic_catalog", {}) or {}).get("properties") or {}

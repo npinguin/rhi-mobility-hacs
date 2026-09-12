@@ -1,0 +1,32 @@
+{
+  "kind": "RHI_MOBILITY_V1_FACADE_PROJECTION",
+  "contract_version": "1.0.0",
+  "source_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
+  "target_contract": "MOBILITY_PUBLIC_RUNTIME_V1",
+  "rules": {
+    "shape_adaptation_only": true,
+    "legacy_computation_active": false,
+    "legacy_business_logic_allowed": false,
+    "legacy_source_binding_allowed": false,
+    "legacy_readiness_inference_allowed": false,
+    "property_values_from_v2_projection_only": true,
+    "property_placement_from_v2_catalog_only": true,
+    "commands_from_v2_command_provider_only": true,
+    "intelligence_from_v2_experience_provider_only": true,
+    "activity_from_v2_activity_provider_only": true,
+    "energy_from_v2_energy_provider_only": true
+  },
+  "command_projection": {
+    "vehicle.command.lock": {"target_scope": "same_asset", "v2_command_key": "vehicle.command.lock"},
+    "vehicle.command.unlock": {"target_scope": "same_asset", "v2_command_key": "vehicle.command.unlock"},
+    "vehicle.command.start_climate": {"target_scope": "same_asset", "v2_command_key": "vehicle.command.climate_start"},
+    "vehicle.command.stop_climate": {"target_scope": "same_asset", "v2_command_key": "vehicle.command.climate_stop"},
+    "vehicle.command.start_charging": {"target_scope": "effective_charger", "v2_command_key": "charger.command.start"},
+    "vehicle.command.stop_charging": {"target_scope": "effective_charger", "v2_command_key": "charger.command.stop"},
+    "charger.command.start_charging": {"target_scope": "same_asset", "v2_command_key": "charger.command.start"},
+    "charger.command.stop_charging": {"target_scope": "same_asset", "v2_command_key": "charger.command.stop"},
+    "charger.command.unlock_connector": {"target_scope": "same_asset", "v2_command_key": "charger.command.unlock_connector"},
+    "charger.command.restart": {"target_scope": "same_asset", "v2_command_key": "charger.command.restart"},
+    "charger.command.identify": {"target_scope": "same_asset", "v2_command_key": "charger.command.identify"}
+  }
+}

@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.5.8",
+  "release": "M0.7.2",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -28,7 +28,6 @@
       "unit": null,
       "entity_type": "sensor",
       "derived": true,
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -97,12 +96,13 @@
       "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
-        "PROFILE"
+        "PROFILE",
+        "SOURCE"
       ],
-      "producer_type": "CONFIGURED",
       "truth_precedence": [
         "CONFIGURED",
-        "PROFILE"
+        "PROFILE",
+        "SOURCE"
       ],
       "profile_field": "display_name",
       "editable": {
@@ -124,7 +124,6 @@
       "unit": null,
       "entity_type": "sensor",
       "derived": false,
-      "producer_type": "CONFIGURED",
       "applicable_asset_types": [
         "charger",
         "vehicle"
@@ -166,7 +165,6 @@
       "producer_types": [
         "CONFIGURED"
       ],
-      "producer_type": "CONFIGURED",
       "truth_precedence": [
         "CONFIGURED"
       ],
@@ -209,7 +207,6 @@
       "producer_types": [
         "CONFIGURED"
       ],
-      "producer_type": "CONFIGURED",
       "truth_precedence": [
         "CONFIGURED"
       ],
@@ -264,7 +261,6 @@
       "producer_types": [
         "CONFIGURED"
       ],
-      "producer_type": "CONFIGURED",
       "truth_precedence": [
         "CONFIGURED"
       ],
@@ -320,7 +316,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -378,12 +373,13 @@
       "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
-        "PROFILE"
+        "PROFILE",
+        "SOURCE"
       ],
-      "producer_type": "CONFIGURED",
       "truth_precedence": [
         "CONFIGURED",
-        "PROFILE"
+        "PROFILE",
+        "SOURCE"
       ],
       "profile_field": "short_name",
       "editable": {
@@ -435,7 +431,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -471,7 +466,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.session_energy_kwh",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -514,7 +508,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -549,7 +542,6 @@
       "producer_types": [
         "RELATIONSHIP"
       ],
-      "producer_type": "RELATIONSHIP",
       "truth_precedence": [
         "RELATIONSHIP"
       ],
@@ -584,7 +576,6 @@
       "producer_types": [
         "RELATIONSHIP"
       ],
-      "producer_type": "RELATIONSHIP",
       "truth_precedence": [
         "RELATIONSHIP"
       ],
@@ -619,7 +610,6 @@
       "producer_types": [
         "CONTROL_READBACK"
       ],
-      "producer_type": "CONTROL_READBACK",
       "truth_precedence": [
         "CONTROL_READBACK"
       ],
@@ -662,7 +652,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -711,7 +700,6 @@
           "normalizer": "charger_connection"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -755,7 +743,6 @@
           "normalizer": "integer_count"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -798,7 +785,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -842,7 +828,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -863,7 +848,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -890,7 +874,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -917,7 +900,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -966,7 +948,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1010,7 +991,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1045,7 +1025,6 @@
       "producer_types": [
         "RELATIONSHIP"
       ],
-      "producer_type": "RELATIONSHIP",
       "truth_precedence": [
         "RELATIONSHIP"
       ],
@@ -1088,7 +1067,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1123,7 +1101,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "implementation": "Single-owner Mobility canonical summary derived from normalized/profile/config facts",
       "truth_precedence": [
         "DERIVED"
@@ -1177,7 +1154,6 @@
           "normalizer": "energy_flow_direction"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1220,7 +1196,6 @@
           "normalizer": "energy_price_per_kwh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1247,7 +1222,6 @@
           "normalizer": "energy_kwh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1296,7 +1270,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1340,7 +1313,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1383,7 +1355,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1426,7 +1397,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1469,7 +1439,6 @@
           "normalizer": "energy_kwh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1504,7 +1473,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -1539,7 +1507,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -1574,7 +1541,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "implementation": "Single-owner Mobility canonical summary derived from normalized/profile/config facts",
       "truth_precedence": [
         "DERIVED"
@@ -1624,7 +1590,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -1662,7 +1627,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.energy_total_kwh",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -1706,7 +1670,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -1752,7 +1715,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -1798,7 +1760,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -1844,7 +1805,6 @@
           "normalizer": "voltage_v"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -1881,7 +1841,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -1924,7 +1883,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -1967,7 +1925,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2016,7 +1973,6 @@
           "normalizer": "utility_charger_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2061,7 +2017,6 @@
           "normalizer": "phase_count"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -2100,7 +2055,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.current_l1_a",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2136,7 +2090,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.current_l2_a",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2172,7 +2125,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.current_l3_a",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2208,7 +2160,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.power_l1_kw",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2244,7 +2195,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.power_l2_kw",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2280,7 +2230,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.power_l3_kw",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2316,7 +2265,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.voltage_l1_v",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2352,7 +2300,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.voltage_l2_v",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2388,7 +2335,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.voltage_l3_v",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2437,7 +2383,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2458,7 +2403,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2485,7 +2429,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2512,7 +2455,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2554,7 +2496,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.requested_power_kw",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -2576,7 +2517,6 @@
       "unit": "kW",
       "entity_type": "number",
       "derived": false,
-      "producer_type": "CONTROL_READBACK",
       "truth_precedence": [
         "CONTROL_READBACK"
       ],
@@ -2625,7 +2565,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2668,7 +2607,6 @@
           "normalizer": "currency_value"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2689,17 +2627,17 @@
           "normalizer": "duration_s"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
-        "SOURCE"
+        "ALIAS"
       ],
       "applicable_asset_types": [
         "charger"
       ],
       "producer_types": [
-        "SOURCE"
+        "ALIAS"
       ],
-      "value_type": "number"
+      "value_type": "number",
+      "canonical_alias_of": "charger.session_duration_s"
     },
     "charger.session_energy_kwh": {
       "component_id": "metering",
@@ -2744,7 +2682,6 @@
           "normalizer": "energy_kwh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2779,7 +2716,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "implementation": "Single-owner Mobility canonical summary derived from normalized/profile/config facts",
       "truth_precedence": [
         "DERIVED"
@@ -2820,7 +2756,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -2863,7 +2798,6 @@
           "normalizer": "energy_kwh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2906,7 +2840,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2950,7 +2883,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -2995,7 +2927,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -3018,7 +2949,6 @@
           "normalizer": "voltage_v"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3045,7 +2975,6 @@
           "normalizer": "voltage_v"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3072,7 +3001,6 @@
           "normalizer": "voltage_v"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3123,14 +3051,11 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "CONFIGURED",
         "ALIAS"
       ],
       "canonical_alias_of": "asset.lifecycle_status",
-      "producer_type": "ALIAS",
       "truth_precedence": [
-        "ALIAS",
-        "CONFIGURED"
+        "ALIAS"
       ],
       "editable": {
         "platform": "select",
@@ -3175,7 +3100,6 @@
       "producer_types": [
         "CONTROL_READBACK"
       ],
-      "producer_type": "CONTROL_READBACK",
       "truth_precedence": [
         "CONTROL_READBACK"
       ],
@@ -3227,7 +3151,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3240,7 +3163,6 @@
       "unit": null,
       "entity_type": "sensor",
       "derived": true,
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -3259,7 +3181,6 @@
       "unit": null,
       "entity_type": "sensor",
       "derived": true,
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -3286,7 +3207,6 @@
           "normalizer": "person_presence"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3313,7 +3233,6 @@
           "normalizer": "person_presence"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3362,7 +3281,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3405,7 +3323,6 @@
           "normalizer": "integer_count"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3448,7 +3365,6 @@
           "normalizer": "on_off_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3491,7 +3407,6 @@
           "normalizer": "electric_consumption_kwh_100km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3534,7 +3449,6 @@
           "normalizer": "electric_consumption_kwh_100km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3577,7 +3491,6 @@
           "normalizer": "fuel_consumption_l_100km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3620,7 +3533,6 @@
           "normalizer": "fuel_consumption_l_100km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3663,7 +3575,6 @@
           "normalizer": "speed_kmh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3699,7 +3610,6 @@
         "CONFIGURED",
         "PROFILE"
       ],
-      "producer_type": "PROFILE_OR_CONFIGURED",
       "truth_precedence": [
         "CONFIGURED",
         "PROFILE"
@@ -3758,7 +3668,6 @@
           "normalizer": "energy_kwh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "CONFIGURED",
         "SOURCE",
@@ -3819,7 +3728,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3830,7 +3738,7 @@
       "component_id": "battery",
       "section_id": "details",
       "visibility": "product",
-      "unit": "\u00b0C",
+      "unit": "°C",
       "entity_type": "sensor",
       "derived": false,
       "friendly_name": "Battery Max Temperature C",
@@ -3846,7 +3754,7 @@
           "render_as": "readonly_value",
           "display_order": 120,
           "friendly_name": "Battery Max Temperature C",
-          "unit": "\u00b0C",
+          "unit": "°C",
           "empty_state_behavior": "hide_if_unavailable",
           "datatype": "state/value"
         }
@@ -3863,7 +3771,6 @@
           "normalizer": "temperature_c"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3873,7 +3780,7 @@
       "component_id": "battery",
       "section_id": "details",
       "visibility": "product",
-      "unit": "\u00b0C",
+      "unit": "°C",
       "entity_type": "sensor",
       "derived": false,
       "friendly_name": "Battery Min Temperature C",
@@ -3889,7 +3796,7 @@
           "render_as": "readonly_value",
           "display_order": 110,
           "friendly_name": "Battery Min Temperature C",
-          "unit": "\u00b0C",
+          "unit": "°C",
           "empty_state_behavior": "hide_if_unavailable",
           "datatype": "state/value"
         }
@@ -3906,7 +3813,6 @@
           "normalizer": "temperature_c"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -3941,7 +3847,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "implementation": "Single-owner Mobility canonical summary derived from normalized/profile/config facts",
       "truth_precedence": [
         "DERIVED"
@@ -3989,7 +3894,6 @@
           "normalizer": "on_off_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4032,7 +3936,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4075,7 +3978,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4124,7 +4026,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4177,7 +4078,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4221,7 +4121,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4264,7 +4163,6 @@
           "normalizer": "speed_kmh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4300,7 +4198,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "vehicle.charging_state",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -4343,7 +4240,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4387,7 +4283,6 @@
           "normalizer": "energy_kwh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4430,7 +4325,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4474,7 +4368,6 @@
           "normalizer": "timestamp"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4517,7 +4410,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4561,7 +4453,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4605,7 +4496,6 @@
           "normalizer": "vehicle_charging_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4649,7 +4539,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4693,7 +4582,6 @@
           "normalizer": "vehicle_climate_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4737,7 +4625,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4781,7 +4668,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4816,7 +4702,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "implementation": "Single-owner Mobility canonical summary derived from normalized/profile/config facts",
       "truth_precedence": [
         "DERIVED"
@@ -4855,7 +4740,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -4902,7 +4786,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4946,7 +4829,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -4990,7 +4872,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5034,7 +4915,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5078,7 +4958,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5122,7 +5001,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5166,7 +5044,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5210,7 +5087,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5254,7 +5130,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5298,7 +5173,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5334,7 +5208,6 @@
       "producer_types": [
         "RELATIONSHIP"
       ],
-      "producer_type": "RELATIONSHIP",
       "truth_precedence": [
         "RELATIONSHIP"
       ],
@@ -5369,7 +5242,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -5409,7 +5281,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -5449,7 +5320,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -5497,7 +5367,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5534,7 +5403,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "vehicle.range_km",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -5577,7 +5445,6 @@
           "normalizer": "plug_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5621,7 +5488,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5664,7 +5530,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5685,7 +5550,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5704,7 +5568,6 @@
       "unit": null,
       "entity_type": "sensor",
       "derived": true,
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -5723,7 +5586,6 @@
       "unit": null,
       "entity_type": "sensor",
       "derived": true,
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -5772,7 +5634,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5816,7 +5677,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5860,7 +5720,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5905,7 +5764,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -5950,7 +5808,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -5994,7 +5851,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6031,7 +5887,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "vehicle.inspection_due_km",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -6074,7 +5929,6 @@
           "normalizer": "days"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6117,7 +5971,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6153,7 +6006,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "vehicle.inspection_due_days",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -6196,7 +6048,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6241,7 +6092,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -6286,7 +6136,6 @@
           "normalizer": "timestamp"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6329,7 +6178,6 @@
           "normalizer": "timestamp"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6350,7 +6198,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6399,7 +6246,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6442,7 +6288,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6486,7 +6331,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6530,7 +6374,6 @@
           "normalizer": "maintenance_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6575,7 +6418,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -6620,7 +6462,6 @@
           "normalizer": "current_a"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6663,7 +6504,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6708,7 +6548,6 @@
           "normalizer": "power_kw"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -6753,7 +6592,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6788,7 +6626,6 @@
       "producer_types": [
         "CONFIGURED"
       ],
-      "producer_type": "CONFIGURED",
       "truth_precedence": [
         "CONFIGURED"
       ],
@@ -6845,7 +6682,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -6890,7 +6726,6 @@
           "normalizer": "moving_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6933,7 +6768,6 @@
           "normalizer": "moving_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -6977,7 +6811,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -7022,7 +6855,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7058,7 +6890,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "vehicle.oil_service_due_km",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -7094,7 +6925,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "vehicle.oil_service_due_days",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -7137,7 +6967,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7181,7 +7010,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7224,7 +7052,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7268,7 +7095,6 @@
           "normalizer": "days"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7311,7 +7137,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7354,7 +7179,6 @@
           "normalizer": "on_off_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7397,7 +7221,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7408,7 +7231,7 @@
       "component_id": "comfort",
       "section_id": "overview",
       "visibility": "product",
-      "unit": "\u00b0C",
+      "unit": "°C",
       "entity_type": "sensor",
       "derived": false,
       "friendly_name": "Outside temperature",
@@ -7424,7 +7247,7 @@
           "render_as": "readonly_value",
           "display_order": 20,
           "friendly_name": "Outside temperature",
-          "unit": "\u00b0C",
+          "unit": "°C",
           "empty_state_behavior": "hide_if_unavailable",
           "datatype": "state/value"
         }
@@ -7441,7 +7264,6 @@
           "normalizer": "temperature_c"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7484,7 +7306,6 @@
           "normalizer": "duration_s"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7527,7 +7348,6 @@
           "normalizer": "timestamp"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7570,7 +7390,6 @@
           "normalizer": "on_off_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7613,7 +7432,6 @@
           "normalizer": "on_off_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7657,7 +7475,6 @@
           "normalizer": "phase_count"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "PROFILE",
         "SOURCE"
@@ -7703,7 +7520,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7747,7 +7563,6 @@
           "normalizer": "plug_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7791,7 +7606,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7827,7 +7641,6 @@
       "producer_types": [
         "CONFIGURED"
       ],
-      "producer_type": "CONFIGURED",
       "truth_precedence": [
         "CONFIGURED"
       ],
@@ -7878,7 +7691,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7921,7 +7733,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -7957,7 +7768,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "vehicle.fuel_range_km",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -7978,7 +7788,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8019,7 +7828,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "implementation": "Single-owner Mobility canonical summary derived from normalized/profile/config facts",
       "truth_precedence": [
         "DERIVED"
@@ -8068,7 +7876,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8103,7 +7910,6 @@
       "producer_types": [
         "CONFIGURED"
       ],
-      "producer_type": "CONFIGURED",
       "truth_precedence": [
         "CONFIGURED"
       ],
@@ -8154,7 +7960,6 @@
           "normalizer": "duration_s"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8197,7 +8002,6 @@
           "normalizer": "duration_s"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8233,7 +8037,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "charger.requested_power_kw",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -8255,7 +8058,6 @@
       "unit": "kWh",
       "entity_type": "sensor",
       "derived": true,
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -8309,7 +8111,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8352,7 +8153,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8396,7 +8196,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8439,7 +8238,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8482,7 +8280,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8525,7 +8322,6 @@
           "normalizer": "vehicle_security_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8562,7 +8358,6 @@
         "CONFIGURED",
         "RELATIONSHIP"
       ],
-      "producer_type": "RELATIONSHIP",
       "truth_precedence": [
         "RELATIONSHIP",
         "CONFIGURED"
@@ -8614,7 +8409,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8659,7 +8453,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE",
         "CONFIGURED"
@@ -8715,7 +8508,6 @@
           "normalizer": "energy_kwh"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8758,7 +8550,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8801,7 +8592,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8844,7 +8634,6 @@
           "normalizer": "timestamp"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8887,7 +8676,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8930,7 +8718,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -8974,7 +8761,6 @@
           "normalizer": "days"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9017,7 +8803,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9054,7 +8839,6 @@
         "ALIAS"
       ],
       "canonical_alias_of": "vehicle.fuel_level_pct",
-      "producer_type": "ALIAS",
       "truth_precedence": [
         "ALIAS"
       ],
@@ -9089,7 +8873,6 @@
       "producer_types": [
         "DERIVED"
       ],
-      "producer_type": "DERIVED",
       "truth_precedence": [
         "DERIVED"
       ],
@@ -9129,7 +8912,6 @@
         "CONFIGURED",
         "PROFILE"
       ],
-      "producer_type": "PROFILE_OR_CONFIGURED",
       "truth_precedence": [
         "CONFIGURED",
         "PROFILE"
@@ -9185,7 +8967,6 @@
           "normalizer": "duration_min"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9228,7 +9009,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9272,7 +9052,6 @@
           "normalizer": "canonical_token"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9316,7 +9095,6 @@
           "normalizer": "tire_health_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9360,7 +9138,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9403,7 +9180,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9446,7 +9222,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9489,7 +9264,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9532,7 +9306,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9575,7 +9348,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9618,7 +9390,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9661,7 +9432,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9704,7 +9474,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9747,7 +9516,6 @@
           "normalizer": "pressure_bar"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9790,7 +9558,6 @@
           "normalizer": "duration_min"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9833,7 +9600,6 @@
           "normalizer": "duration_min"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9876,7 +9642,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9919,7 +9684,6 @@
           "normalizer": "distance_km"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -9962,7 +9726,6 @@
           "normalizer": "timestamp"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10005,7 +9768,6 @@
           "normalizer": "timestamp"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10048,7 +9810,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10092,7 +9853,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10136,7 +9896,6 @@
           "normalizer": "integer_count"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10179,7 +9938,6 @@
           "normalizer": "text"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10222,7 +9980,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10265,7 +10022,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10309,7 +10065,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10352,7 +10107,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10396,7 +10150,6 @@
           "normalizer": "on_off_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10439,7 +10192,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10482,7 +10234,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10526,7 +10277,6 @@
           "normalizer": "percentage"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10569,7 +10319,6 @@
           "normalizer": "open_closed_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10613,7 +10362,6 @@
           "normalizer": "locked_state"
         }
       ],
-      "producer_type": "SOURCE",
       "truth_precedence": [
         "SOURCE"
       ],
@@ -10637,7 +10385,6 @@
       "producer_types": [
         "SOURCE"
       ],
-      "producer_type": "SOURCE",
       "internal_only": true,
       "builder_sources": [
         {
@@ -10671,7 +10418,6 @@
       "producer_types": [
         "SOURCE"
       ],
-      "producer_type": "SOURCE",
       "internal_only": true,
       "builder_sources": [
         {
@@ -10705,7 +10451,6 @@
       "producer_types": [
         "SOURCE"
       ],
-      "producer_type": "SOURCE",
       "internal_only": true,
       "builder_sources": [
         {
@@ -10738,7 +10483,6 @@
       "producer_types": [
         "SOURCE"
       ],
-      "producer_type": "SOURCE",
       "internal_only": true,
       "builder_sources": [
         {
@@ -10772,7 +10516,6 @@
       "producer_types": [
         "SOURCE"
       ],
-      "producer_type": "SOURCE",
       "internal_only": true,
       "builder_sources": [
         {
@@ -10806,7 +10549,6 @@
       "producer_types": [
         "SOURCE"
       ],
-      "producer_type": "SOURCE",
       "internal_only": true,
       "builder_sources": [
         {
@@ -10836,7 +10578,6 @@
         "charger"
       ],
       "v1_drop_in": true,
-      "producer_type": "ALIAS",
       "canonical_alias_of": "asset.lifecycle_status",
       "truth_precedence": [
         "ALIAS",
@@ -10857,5 +10598,10 @@
       ],
       "value_type": "boolean"
     }
+  },
+  "compatibility": {
+    "facade_only_aliases": [
+      "vehicle.charging_power_kw"
+    ]
   }
 }

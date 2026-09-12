@@ -1,16 +1,53 @@
 from __future__ import annotations
 import logging
+from copy import deepcopy
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Callable
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event
 from ..builders.selected_input import prepare_selected_build_input
+from ..eligibility import broad_all_matching_selection
 from ..models.contracts import AssetControlProfile, LogicalAssetBinding, RelationshipSnapshot, RuntimeSnapshot, VehiclePlanningProfile
 from .normalization import normalize
 from .derived import apply_vehicle_derivations, apply_charger_derivations
+from .producer_candidates import collect_producer_candidates
 
 _LOGGER = logging.getLogger(__name__)
+
+def _cupra_canonical_odometer_candidate(candidate: dict) -> bool:
+    ident = candidate.get("source_identity") if isinstance(candidate, dict) else None
+    if not isinstance(ident, dict):
+        return False
+    unique_id = str(ident.get("unique_id") or "")
+    if "_" not in unique_id:
+        return False
+    return unique_id.split("_", 1)[1] in {"mileage", "mileage.value"}
+
+
+def _semantic_candidate_filter(payload: dict) -> dict:
+    """Domain-owned semantic disambiguation after Foundation technical discovery."""
+    if not isinstance(payload, dict):
+        return payload
+    selection = payload.get("selection") or {}
+    if payload.get("builder_id") != "mobility.vehicle.connected_vehicle.v1" or selection.get("integration_domain") != "cupra_eu_data_act":
+        return payload
+    out = deepcopy(payload)
+    evidence = {str(row.get("candidate_id")): row for row in out.get("candidate_evidence") or [] if isinstance(row, dict) and row.get("candidate_id")}
+    for group in out.get("candidate_groups") or []:
+        if not isinstance(group, dict) or group.get("input_id") != "vehicle_odometer":
+            continue
+        original_ids = [str(value) for value in group.get("candidate_ids") or []]
+        canonical_ids = [cid for cid in original_ids if _cupra_canonical_odometer_candidate(evidence.get(cid) or {})]
+        if len(canonical_ids) != 1:
+            continue
+        keep=set(canonical_ids)
+        group["candidate_ids"]=canonical_ids
+        group["candidate_count"]=1
+        group["candidate_matches"]=[row for row in group.get("candidate_matches") or [] if isinstance(row,dict) and str(row.get("candidate_id") or "") in keep]
+        group["mobility_semantic_filter"]={"rule":"cupra_eu_data_act_canonical_odometer_field","technical_candidate_count":len(original_ids),"accepted_candidate_count":1}
+    return out
+
 
 class MobilityRuntimeManager:
     """Runtime from Foundation technical inputs plus Mobility-owned guest vehicles."""
@@ -38,6 +75,7 @@ class MobilityRuntimeManager:
         self._refresh_flush_scheduled=False
         self.last_build_attempt: dict[str,Any] = {'status':'WAITING_FOR_FOUNDATION','observed_at':None}
         self._health_cache: dict[str,tuple[str,str]] = {}
+        self._producer_candidates_by_asset: dict[str, dict] = {}
 
     @property
     def bindings(self):
@@ -57,44 +95,19 @@ class MobilityRuntimeManager:
         return profile
 
     def effective_profile_id(self, asset_id: str) -> str | None:
-        """Resolve explicit configuration first, then a deterministic source default.
-
-        These defaults are Mobility-owned product semantics. They never change the
-        technical source binding and deliberately do not fuse multiple vehicle sources.
-        """
+        """Resolve only an explicitly configured, type-compatible Mobility profile."""
         configured = self.configuration_value(asset_id, "asset.profile_id", None)
-        if configured:
-            return str(configured)
+        if configured in (None, ""):
+            return None
+        profile_id = str(configured)
+        getter = getattr(self.registry, "profile", None)
+        profile = getter(profile_id) if callable(getter) else None
         asset = self.assets.get(asset_id)
-        if asset is None:
+        if asset is None or not isinstance(profile, dict):
             return None
-        integration = str(asset.source_integration_domain or "").lower()
-        if asset.concept_id == "charger":
-            return {
-                "ocpp": "wallbox_ocpp",
-                "peblar": "peblar_22kw",
-                "mqtt": "utility_plug",
-            }.get(integration)
-        if asset.concept_id != "vehicle":
+        if profile.get("profile_type") != asset.concept_id:
             return None
-        if integration == "audiconnect":
-            return "audi_q8_tfsi_55e_2025_phev"
-        if integration == "mbapi2020":
-            return "mercedes_gla_2021_phev"
-        if integration == "cupra_eu_data_act":
-            identity = " ".join(
-                str(value or "")
-                for value in (
-                    self._source_device_name(asset.source_device_id),
-                    asset.display_name,
-                    asset.source_device_id,
-                )
-            ).lower()
-            if "id4" in identity or "id.4" in identity or "volkswagen" in identity or "vw " in identity:
-                return "vw_id4_business_pro_77kwh"
-            if "audi" in identity or "q8" in identity:
-                return "audi_q8_tfsi_55e_2025_phev"
-        return None
+        return profile_id
 
     @property
     def control_profiles(self) -> dict[str, AssetControlProfile]:
@@ -429,11 +442,25 @@ class MobilityRuntimeManager:
         for unsub in self._unsubs.pop(asset_id,[]): unsub()
 
     def clear_all(self) -> None:
+        self._producer_candidates_by_asset.clear()
         for asset_id in list(self._unsubs): self._clear_asset_listener(asset_id)
         self.assets.clear(); self.snapshots.clear(); self.relationships.clear()
         self._selection_asset_roles.clear(); self._selection_asset_ids.clear(); self._selection_diagnostics.clear(); self._capability_diagnostics.clear(); self._selection_relationship_ids.clear(); self._selection_control_profiles.clear(); self._selection_planning_profiles.clear(); self._health_cache.clear(); self._pending_refresh_assets.clear(); self._notify_topology()
 
     async def async_replace_selected_build_inputs(self, payloads: list[dict[str,Any]] | tuple[dict[str,Any], ...]) -> dict[str,Any]:
+        rows=[_semantic_candidate_filter(row) for row in list(payloads or [])]
+        rejected=[row for row in rows if broad_all_matching_selection(row)]
+        accepted=[row for row in rows if not broad_all_matching_selection(row)]
+        result=await self._async_replace_selected_build_inputs_core(accepted)
+        if rejected:
+            diagnostics=list(getattr(self,"_capability_diagnostics",()) or ())
+            for row in rejected:
+                selection=row.get("selection") or {}
+                diagnostics.append({"builder_id":row.get("builder_id"),"integration_domain":selection.get("integration_domain"),"selection_id":None,"asset_id":"selection_scope","device_id":None,"input_id":"device_eligibility","required":True,"status":"REJECTED_REVIEW_REQUIRED","reason":"broad technical integrations require explicit concrete device selection for Mobility object creation","candidate_id":None,"source_kind":None,"target_scope":None,"raw_capability_id":None,"published_match":None,"normalized_properties":[]})
+            self._capability_diagnostics=diagnostics
+        return result
+
+    async def _async_replace_selected_build_inputs_core(self, payloads: list[dict[str,Any]] | tuple[dict[str,Any], ...]) -> dict[str,Any]:
         """Reconcile the complete Foundation handoff slice with capability isolation.
 
         Top-level malformed handoffs are isolated to their selection. Identifiable Mobility
@@ -691,6 +718,17 @@ class MobilityRuntimeManager:
         self._refresh(asset_id)
 
     def _refresh(self, asset_id: str) -> None:
+        self._refresh_core(asset_id)
+        if asset_id in self.assets:
+            self._producer_candidates_by_asset[asset_id]=collect_producer_candidates(self,asset_id)
+        else:
+            self._producer_candidates_by_asset.pop(asset_id,None)
+
+    def producer_candidates(self, asset_id: str, property_id: str | None = None):
+        rows=self._producer_candidates_by_asset.get(asset_id,{})
+        return rows if property_id is None else rows.get(property_id,{})
+
+    def _refresh_core(self, asset_id: str) -> None:
         asset=self.assets.get(asset_id); snap=self.snapshots.get(asset_id)
         if not asset or not snap: return
         before=(dict(snap.values),dict(snap.quality),snap.health,snap.health_reason,snap.source_configuration_revision,snap.build_input_revision)

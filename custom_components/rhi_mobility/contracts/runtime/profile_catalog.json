@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_PROFILE_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.5.8",
+  "release": "M0.7.2",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,

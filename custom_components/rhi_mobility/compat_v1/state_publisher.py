@@ -2,20 +2,20 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from .const import RELEASE, RELEASE_NAME
+from ..const import RELEASE, RELEASE_NAME
 
 CONTRACT='MOBILITY_PUBLIC_RUNTIME_V1'
 
-class MobilityLegacyV1StatePublisher:
+class MobilityV1StatePublisher:
     """Exact R43.2.65 public state facade backed exclusively by the V2 providers.
 
     These states deliberately bypass EntityPlatform naming so exact historical entity IDs are
     retained. Setup fails when an active legacy state still exists; V2 never overwrites a live V1
     computation and never accepts an `_2` compatibility suffix.
     """
-    def __init__(self,hass,facade,manager,controller) -> None:
-        self.hass=hass; self.facade=facade; self.manager=manager; self.controller=controller
-        shape_path=Path(__file__).parent/'contracts'/'runtime'/'legacy_public_entity_shapes_v1.json'
+    def __init__(self,hass,facade,subscribe_runtime=None,subscribe_control=None) -> None:
+        self.hass=hass; self.facade=facade; self._subscribe_runtime=subscribe_runtime; self._subscribe_control=subscribe_control
+        shape_path=Path(__file__).parents[1]/'contracts'/'runtime'/'legacy_public_entity_shapes_v1.json'
         self.shapes=json.loads(shape_path.read_text(encoding='utf-8'))['entities']
         self._unsubs=[]; self._started=False
 
@@ -27,8 +27,9 @@ class MobilityLegacyV1StatePublisher:
         if collisions:
             raise RuntimeError('legacy Mobility facade collision; disable R43.2.65 before V2 takeover: '+','.join(collisions))
         self._started=True
-        subscribe=getattr(self.manager,'add_runtime_listener',self.manager.add_listener)
-        self._unsubs=[subscribe(self.publish),self.controller.add_listener(self.publish)]
+        self._unsubs=[]
+        if callable(self._subscribe_runtime): self._unsubs.append(self._subscribe_runtime(self.publish))
+        if callable(self._subscribe_control): self._unsubs.append(self._subscribe_control(self.publish))
         self.publish()
 
     def stop(self) -> None:
@@ -63,17 +64,17 @@ class MobilityLegacyV1StatePublisher:
 
     def _person_rows(self):
         rows=[]
-        for aid,a in sorted(self.manager.assets.items()):
-            if a.concept_id!='person': continue
-            snap=self.manager.snapshots.get(aid); vals={} if snap is None else snap.values
+        for asset in self.facade.assets():
+            if asset.get('asset_type')!='person': continue
+            aid=str(asset['asset_id'])
             for key,label in (('person.location_state','Location state'),('person.presence_state','Presence')):
-                value=vals.get(key)
+                value=self.facade._value(aid,key)
                 rows.append({'asset_id':aid,'asset_type':'person','property_key':key,'value':value,'display_value':value,'friendly_name':label,'editable':False,'available':value is not None,'source_layer':'rhi_mobility_v2'})
         return rows
 
     def _physical_proven(self) -> bool:
-        for row in self.controller.executor.snapshot().get('last_results',[]):
-            if row.get('result') in {'SUCCEEDED','SUCCEEDED_AFTER_DELAY','ALREADY_CONVERGED'} and row.get('write_attempted'):
+        for row in (self.facade.activity.snapshot() or {}).get('activities',[]):
+            if row.get('activity_type')=='execution' and row.get('activity_state') in {'SUCCEEDED','SUCCEEDED_AFTER_DELAY','ALREADY_CONVERGED'} and row.get('write_attempted'):
                 return True
         return False
 
@@ -82,9 +83,9 @@ class MobilityLegacyV1StatePublisher:
         if isinstance(value, str):
             return value.strip().lower() == 'not_evaluated'
         if isinstance(value, dict):
-            return any(MobilityLegacyV1StatePublisher._contains_not_evaluated(v) for v in value.values())
+            return any(MobilityV1StatePublisher._contains_not_evaluated(v) for v in value.values())
         if isinstance(value, (list, tuple)):
-            return any(MobilityLegacyV1StatePublisher._contains_not_evaluated(v) for v in value)
+            return any(MobilityV1StatePublisher._contains_not_evaluated(v) for v in value)
         return False
 
     def _intelligence_violations(self) -> list[str]:
@@ -119,8 +120,8 @@ class MobilityLegacyV1StatePublisher:
                 violations.append(f'{aid}:vehicle_context_missing')
             if self._contains_not_evaluated(row):
                 violations.append(f'{aid}:not_evaluated_forbidden')
-        expected_v = sum(a.concept_id=='vehicle' for a in self.manager.assets.values())
-        expected_c = sum(a.concept_id=='charger' for a in self.manager.assets.values())
+        expected_v = sum(row.get('asset_type')=='vehicle' for row in self.facade.assets())
+        expected_c = sum(row.get('asset_type')=='charger' for row in self.facade.assets())
         if len(vehicles) != expected_v:
             violations.append(f'vehicle_count:{len(vehicles)}:expected:{expected_v}')
         if len(chargers) != expected_c:
@@ -205,8 +206,8 @@ class MobilityLegacyV1StatePublisher:
         if eid=='sensor.mobility_energy_publication_health':
             e=self.facade.energy_v1(); consumers=e['consumer_assets']; connections=e['connection_assets']
             active=sum(1 for x in consumers if x.get('lifecycle_status')=='active')
-            expected_consumers=sum(a.concept_id=='vehicle' for a in self.manager.assets.values())
-            expected_connections=sum(a.concept_id=='charger' for a in self.manager.assets.values())
+            expected_consumers=sum(row.get('asset_type')=='vehicle' for row in self.facade.assets())
+            expected_connections=sum(row.get('asset_type')=='charger' for row in self.facade.assets())
             violations=[]
             if len(consumers)!=expected_consumers: violations.append('consumer_count_mismatch')
             if len(connections)!=expected_connections: violations.append('connection_count_mismatch')
@@ -231,11 +232,11 @@ class MobilityLegacyV1StatePublisher:
             attrs={'contract_version':CONTRACT,'consumer_visibility':'public_contract','contract_name':'Mobility Canonical Asset Runtime Contract','aligned_energy_contract':'Canonical Energy Asset Runtime Contract v1','external_publication_contract':'External Energy Asset Publication Contract v1','governance_rule':'Model first -> source -> build -> package -> distribution.','shared_canonical_fields_json':json.dumps(fields,separators=(',',':')),'lifecycle_enum_json':json.dumps(['active','inactive','disabled','commissioning','retired','unknown'],separators=(',',':')),'availability_enum_json':json.dumps(['available','unavailable','degraded','unknown'],separators=(',',':')),'energy_control_mode_enum_json':json.dumps(['automatic','manual','disabled'],separators=(',',':')),'energy_control_hold_state_enum_json':json.dumps(['none','paused'],separators=(',',':')),'energy_flow_direction_enum_json':json.dumps(['import','export','idle','unknown'],separators=(',',':')),'no_guess_rule':'UX and Energy consume canonical fields/contracts and never infer raw source semantics.'}
             return 'ready',self._shaped(eid,attrs)
         if eid=='sensor.mobility_runtime_health':
-            state=('OK' if self.manager.last_build_attempt.get('status')=='REMOVED' else 'WAITING_FOR_FOUNDATION') if not self.manager.snapshots else ('OK' if all(s.health=='OK' for s in self.manager.snapshots.values()) else 'DEGRADED')
+            state=str((self.facade.supervision.snapshot() if self.facade.supervision else {}).get('runtime_status','UNKNOWN'))
             attrs={**release,'health_scope':'v2_runtime_backed_v1_facade','health_rule':'Earliest V2 runtime failure is authoritative; no compatibility false-green.','missing_entities_json':[],'violations_json':[]}
             return state,self._shaped(eid,attrs)
         if eid=='sensor.mobility_release_acceptance_health':
-            runtime=('OK' if self.manager.last_build_attempt.get('status')=='REMOVED' else 'WAITING_FOR_FOUNDATION') if not self.manager.snapshots else ('OK' if all(s.health=='OK' for s in self.manager.snapshots.values()) else 'DEGRADED')
+            runtime=str((self.facade.supervision.snapshot() if self.facade.supervision else {}).get('runtime_status','UNKNOWN'))
             physical='PROVEN' if self._physical_proven() else 'NOT_PROVEN'
             state='ACCEPTED' if runtime=='OK' and physical=='PROVEN' else ('FAIL' if runtime=='FAIL' else 'NOT_PROVEN')
             return state,self._shaped(eid,{**release,'health_scope':'release_acceptance_requires_runtime_and_physical_proof','runtime_health':runtime,'physical_acceptance':physical,'acceptance_rule':'ACCEPTED only after runtime is OK and bounded physical execution is proven.'})
@@ -266,7 +267,7 @@ class MobilityLegacyV1StatePublisher:
             activities=self.facade.activity.snapshot().get('activities',[])
             by={}
             for a in activities: by.setdefault(a.get('asset_id','unknown'),[]).append(a)
-            return len(activities),self._shaped(eid,{'contract_version':CONTRACT,'consumer_visibility':'public_contract','index_schema':'activity_index_v1','index_role':'latest/current activity','standard_rule':'HA Recorder owns long-term history','long_term_history_rule':'recorder','open_activity_count':0,'activities_by_scope':by,'activities_json':activities,'transactions_by_scope':{},'last_results_by_scope':{},'snapshot_revision':max((s.build_input_revision for s in self.manager.snapshots.values()),default=0),'observed_at':None})
+            return len(activities),self._shaped(eid,{'contract_version':CONTRACT,'consumer_visibility':'public_contract','index_schema':'activity_index_v1','index_role':'latest/current activity','standard_rule':'HA Recorder owns long-term history','long_term_history_rule':'recorder','open_activity_count':0,'activities_by_scope':by,'activities_json':activities,'transactions_by_scope':{},'last_results_by_scope':{},'snapshot_revision':int((self.facade.supervision.snapshot() if self.facade.supervision else {}).get('build_input_revision',0) or 0),'observed_at':None})
         if eid in {'sensor.mobility_vehicle_component_contract_index','sensor.mobility_charger_component_contract_index'}:
             typ='vehicle' if 'vehicle_' in eid else 'charger'; c=self.facade.component_contract(typ)
             attrs={'contract_version':CONTRACT,'index_schema':f'{typ}_component_contract_v1','asset_type':typ,'consumer_visibility':'public_contract','governance_rule':'exact R43.2.65 placement projected from V2','model_source':'legacy compatibility catalog','source_implementation':'rhi_mobility V2 facade','definition_hash':'M0.5.8','definition_count':len(self.facade.defs_by_type[typ]),'internal_alias_count':len(self.facade.aliases),'component_count':c['component_count'],'property_index_entity':f'sensor.mobility_{typ}_property_index','relationship_index_entity':'sensor.mobility_relationship_index','activity_index_entity':'sensor.mobility_activity_index','command_index_entity':'sensor.mobility_command_index','command_slot_index_entity':f'sensor.mobility_{typ}_command_slot_index','property_component_map_json':c['property_component_map_json'],'ux_fields_by_property_json':c['property_component_map_json'],'components_json':c['components_json'],'components_by_id':c['components_by_id'],'ux_cards_json':c['components_json'],'ux_layout_rules_json':[],'ux_forbidden_rendering_json':[],'command_render_rule':'render slot placement exactly once','required_ux_contract_fields_json':['property_key','component_id','section_id']}
@@ -290,7 +291,7 @@ class MobilityLegacyV1StatePublisher:
         if eid=='sensor.mobility_energy_asset_publication':
             e=self.facade.energy_v1(); consumers=e['consumer_assets']; connections=e['connection_assets']
             active=sum(1 for x in consumers if x.get('lifecycle_status')!='disabled')
-            attrs={'contract_version':CONTRACT,'schema_version':'mobility_energy_asset_publication_v1','publication_role':'Mobility->Energy compatibility boundary','source_domain':'mobility','target_domain':'energy','total_energy_asset_count':len(consumers)+len(connections),'consumer_asset_count':len(consumers),'consumer_count':len(consumers),'active_consumer_count':active,'connection_asset_count':len(connections),'connection_count':len(connections),'republish_dependencies_json':[],'publication_boundary_rule':'V2 Mobility facts only; no physical bindings','consumer_assets':consumers,'connection_assets':connections,'health':'OK' if (self.manager.snapshots or self.manager.last_build_attempt.get('status')=='REMOVED') else 'WAITING_FOR_FOUNDATION','health_reason':'v2_projection','semantic_violations_json':[],'minimal_tech_debt_rule':'no duplicated computation','legacy_field_policy':'compatibility only','canonical_field_policy':'MOBILITY_ENERGY_V2','charging_relations':e['charging_relations'],'directional_connection_counters':e['directional_connection_counters'],'actual_power_kw_scope_rule':'physical charger meter is additive; vehicle is attributed/non-additive','primary_contract_shape_rule':'R43.2.65 compatible','energy_boundary_minimality_rule':'no raw integration details','operating_state_vocabulary':['idle','preparing','running','suspended','stopped','fault','unknown'],'last_command_result':self.controller.executor.snapshot().get('last_results',[])[-1] if self.controller.executor.snapshot().get('last_results') else None,'minimal_charging_contract_rule':'Mobility owns physical execution','canonical_charger_runtime_projection_rule':'V2 snapshot'}
+            attrs={'contract_version':CONTRACT,'schema_version':'mobility_energy_asset_publication_v1','publication_role':'Mobility->Energy compatibility boundary','source_domain':'mobility','target_domain':'energy','total_energy_asset_count':len(consumers)+len(connections),'consumer_asset_count':len(consumers),'consumer_count':len(consumers),'active_consumer_count':active,'connection_asset_count':len(connections),'connection_count':len(connections),'republish_dependencies_json':[],'publication_boundary_rule':'V2 Mobility facts only; no physical bindings','consumer_assets':consumers,'connection_assets':connections,'health':str((self.facade.supervision.snapshot() if self.facade.supervision else {}).get('runtime_status','UNKNOWN')),'health_reason':'v2_projection','semantic_violations_json':[],'minimal_tech_debt_rule':'no duplicated computation','legacy_field_policy':'compatibility only','canonical_field_policy':'MOBILITY_ENERGY_V2','charging_relations':e['charging_relations'],'directional_connection_counters':e['directional_connection_counters'],'actual_power_kw_scope_rule':'physical charger meter is additive; vehicle is attributed/non-additive','primary_contract_shape_rule':'R43.2.65 compatible','energy_boundary_minimality_rule':'no raw integration details','operating_state_vocabulary':['idle','preparing','running','suspended','stopped','fault','unknown'],'last_command_result':next((row for row in reversed((self.facade.activity.snapshot() or {}).get('activities',[])) if row.get('activity_type')=='execution'),None),'minimal_charging_contract_rule':'Mobility owns physical execution','canonical_charger_runtime_projection_rule':'V2 snapshot'}
             state=f'{active} active / {len(consumers)} consumers / {len(connections)} connections'
             return state,self._shaped(eid,attrs)
         if eid=='sensor.mobility_effective_charging_capability_index':
@@ -305,7 +306,7 @@ class MobilityLegacyV1StatePublisher:
         if eid in {'sensor.mobility_command_publication_health','sensor.mobility_relationship_integrity_health','sensor.mobility_vehicle_command_slot_health','sensor.mobility_charger_command_slot_health','sensor.mobility_intelligence_publication_health'}:
             violations=[]; state='OK'
             if eid=='sensor.mobility_relationship_integrity_health':
-                violations=[r['relationship_id'] for r in relationships if r['from_asset_id'] not in self.manager.assets or r['to_asset_id'] not in self.manager.assets]
+                violations=[r['relationship_id'] for r in relationships if r['from_asset_id'] not in {a['asset_id'] for a in self.facade.assets()} or r['to_asset_id'] not in {a['asset_id'] for a in self.facade.assets()}]
             if 'command_slot_health' in eid:
                 typ='vehicle' if 'vehicle_' in eid else 'charger'; seen=[]
                 for s in self.facade.command_slots(typ):
@@ -315,7 +316,7 @@ class MobilityLegacyV1StatePublisher:
             if eid=='sensor.mobility_intelligence_publication_health':
                 violations=self._intelligence_violations()
             if violations: state='FAIL'
-            attrs={'contract_version':CONTRACT,'release_version':RELEASE,'consumer_visibility':'diagnostics_only','release_gate':True,'violations_json':violations,'public_index':'sensor.mobility_command_index','execution_policy':'V2 only','vehicle_intelligence_count':len(self.facade.experience_rows('vehicle')),'expected_vehicle_intelligence_count':sum(a.concept_id=='vehicle' for a in self.manager.assets.values()),'charger_intelligence_count':len(self.facade.experience_rows('charger')),'expected_charger_intelligence_count':sum(a.concept_id=='charger' for a in self.manager.assets.values())}
+            attrs={'contract_version':CONTRACT,'release_version':RELEASE,'consumer_visibility':'diagnostics_only','release_gate':True,'violations_json':violations,'public_index':'sensor.mobility_command_index','execution_policy':'V2 only','vehicle_intelligence_count':len(self.facade.experience_rows('vehicle')),'expected_vehicle_intelligence_count':sum(row.get('asset_type')=='vehicle' for row in self.facade.assets()),'charger_intelligence_count':len(self.facade.experience_rows('charger')),'expected_charger_intelligence_count':sum(row.get('asset_type')=='charger' for row in self.facade.assets())}
             return state,self._shaped(eid,attrs)
         raise KeyError(eid)
 

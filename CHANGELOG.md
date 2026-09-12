@@ -1,5 +1,32 @@
 # Changelog
 
+## M0.7.2 — V1 facade closure and domain supervision
+
+- Adopt Shared Baseline `1.8.0` and publish Mobility domain supervisory status without moving Mobility semantic ownership into Foundation.
+- Isolate all intentional V1 compatibility debt under `custom_components/rhi_mobility/compat_v1/`; V1 is a removable projection/facade over canonical `MOBILITY_PUBLIC_RUNTIME_V2` truth and command surfaces.
+- Add fail-closed V1 facade parity and compatibility-architecture audits so legacy entity shape, placement and write semantics cannot silently drift.
+- Complete command-surface closure checks from canonical command declaration through target resolution, execution lifecycle and readback attribution.
+- Add Mobility-owned logical device surfaces and source diagnostics while keeping HA device/entity projection a renderer of backend-owned semantics.
+- Keep guest vehicles Mobility-owned, preserve add/edit/remove persistence, and retain the Home Assistant 2026.9 options-flow correction without reintroducing obsolete `battery_energy_kwh` form authoring.
+- Add zero-runtime-tech-debt and device-surface architecture gates alongside canonical contract authority, normalized mapping coverage and completeness/presentation gates.
+- Preserve the M0.7.1 normalized property, profile, image, relationship, Energy interop and physical command behavior with no intentional public entity ID, unique ID, service or command rename/removal.
+- Static source, package, test and hassfest validation are required to be green for the merge candidate. Target Home Assistant clean-install, upgrade, rollback and full V1 runtime parity remain explicit post-merge test-candidate acceptance gates.
+
+## M0.7.1 — Structural runtime chain recovery
+
+- Move all effective Foundation-facing Mobility matching, builder-version and presentation semantics out of runtime mutation code and into the canonical generated DomainBuildSpecification authority.
+- Make `MobilityModelRegistry` a pure loader; runtime code no longer rewrites technical matches, builder versions, aliases, presentation or source evidence.
+- Add a fail-closed contract-authority CI gate proving canonical source DBS, packaged DBS, registry output and Foundation publication are identical.
+- Add deterministic adapter-conformance fixture generation and CI drift detection so adapter changes cannot silently outpace their test evidence.
+- Complete typed producer ownership for compatibility aliases and accepted logical-asset identity; stale observations resolve as temporary unavailability rather than normalization errors.
+- Keep invalid values and unresolved ownership hard-failing; the completeness gate is not relaxed.
+- Correct Cupra/Data Act odometer selection using integration-native technical identity so trip mileage is never promoted to canonical vehicle odometer truth.
+- Keep OCPP physical connector state distinct from central-system status and retain measured charger power as an optional capability.
+- Preserve historical runtime-observed evidence as history rather than forcing old published matches to equal current canonical matching rules.
+- Derive build/package release identity from the integration manifest and runtime release constant instead of hardcoded legacy versions.
+- Preserve the complete M0.7.0/M0.6.7 public property, profile, image, guest-vehicle, relationship, command and V1 compatibility surfaces while repairing the authority chain.
+- Target Home Assistant acceptance remains mandatory before the release can be declared complete.
+
 ## M0.7.0 — Runtime truth architecture
 
 - Introduce typed `PropertyResolution` as the single canonical runtime result consumed by HA, V1, diagnostics/coverage and Mobility→Energy interop.
@@ -13,32 +40,6 @@
 - Keep V1 as a projection over V2 truth instead of a second value-resolution implementation.
 - Publish resolved Mobility facts and command references to Energy rather than raw HA target details.
 - Preserve the complete M0.6.7 property/profile/image/presentation surface; target Home Assistant runtime acceptance remains mandatory.
-- Canonical source main: `40b3e8c8b78013090cde7bfbd23f8371a9fd0c96`.
-
-## M0.6.7 — Completeness and presentation recovery
-
-- Carry forward the M0.6.6 vehicle property-family and command recovery for AudiConnect, Cupra/Data Act and Mercedes sources.
-- Restore target-proven security, door/window, hood/trunk, climate, range/odometer and maintenance/service mappings without conflating charging-plug lock state with central vehicle security.
-- Restore vehicle command attribution for Foundation-proven config-entry service surfaces; AudiConnect uses its required `device_id + action` payload and Mercedes uses VIN-based routes where safely supported.
-- Keep Mercedes unlock fail-closed when integration-managed security authorization is required.
-- Expose the complete applicable canonical normalized property surface for every logical vehicle and charger. Missing truth remains visible with an explicit resolution reason instead of disappearing.
-- Add fail-closed completeness diagnostics for normalized-property coverage and source-capability classification. Runtime acceptance requires zero ambiguous, unmapped, unclassified or unexplained properties/capabilities.
-- Materialize selected profile metadata and profile-derived values through the canonical runtime while preserving source/configuration precedence.
-- Add profile presentation and packaged profile images for Audi Q8, VW ID.4, Mercedes GLA, BMW X1, Renault Scenic, guest EV/PHEV, Wallbox OCPP, Peblar, utility plug and generic fallbacks.
-- Give Guest Vehicle the same profile-selection and profile-presentation path as discovered vehicles.
-- Preserve and expose vehicle ↔ charger relationships, including `vehicle.selected_charger` / effective charger and charger-side assigned vehicle semantics.
-- Requires Foundation F1.7.5 and Shared Baseline 1.7.1.
-- Source main CI is green at `0a8d1fb823192fe74650b3eae963228c0e391181`; target Home Assistant runtime acceptance remains pending this HACS test release.
-
-## M0.6.5 — Fixed capability binding recovery
-
-- Restore integration-provided technical capability identifiers as authoritative evidence while Foundation creates or repairs a binding.
-- Keep mutable Home Assistant `current_entity_id` values out of semantic matching authority.
-- Preserve accepted source bindings as the fixed runtime source of truth after onboarding/discovery.
-- Restore target-proven Audi charging-state capability matching and OCPP physical connector state matching.
-- Keep OCPP measured power optional where the integration does not expose it.
-- Requires Foundation F1.7.5 and Shared Baseline 1.7.1.
-- Runtime validation remains pending until the target Home Assistant proves real accepted bindings, assets and normalized properties.
 
 ## M0.5.10 — Public runtime usability correction
 

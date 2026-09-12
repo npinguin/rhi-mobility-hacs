@@ -19,12 +19,6 @@ class MobilityPublicRuntimeProvider:
         self.properties: dict[str, dict[str, Any]] = dict(semantic.get("properties") or {})
         self.aliases = dict(getattr(registry, "legacy_aliases", {}) or {})
         self.parity = dict(getattr(registry, "v1_drop_in_parity", {}) or {})  # reporting/acceptance only
-        self._producer_types: dict[tuple[str, str], str] = {}
-        for key, definition in self.properties.items():
-            producer = definition.get("producer_type")
-            for asset_type in definition.get("applicable_asset_types") or []:
-                if producer:
-                    self._producer_types[(str(asset_type), str(key))] = str(producer)
 
     def property_definition(self, property_key: str, asset_type: str | None = None) -> dict[str, Any] | None:
         base = self.properties.get(property_key)
@@ -222,9 +216,6 @@ class MobilityPublicRuntimeProvider:
         # and already supplied by MobilityRuntimeManager.property_provenance().
         out["normalization_status"] = "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN"
         return {k: v for k, v in out.items() if v is not None}
-
-    def _producer_type(self, asset_type: str, property_key: str) -> str | None:
-        return self._producer_types.get((asset_type, property_key))
 
     def _capability_supported_keys(self, asset_id: str) -> set[str]:
         supported = getattr(self.manager, "supported_property_keys", None)

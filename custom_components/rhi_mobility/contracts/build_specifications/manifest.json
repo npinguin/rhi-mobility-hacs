@@ -5,78 +5,44 @@
   "domain_id": "mobility",
   "specification_count": 5,
   "builders": [
-    {
-      "builder_id": "mobility.charger.full_evse.v1",
-      "builder_version": "1.5.1",
-      "file": "mobility_charger_full_evse_v1.json"
-    },
-    {
-      "builder_id": "mobility.charger.utility_surface.v1",
-      "builder_version": "1.5.1",
-      "file": "mobility_charger_utility_surface_v1.json"
-    },
-    {
-      "builder_id": "mobility.person.presence.v1",
-      "builder_version": "1.5.1",
-      "file": "mobility_person_presence_v1.json"
-    },
-    {
-      "builder_id": "mobility.vehicle.connected_vehicle.v1",
-      "builder_version": "1.5.2",
-      "file": "mobility_vehicle_connected_vehicle_v1.json"
-    },
-    {
-      "builder_id": "mobility.vehicle.manual_profile.v1",
-      "builder_version": "1.5.1",
-      "file": "mobility_vehicle_manual_profile_v1.json"
-    }
+    {"builder_id":"mobility.charger.full_evse.v1","builder_version":"1.7.0","file":"mobility_charger_full_evse_v1.json"},
+    {"builder_id":"mobility.charger.utility_surface.v1","builder_version":"1.5.1","file":"mobility_charger_utility_surface_v1.json"},
+    {"builder_id":"mobility.person.presence.v1","builder_version":"1.5.1","file":"mobility_person_presence_v1.json"},
+    {"builder_id":"mobility.vehicle.connected_vehicle.v1","builder_version":"1.8.0","file":"mobility_vehicle_connected_vehicle_v1.json"},
+    {"builder_id":"mobility.vehicle.manual_profile.v1","builder_version":"1.5.1","file":"mobility_vehicle_manual_profile_v1.json"}
   ],
-  "legacy_reference": {
-    "release": "R43.2.65",
-    "legacy_adapter_count": 11,
-    "migration": "11 legacy integration adapters consolidated into 3 physical source families plus person presence and manual-profile configuration builders"
-  },
-  "safety": {
-    "creates_binding": false,
-    "creates_runtime_truth": false,
-    "creates_public_contract": false,
-    "executes_commands": false
-  },
-  "release": "M0.5.9",
+  "legacy_reference": {"release":"R43.2.65","legacy_adapter_count":11,"migration":"11 legacy integration adapters consolidated into 3 physical source families plus person presence and manual-profile configuration builders"},
+  "safety": {"creates_binding":false,"creates_runtime_truth":false,"creates_public_contract":false,"executes_commands":false},
+  "release": "M0.7.2",
   "closure": {
-    "step": 3,
-    "full_feature_migration": true,
-    "public_runtime_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
-    "energy_contract": "MOBILITY_ENERGY_V2",
-    "legacy_compatibility": "exact_public_entity_facade",
-    "legacy_computation_migrated": true,
-    "commands_declared": true,
-    "editable_properties_declared": true,
-    "queueing": "none",
-    "automatic_retry": false,
-    "restart_replay": false,
-    "entity_id_drop_in": true,
-    "old_ux_modification_required": false,
-    "runtime_feature_parity_proven": false,
-    "runtime_convergence_release": "M0.5.7",
-    "static_semantic_feature_parity_proven": true
+    "step":3,
+    "full_feature_migration":true,
+    "public_runtime_contract":"MOBILITY_PUBLIC_RUNTIME_V2",
+    "energy_contract":"MOBILITY_ENERGY_V2",
+    "legacy_compatibility":"exact_public_entity_facade",
+    "legacy_computation_migrated":true,
+    "commands_declared":true,
+    "editable_properties_declared":true,
+    "queueing":"none",
+    "automatic_retry":false,
+    "restart_replay":false,
+    "entity_id_drop_in":true,
+    "old_ux_modification_required":false,
+    "runtime_feature_parity_proven":false,
+    "runtime_convergence_release":"M0.5.7",
+    "static_semantic_feature_parity_proven":true
   },
-  "builder_version": "1.5.2",
+  "builder_version":"1.8.0",
   "specification_versions": {
-    "mobility.charger.full_evse.v1": "1.5.0",
-    "mobility.charger.utility_surface.v1": "1.5.0",
-    "mobility.person.presence.v1": "1.5.0",
-    "mobility.vehicle.connected_vehicle.v1": "1.5.2",
-    "mobility.vehicle.manual_profile.v1": "1.5.0"
+    "mobility.charger.full_evse.v1":"1.7.0",
+    "mobility.charger.utility_surface.v1":"1.5.0",
+    "mobility.person.presence.v1":"1.5.0",
+    "mobility.vehicle.connected_vehicle.v1":"1.8.0",
+    "mobility.vehicle.manual_profile.v1":"1.5.0"
   },
-  "legacy_adapter_consolidation": {
-    "migration": "11 integration observer adapters consolidated into 3 physical builder families plus person presence and manual-profile product builders"
-  },
-  "step3_closure": {
-    "legacy_compatibility": "exact_public_entity_facade",
-    "entity_id_drop_in": true
-  },
-  "shared_baseline": "1.7.0",
-  "selected_domain_build_input_contract": "1.2.0",
-  "foundation_capability_candidate_contract": "1.1.0"
+  "legacy_adapter_consolidation":{"migration":"11 integration observer adapters consolidated into 3 physical builder families plus person presence and manual-profile product builders"},
+  "step3_closure":{"legacy_compatibility":"exact_public_entity_facade","entity_id_drop_in":true},
+  "shared_baseline":"1.8.0",
+  "selected_domain_build_input_contract":"1.2.0",
+  "foundation_capability_candidate_contract":"1.1.0"
 }

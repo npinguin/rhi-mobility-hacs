@@ -4,7 +4,7 @@
   "publisher": "rhi_mobility",
   "domain_id": "mobility",
   "builder_id": "mobility.charger.full_evse.v1",
-  "builder_version": "1.5.1",
+  "builder_version": "1.7.0",
   "concept": {
     "concept_id": "charger",
     "display_name": "EV Charger",
@@ -75,7 +75,7 @@
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "status.sensor"
+                "value": "status_connector.sensor"
               }
             ]
           }
@@ -142,8 +142,8 @@
         "allowed_source_kinds": [
           "entity"
         ],
-        "required": true,
-        "cardinality": "exactly_one_per_group",
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
         "integration_matches": [
           {
             "integration_domain": "wallbox",

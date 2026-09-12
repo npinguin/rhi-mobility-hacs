@@ -14,12 +14,7 @@ ALLOWED_PRODUCER_TYPES = frozenset({
 
 
 def declared_producer_types(definition: dict[str, Any]) -> tuple[str, ...]:
-    """Return the only authoritative producer declaration for M0.7.0.
-
-    ``producer_type`` is a legacy generated compatibility field. Runtime semantics must
-    never consume it. Catalog regeneration can remove it once all retained historical
-    contract snapshots have been migrated.
-    """
+    """Return the sole authoritative producer declaration for a canonical property."""
     raw = definition.get("producer_types")
     if not isinstance(raw, list) or not raw:
         raise ValueError("canonical property missing producer_types")

@@ -6,9 +6,10 @@ from dataclasses import replace
 from typing import Any, Callable
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event
-from .models import ExecutionRequest, ExecutionResult
+from .models import CommandLifecycle, CommandLifecycleStage, ExecutionRequest, ExecutionResult
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class MobilityCommandExecutor:
     """KISS Mobility execution owner: no queue, no retry, no restart replay."""
@@ -60,7 +61,22 @@ class MobilityCommandExecutor:
                     self._unknown.pop(scope,None); cleared.append((scope,request))
                     prior=self.last_results.get(scope)
                     if prior:
-                        self.last_results[scope]=replace(prior,result='SUCCEEDED_AFTER_DELAY',reason='late_readback_converged',state_after=self._confirmation_state(request.confirmation))
+                        lifecycle=CommandLifecycle(
+                            request_id=request.request_id,
+                            asset_id=request.asset_id,
+                            operation_key=request.operation_key,
+                            stages=(
+                                CommandLifecycleStage.REQUESTED,
+                                CommandLifecycleStage.ACCEPTED,
+                                CommandLifecycleStage.DISPATCHED,
+                                CommandLifecycleStage.ACKNOWLEDGED,
+                                CommandLifecycleStage.EFFECTIVE,
+                            ),
+                        )
+                        self.last_results[scope]=replace(
+                            prior,result='SUCCEEDED_AFTER_DELAY',reason='late_readback_converged',
+                            state_after=self._confirmation_state(request.confirmation),lifecycle=lifecycle,
+                        )
         if cleared:self._notify()
 
     async def async_execute(self,request: ExecutionRequest) -> ExecutionResult:
@@ -165,17 +181,41 @@ class MobilityCommandExecutor:
         self.last_results[request.scope]=result
 
     @staticmethod
-    def _result(request,result,reason,attempted,before=None,after=None):
-        return ExecutionResult(request.request_id,request.asset_id,request.operation_key,result,reason,attempted,request.confirmation.get('mode','service_acceptance_only'),before,after)
+    def _lifecycle(request: ExecutionRequest, result: str, attempted: bool) -> CommandLifecycle:
+        if result == 'BLOCKED':
+            stages=(CommandLifecycleStage.REQUESTED,CommandLifecycleStage.REJECTED)
+        elif result == 'ALREADY_CONVERGED':
+            stages=(CommandLifecycleStage.REQUESTED,CommandLifecycleStage.ACCEPTED,CommandLifecycleStage.EFFECTIVE)
+        elif result == 'ACCEPTED_UNCONFIRMED':
+            stages=(CommandLifecycleStage.REQUESTED,CommandLifecycleStage.ACCEPTED,CommandLifecycleStage.DISPATCHED,CommandLifecycleStage.ACKNOWLEDGED)
+        elif result in {'SUCCEEDED','SUCCEEDED_AFTER_DELAY'}:
+            stages=(CommandLifecycleStage.REQUESTED,CommandLifecycleStage.ACCEPTED,CommandLifecycleStage.DISPATCHED,CommandLifecycleStage.ACKNOWLEDGED,CommandLifecycleStage.EFFECTIVE)
+        elif result == 'EXECUTION_UNKNOWN' and attempted:
+            stages=(CommandLifecycleStage.REQUESTED,CommandLifecycleStage.ACCEPTED,CommandLifecycleStage.DISPATCHED,CommandLifecycleStage.UNKNOWN)
+        elif result == 'EXECUTION_UNKNOWN':
+            stages=(CommandLifecycleStage.REQUESTED,CommandLifecycleStage.UNKNOWN)
+        else:
+            stages=(CommandLifecycleStage.REQUESTED,CommandLifecycleStage.FAILED)
+        return CommandLifecycle(request.request_id,request.asset_id,request.operation_key,stages)
+
+    @classmethod
+    def _result(cls,request,result,reason,attempted,before=None,after=None):
+        return ExecutionResult(
+            request.request_id,request.asset_id,request.operation_key,result,reason,attempted,
+            request.confirmation.get('mode','service_acceptance_only'),before,after,
+            cls._lifecycle(request,result,attempted),
+        )
 
     def snapshot(self) -> dict[str,Any]:
         return {
+            'lifecycle_contract':'MOBILITY_COMMAND_LIFECYCLE_V1',
             'active_scopes':[f'{a}|{b}' for a,b in sorted(self._active)],
             'blocked_unknown_scopes':[f'{a}|{b}' for a,b in sorted(self._unknown)],
             'last_results':[{
                 'producer_id':scope[0],'conflict_family':scope[1],'request_id':r.request_id,'asset_id':r.asset_id,
                 'operation_key':r.operation_key,'result':r.result,'reason':r.reason,'write_attempted':r.write_attempted,
                 'confirmation_mode':r.confirmation_mode,'state_before':r.state_before,'state_after':r.state_after,
+                'lifecycle':None if r.lifecycle is None else r.lifecycle.as_dict(),
             } for scope,r in sorted(self.last_results.items())],
             'queueing':'none','automatic_retry':False,'restart_replay':False,
         }

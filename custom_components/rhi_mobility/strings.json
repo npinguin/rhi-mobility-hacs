@@ -26,6 +26,10 @@
       "edit_guest": {"title": "Edit guest vehicle"},
       "remove_guest_vehicle": {"title": "Choose guest vehicle"},
       "remove_guest": {"title": "Remove {name}", "description": "Remove this guest vehicle and its Mobility-owned configuration."}
+    },
+    "error": {
+      "invalid_guest_vehicle": "The guest vehicle values are invalid. Battery energy cannot exceed capacity and SoC must be between 0 and 100%.",
+      "unknown_guest_vehicle": "The selected guest vehicle no longer exists."
     }
   }
 }

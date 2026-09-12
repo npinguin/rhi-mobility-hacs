@@ -94,6 +94,7 @@ def source_capability_coverage(manager: Any) -> dict[str, Any]:
     unmapped: list[dict[str, Any]] = []
     unclassified: list[dict[str, Any]] = []
     ambiguous: list[dict[str, Any]] = []
+    classified_rejections: list[dict[str, Any]] = []
     for row in getattr(manager, "_capability_diagnostics", []) or []:
         if not isinstance(row, dict):
             continue
@@ -108,7 +109,12 @@ def source_capability_coverage(manager: Any) -> dict[str, Any]:
             "raw_capability_id": row.get("raw_capability_id"),
             "status": status or "UNKNOWN",
         }
-        if "AMBIGUOUS" in status:
+        # Object-eligibility rows are explicit domain classifications, not unknown
+        # technical source capabilities. They intentionally have no candidate_id or
+        # published_match and must never make source-capability closure look incomplete.
+        if status in {"REJECTED_UNSUPPORTED_DEVICE_TYPE", "REJECTED_REVIEW_REQUIRED", "REJECTED_LEGACY_MANUAL_PROFILE"}:
+            classified_rejections.append(record)
+        elif "AMBIGUOUS" in status:
             ambiguous.append(record)
         elif any(token in status for token in ("UNMAPPED", "NO_MATCH", "UNMATCHED")):
             unmapped.append(record)
@@ -119,13 +125,15 @@ def source_capability_coverage(manager: Any) -> dict[str, Any]:
     return {
         "accepted_source_capability_count": len(accepted),
         "mapped_source_capabilities": list(accepted.values()),
+        "classified_rejections": classified_rejections[:100],
+        "classified_rejection_count": len(classified_rejections),
         "ambiguous": ambiguous[:100],
         "ambiguous_count": len(ambiguous),
         "unmapped_source_capabilities": unmapped[:100],
         "unmapped_source_capability_count": len(unmapped),
         "unclassified_source_capabilities": unclassified[:100],
         "unclassified_source_capability_count": len(unclassified),
-        "truncated": any(len(rows) > 100 for rows in (ambiguous, unmapped, unclassified)),
+        "truncated": any(len(rows) > 100 for rows in (ambiguous, unmapped, unclassified, classified_rejections)),
     }
 
 
