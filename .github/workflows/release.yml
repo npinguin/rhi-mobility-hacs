@@ -7,8 +7,6 @@ on:
       - 'custom_components/rhi_mobility/**'
       - 'DISTRIBUTION_SOURCE.json'
       - 'hacs.json'
-      - '.github/workflows/**'
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,14 +16,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ci:
+  validate:
     name: Validate distribution
-    uses: ./.github/workflows/ci.yml
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
+
+      - name: Hassfest
+        uses: home-assistant/actions/hassfest@master
 
   release:
     name: Publish approved version
-    if: github.ref == 'refs/heads/main'
-    needs: ci
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
