@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'custom_components/rhi_mobility/**'
+      - 'DISTRIBUTION_SOURCE.json'
+      - 'hacs.json'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rhi-mobility-hacs-release
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: Validate distribution
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Publish approved version
+    if: github.ref == 'refs/heads/main'
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read release provenance
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path('custom_components/rhi_mobility/manifest.json').read_text())
+          provenance = json.loads(Path('DISTRIBUTION_SOURCE.json').read_text())
+
+          version = str(manifest['version'])
+          channel = str(provenance.get('channel', 'candidate'))
+          approved = provenance.get('approved_release') is True
+          publish = channel == 'release' and approved
+
+          if publish:
+              if provenance.get('distribution_version') != version:
+                  raise SystemExit('approved distribution version does not match manifest')
+              if provenance.get('distribution_release') != f'M{version}':
+                  raise SystemExit('approved distribution release does not match manifest')
+              if not provenance.get('source_commit'):
+                  raise SystemExit('approved distribution is missing source_commit provenance')
+
+          print(f'version={version}')
+          print(f'publish={str(publish).lower()}')
+          PY
+
+      - name: Candidate only
+        if: steps.metadata.outputs.publish != 'true'
+        run: echo 'Validated candidate mirror; no versioned release requested.'
+
+      - name: Create immutable tag and GitHub release
+        if: steps.metadata.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          git fetch --tags --force
+
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            TAG_SHA=$(git rev-list -n 1 "$TAG")
+            if [ "$TAG_SHA" != "$GITHUB_SHA" ]; then
+              echo "Refusing to move immutable tag $TAG from $TAG_SHA to $GITHUB_SHA" >&2
+              exit 1
+            fi
+          else
+            git config user.name 'RHI Distribution Bot'
+            git config user.email 'nicky.wessels@gmail.com'
+            git tag -a "$TAG" -m "Robotix Home Intelligence Mobility ${TAG}"
+            git push origin "$TAG"
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists and points at the approved commit."
+          else
+            SOURCE_COMMIT=$(python -c 'import json; print(json.load(open("DISTRIBUTION_SOURCE.json"))["source_commit"])')
+            FOUNDATION=$(python -c 'import json; print(json.load(open("DISTRIBUTION_SOURCE.json"))["required_foundation_release"])')
+            BASELINE=$(python -c 'import json; print(json.load(open("DISTRIBUTION_SOURCE.json"))["required_shared_baseline"])')
+            gh release create "$TAG" \
+              --title "RHI Mobility ${VERSION}" \
+              --notes "Validated public HACS distribution for RHI Mobility ${VERSION}. Source: ${SOURCE_COMMIT}. Requires ${FOUNDATION} / Shared Baseline ${BASELINE}. Target Home Assistant runtime acceptance remains a separate gate."
+          fi
