@@ -20,6 +20,7 @@ class MobilityCommandExecutor:
         self._dedup:OrderedDict[tuple[str,str,str],tuple[str,ExecutionResult]]=OrderedDict()
         self.last_results:dict[tuple[str,str],ExecutionResult]={}
         self.listeners:list[Callable[[],None]]=[]
+        self._reconcile_scheduled=False
         subscribe=getattr(manager,'add_runtime_listener',manager.add_listener)
         self._manager_unsub=subscribe(self._manager_changed)
 
@@ -30,7 +31,7 @@ class MobilityCommandExecutor:
         return unsub
 
     def shutdown(self):
-        self._manager_unsub(); self.listeners.clear(); self._active.clear(); self._unknown.clear()
+        self._manager_unsub(); self.listeners.clear(); self._active.clear(); self._unknown.clear(); self._reconcile_scheduled=False
 
     def _notify(self):
         for cb in tuple(self.listeners): cb()
@@ -38,10 +39,19 @@ class MobilityCommandExecutor:
     @callback
     def _manager_changed(self):
         # Normal telemetry must not wake the command/control publication lane.
-        # Late-readback reconciliation is only useful while an execution is UNKNOWN.
-        if not self._unknown:
+        # While UNKNOWN execution exists, collapse any telemetry burst into one
+        # reconciliation task. The task observes current readback when it runs,
+        # so queued duplicates add no truth and only create scheduler pressure.
+        if not self._unknown or self._reconcile_scheduled:
             return
-        self.hass.async_create_task(self.async_reconcile_unknowns())
+        self._reconcile_scheduled=True
+        self.hass.async_create_task(self._async_reconcile_unknowns_singleflight())
+
+    async def _async_reconcile_unknowns_singleflight(self) -> None:
+        try:
+            await self.async_reconcile_unknowns()
+        finally:
+            self._reconcile_scheduled=False
 
     def is_blocked(self,producer_id: str,conflict_family: str) -> bool:
         return (producer_id,conflict_family) in self._unknown

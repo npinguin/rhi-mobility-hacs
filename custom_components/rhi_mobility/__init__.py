@@ -48,7 +48,19 @@ async def _async_import_existing_selected_inputs(hass: Any, manager: Any) -> Non
         _LOGGER.warning("Mobility initial Foundation handoff was rejected; diagnostics retained: %s",exc)
 
 
-def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any) -> None:
+def _idempotent_unload(entry: Any, raw_unsub: Any):
+    active=True
+    def unsub() -> None:
+        nonlocal active
+        if not active:
+            return
+        active=False
+        raw_unsub()
+    entry.async_on_unload(unsub)
+    return unsub
+
+
+def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any):
     """Consume structural Foundation handoffs without feeding status back upstream."""
     async def rebuild(event: Any) -> None:
         if (getattr(event,"data",{}) or {}).get("domain_id")!=FOUNDATION_DOMAIN_ID: return
@@ -61,10 +73,10 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any) -> No
     def changed(event: Any) -> None:
         if (getattr(event,"data",{}) or {}).get("domain_id")==FOUNDATION_DOMAIN_ID:
             hass.async_create_task(rebuild(event))
-    entry.async_on_unload(hass.bus.async_listen(SELECTED_BUILD_INPUTS_CHANGED_EVENT,changed))
+    return _idempotent_unload(entry,hass.bus.async_listen(SELECTED_BUILD_INPUTS_CHANGED_EVENT,changed))
 
 
-def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any) -> None:
+def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any):
     """Rebuild only Mobility-owned semantic state when Mobility config changes."""
     from copy import deepcopy
     from .domain_config import GUEST_VEHICLES_KEY
@@ -78,7 +90,9 @@ def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any)
         from .projection import async_reconcile_projection
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
     add=getattr(entry,"add_update_listener",None)
-    if callable(add): entry.async_on_unload(add(updated))
+    if not callable(add):
+        return None
+    return _idempotent_unload(entry,add(updated))
 
 
 def _load_foundation_registry_api() -> dict[str,Any]:
@@ -176,36 +190,16 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         details=[]
         if collisions: details.append("legacy entity states active: "+",".join(collisions))
         if script_collisions: details.append("legacy script services active: "+",".join(script_collisions))
+        controller.shutdown(); manager.clear_all()
         raise RuntimeError("R43.2.65 must be disabled before exact V2 facade takeover; "+"; ".join(details))
 
     await domain_config.async_initialize()
-    hass.data.setdefault(DOMAIN,{})[entry.entry_id]={
-        "registry":registry,"provider":provider,"runtime":manager,"controller":controller,
-        "domain_config":domain_config,"energy_provider":energy_provider,"energy_compat_provider":energy_compat_provider,
-        "command_provider":command_provider,"public_provider":public_provider,"experience_provider":experience_provider,
-        "activity_provider":activity_provider,"property_projection":property_projection,
-        "supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,
-        "device_surface_provider":device_surface_provider,"compatibility_provider":legacy_facade,"legacy_facade":legacy_facade,
-        "legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],
-        "unregister_supervision":foundation_api["unregister_supervision"],
-    }
-
-    # Subscribe before provider registration. Registration wakes Foundation discovery;
-    # installing the consumer first guarantees that a fast resulting SDBI publication
-    # cannot fall into the startup gap between initial import and listener setup.
-    _install_selected_input_lifecycle(hass,manager,entry)
-    foundation_api["register_build"](hass,publisher_domain=DOMAIN,provider=provider,publication_revision=provider.publication_revision)
-    await _async_import_existing_selected_inputs(hass,manager)
-    from .projection import async_reconcile_projection
-    await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
-    foundation_api["register_supervision"](
-        hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,provider=supervision_provider
-    )
-    _install_domain_configuration_lifecycle(hass,manager,entry)
-
     interop=hass.data.setdefault(INTEROP_PROVIDER_REGISTRY_KEY,{})
-    interop.update({ENERGY_PROVIDER_ID:energy_provider,ENERGY_COMPAT_PROVIDER_ID:energy_compat_provider,COMMAND_PROVIDER_ID:command_provider,
-        PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID:legacy_facade,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider})
+    interop_ids=(ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID)
+    service_names=(SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION)
+    selected_unsub=None; config_unsub=None
+    build_registration_attempted=False; supervision_registration_attempted=False
+    legacy_services_registered=False; platforms_forward_started=False
 
     async def execute_command(call: Any):
         return await command_provider.async_execute({"asset_id":call.data["asset_id"],"command_key":call.data["command_key"],"request_id":call.data.get("request_id")})
@@ -214,27 +208,80 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     async def rearm_execution(call: Any):
         return await controller.async_rearm(call.data["asset_id"],call.data["conflict_family"])
 
-    hass.services.async_register(DOMAIN,SERVICE_EXECUTE_COMMAND,execute_command,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("command_key"):str,vol.Optional("request_id"):str}))
-    hass.services.async_register(DOMAIN,SERVICE_SET_REQUESTED_POWER,set_requested_power,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("power_kw"):vol.Coerce(float),vol.Optional("request_id"):str}))
-    hass.services.async_register(DOMAIN,SERVICE_REARM_EXECUTION,rearm_execution,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("conflict_family"):str}))
-
-    register_legacy_services(hass,legacy_facade,command_provider)
-
     try:
+        hass.data.setdefault(DOMAIN,{})[entry.entry_id]={
+            "registry":registry,"provider":provider,"runtime":manager,"controller":controller,
+            "domain_config":domain_config,"energy_provider":energy_provider,"energy_compat_provider":energy_compat_provider,
+            "command_provider":command_provider,"public_provider":public_provider,"experience_provider":experience_provider,
+            "activity_provider":activity_provider,"property_projection":property_projection,
+            "supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,
+            "device_surface_provider":device_surface_provider,"compatibility_provider":legacy_facade,"legacy_facade":legacy_facade,
+            "legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],
+            "unregister_supervision":foundation_api["unregister_supervision"],
+        }
+
+        # Subscribe before provider registration. Registration wakes Foundation discovery;
+        # installing the consumer first guarantees that a fast resulting SDBI publication
+        # cannot fall into the startup gap between initial import and listener setup.
+        selected_unsub=_install_selected_input_lifecycle(hass,manager,entry)
+        build_registration_attempted=True
+        foundation_api["register_build"](hass,publisher_domain=DOMAIN,provider=provider,publication_revision=provider.publication_revision)
+        await _async_import_existing_selected_inputs(hass,manager)
+        from .projection import async_reconcile_projection
+        await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
+        supervision_registration_attempted=True
+        foundation_api["register_supervision"](
+            hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,provider=supervision_provider
+        )
+        config_unsub=_install_domain_configuration_lifecycle(hass,manager,entry)
+
+        interop.update({ENERGY_PROVIDER_ID:energy_provider,ENERGY_COMPAT_PROVIDER_ID:energy_compat_provider,COMMAND_PROVIDER_ID:command_provider,
+            PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID:legacy_facade,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider})
+
+        hass.services.async_register(DOMAIN,SERVICE_EXECUTE_COMMAND,execute_command,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("command_key"):str,vol.Optional("request_id"):str}))
+        hass.services.async_register(DOMAIN,SERVICE_SET_REQUESTED_POWER,set_requested_power,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("power_kw"):vol.Coerce(float),vol.Optional("request_id"):str}))
+        hass.services.async_register(DOMAIN,SERVICE_REARM_EXECUTION,rearm_execution,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("conflict_family"):str}))
+        register_legacy_services(hass,legacy_facade,command_provider); legacy_services_registered=True
+
+        platforms_forward_started=True
         await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)
         legacy_state.start()
+        return True
     except Exception:
-        legacy_state.stop()
-        try: await hass.config_entries.async_unload_platforms(entry,PLATFORMS)
-        except Exception: pass
-        unregister_legacy_services(hass)
-        for name in (SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION):
-            if hass.services.has_service(DOMAIN,name): hass.services.async_remove(DOMAIN,name)
-        foundation_api["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
-        foundation_api["unregister_build"](hass,publisher_domain=DOMAIN)
-        for pid in (ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID): interop.pop(pid,None)
-        hass.data.get(DOMAIN,{}).pop(entry.entry_id,None); controller.shutdown(); manager.clear_all(); raise
-    return True
+        # Setup is one transaction. Undo every potentially installed callback/provider
+        # even when the failure happened before platform forwarding. Cleanup is best-effort
+        # and must never mask the original setup exception.
+        try: legacy_state.stop()
+        except Exception: _LOGGER.exception("Mobility setup rollback: V1 state cleanup failed")
+        if platforms_forward_started:
+            try: await hass.config_entries.async_unload_platforms(entry,PLATFORMS)
+            except Exception: _LOGGER.exception("Mobility setup rollback: platform cleanup failed")
+        if legacy_services_registered:
+            try: unregister_legacy_services(hass)
+            except Exception: _LOGGER.exception("Mobility setup rollback: legacy service cleanup failed")
+        for name in service_names:
+            try:
+                if hass.services.has_service(DOMAIN,name): hass.services.async_remove(DOMAIN,name)
+            except Exception: _LOGGER.exception("Mobility setup rollback: service cleanup failed for %s",name)
+        for pid in interop_ids: interop.pop(pid,None)
+        if config_unsub:
+            try: config_unsub()
+            except Exception: _LOGGER.exception("Mobility setup rollback: config listener cleanup failed")
+        if selected_unsub:
+            try: selected_unsub()
+            except Exception: _LOGGER.exception("Mobility setup rollback: SDBI listener cleanup failed")
+        if supervision_registration_attempted:
+            try: foundation_api["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
+            except Exception: _LOGGER.exception("Mobility setup rollback: supervision cleanup failed")
+        if build_registration_attempted:
+            try: foundation_api["unregister_build"](hass,publisher_domain=DOMAIN)
+            except Exception: _LOGGER.exception("Mobility setup rollback: build-provider cleanup failed")
+        try: controller.shutdown()
+        except Exception: _LOGGER.exception("Mobility setup rollback: controller cleanup failed")
+        try: manager.clear_all()
+        except Exception: _LOGGER.exception("Mobility setup rollback: runtime cleanup failed")
+        hass.data.get(DOMAIN,{}).pop(entry.entry_id,None)
+        raise
 
 
 async def async_unload_entry(hass: Any, entry: Any) -> bool:
