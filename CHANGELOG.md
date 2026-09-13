@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.7.7 — Foundation 1.8.2 lifecycle compatibility
+
+- Accept Foundation F1.8.1 and F1.8.2 only while the Shared Baseline remains exactly 1.8.1; unknown Foundation releases still fail closed.
+- Adopt Foundation F1.8.2 generation-owned build/specification and supervision unsubscribe handles so an old unload cannot remove a newer provider generation during reload races.
+- Keep the F1.8.1 unregister path as a backward-compatible fallback; no shared contract, binding, normalization, property, profile, relationship, command or public entity contract changes are introduced.
+- Add producer-owned config-entry deletion cleanup through Foundation F1.8.2 `async_remove_domain_configuration`; normal unload/restart preserves Foundation-persisted Mobility technical intent.
+- Preserve M0.7.6 runtime/control publication separation, Mobility-to-Energy quiescence and R43.2.65/MOBILITY_PUBLIC_RUNTIME_V1 facade behavior.
+- Target Home Assistant qualification with Foundation F1.8.2 remains mandatory before pilot/stable promotion.
+
 ## M0.7.6 — Runtime boundary quiescence
 
 - Restore the existing ownership boundary between Mobility runtime truth and command/activity control notifications without introducing a new event framework.

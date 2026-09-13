@@ -20,7 +20,7 @@ from .const import (
 
 PLATFORMS=["sensor","number","button","select","text","switch"]
 _LOGGER=logging.getLogger(__name__)
-_REQUIRED_FOUNDATION_RELEASE="F1.8.1"
+_SUPPORTED_FOUNDATION_RELEASES=("F1.8.1","F1.8.2")
 _REQUIRED_FOUNDATION_BASELINE="1.8.1"
 
 
@@ -158,25 +158,36 @@ def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any)
 def _load_foundation_registry_api(hass: Any) -> dict[str,Any]:
     try:
         from custom_components.rhi_foundation.const import RELEASE as foundation_release, SHARED_BASELINE_VERSION as foundation_baseline
-        from custom_components.rhi_foundation.shared_registry import (
-            register_domain_build_specification_provider,
-            register_domain_supervisory_status_provider,
-            unregister_domain_build_specification_provider,
-            unregister_domain_supervisory_status_provider,
-        )
+        from custom_components.rhi_foundation import shared_registry as foundation_registry
     except (ImportError,ModuleNotFoundError) as exc:
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
         except ImportError:
-            raise RuntimeError("RHI Mobility requires RHI Foundation F1.8.1 / Shared Baseline 1.8.1 before runtime setup") from exc
-        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.8.1 / Shared Baseline 1.8.1. Install/update Foundation and retry setup.") from exc
-    if foundation_release != _REQUIRED_FOUNDATION_RELEASE or foundation_baseline != _REQUIRED_FOUNDATION_BASELINE:
-        message=("RHI Mobility requires RHI Foundation " f"{_REQUIRED_FOUNDATION_RELEASE} / Shared Baseline {_REQUIRED_FOUNDATION_BASELINE}; " f"loaded Foundation is {foundation_release} / {foundation_baseline}. " "Bindings and supervision are intentionally not started against an incompatible shared contract.")
+            raise RuntimeError("RHI Mobility requires RHI Foundation F1.8.1 or F1.8.2 / Shared Baseline 1.8.1 before runtime setup") from exc
+        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.8.1 or F1.8.2 / Shared Baseline 1.8.1. Install/update Foundation and retry setup.") from exc
+    if foundation_release not in _SUPPORTED_FOUNDATION_RELEASES or foundation_baseline != _REQUIRED_FOUNDATION_BASELINE:
+        supported=", ".join(_SUPPORTED_FOUNDATION_RELEASES)
+        message=("RHI Mobility requires an explicitly supported RHI Foundation release " f"({supported}) with Shared Baseline {_REQUIRED_FOUNDATION_BASELINE}; " f"loaded Foundation is {foundation_release} / {foundation_baseline}. " "Bindings and supervision are intentionally not started against an incompatible shared contract.")
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
         except ImportError as exc: raise RuntimeError(message) from exc
         raise ConfigEntryNotReady(message)
-    return {"register_build":register_domain_build_specification_provider,"unregister_build":unregister_domain_build_specification_provider,"register_supervision":register_domain_supervisory_status_provider,"unregister_supervision":unregister_domain_supervisory_status_provider}
+    return {
+        "release":foundation_release,
+        "register_build":foundation_registry.register_domain_build_specification_provider,
+        "unregister_build":foundation_registry.unregister_domain_build_specification_provider,
+        "register_supervision":foundation_registry.register_domain_supervisory_status_provider,
+        "unregister_supervision":foundation_registry.unregister_domain_supervisory_status_provider,
+        "remove_domain_configuration":getattr(foundation_registry,"async_remove_domain_configuration",None),
+    }
+
+
+def _call_registration_unsub(handle: Any) -> bool:
+    """Close one generation-owned Foundation registration when the API provides it."""
+    if not callable(handle):
+        return False
+    handle()
+    return True
 
 
 async def async_setup_entry(hass: Any, entry: Any) -> bool:
@@ -224,28 +235,42 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     service_names=(SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION)
     selected_unsub=None; config_unsub=None; setup_data=None
     build_registration_attempted=False; supervision_registered=False; legacy_services_registered=False; platforms_forward_started=False
+    build_registration_unsub=None; supervision_registration_unsub=None
+
+    def close_supervision_registration() -> None:
+        nonlocal supervision_registered, supervision_registration_unsub
+        if not supervision_registered:
+            return
+        if not _call_registration_unsub(supervision_registration_unsub):
+            foundation_api["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
+        supervision_registration_unsub=None
+        supervision_registered=False
 
     def sync_supervision_after_structural_build() -> None:
         """Refresh shared supervision only on structural handoff lifecycle, never telemetry."""
-        nonlocal supervision_registered
+        nonlocal supervision_registered, supervision_registration_unsub
         status=str((getattr(manager,"last_build_attempt",{}) or {}).get("status") or "")
         if status not in {"ACCEPTED","PARTIAL","REMOVED","REJECTED"}:
             return
-        if supervision_registered:
-            foundation_api["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
-        foundation_api["register_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,provider=supervision_provider)
+        close_supervision_registration()
+        handle=foundation_api["register_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,provider=supervision_provider)
+        supervision_registration_unsub=handle if callable(handle) else None
         supervision_registered=True
+        if setup_data is not None:
+            setup_data["supervision_registration_unsub"]=supervision_registration_unsub
 
     async def execute_command(call: Any): return await command_provider.async_execute({"asset_id":call.data["asset_id"],"command_key":call.data["command_key"],"request_id":call.data.get("request_id")})
     async def set_requested_power(call: Any): return await command_provider.async_set_requested_power({"asset_id":call.data["asset_id"],"power_kw":call.data["power_kw"],"request_id":call.data.get("request_id")})
     async def rearm_execution(call: Any): return await controller.async_rearm(call.data["asset_id"],call.data["conflict_family"])
 
     try:
-        setup_data={"registry":registry,"provider":provider,"runtime":manager,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"energy_compat_provider":energy_compat_provider,"command_provider":command_provider,"public_provider":public_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"compatibility_provider":legacy_facade,"legacy_facade":legacy_facade,"legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"]}
+        setup_data={"registry":registry,"provider":provider,"runtime":manager,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"energy_compat_provider":energy_compat_provider,"command_provider":command_provider,"public_provider":public_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"compatibility_provider":legacy_facade,"legacy_facade":legacy_facade,"legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"build_registration_unsub":None,"supervision_registration_unsub":None}
         hass.data.setdefault(DOMAIN,{})[entry.entry_id]=setup_data
         selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_supervision_after_structural_build); setup_data["selected_unsub"]=selected_unsub
         build_registration_attempted=True
-        foundation_api["register_build"](hass,publisher_domain=DOMAIN,provider=provider,publication_revision=provider.publication_revision)
+        handle=foundation_api["register_build"](hass,publisher_domain=DOMAIN,provider=provider,publication_revision=provider.publication_revision)
+        build_registration_unsub=handle if callable(handle) else None
+        setup_data["build_registration_unsub"]=build_registration_unsub
         imported=await _async_import_existing_selected_inputs(hass,manager)
         from .projection import async_reconcile_projection
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
@@ -287,10 +312,12 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
                 try: unsub()
                 except Exception: _LOGGER.exception("Mobility setup rollback: %s listener cleanup failed",label)
         if supervision_registered:
-            try: foundation_api["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
+            try: close_supervision_registration()
             except Exception: _LOGGER.exception("Mobility setup rollback: supervision cleanup failed")
         if build_registration_attempted:
-            try: foundation_api["unregister_build"](hass,publisher_domain=DOMAIN)
+            try:
+                if not _call_registration_unsub(build_registration_unsub):
+                    foundation_api["unregister_build"](hass,publisher_domain=DOMAIN)
             except Exception: _LOGGER.exception("Mobility setup rollback: build-provider cleanup failed")
         try: controller.shutdown()
         except Exception: _LOGGER.exception("Mobility setup rollback: controller cleanup failed")
@@ -312,8 +339,12 @@ async def async_unload_entry(hass: Any, entry: Any) -> bool:
             if data.get("legacy_state"): data["legacy_state"].stop()
             if data.get("controller"): data["controller"].shutdown()
             if data.get("runtime"): data["runtime"].clear_all()
-            if data.get("unregister_supervision"): data["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
-            if data.get("unregister_provider"): data["unregister_provider"](hass,publisher_domain=DOMAIN)
+            supervision_unsub=data.get("supervision_registration_unsub")
+            if not _call_registration_unsub(supervision_unsub) and data.get("unregister_supervision"):
+                data["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
+            build_unsub=data.get("build_registration_unsub")
+            if not _call_registration_unsub(build_unsub) and data.get("unregister_provider"):
+                data["unregister_provider"](hass,publisher_domain=DOMAIN)
         hass.data.get(DOMAIN,{}).pop(entry.entry_id,None)
         interop=hass.data.get(INTEROP_PROVIDER_REGISTRY_KEY,{})
         for pid in (ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID): interop.pop(pid,None)
@@ -322,3 +353,11 @@ async def async_unload_entry(hass: Any, entry: Any) -> bool:
         from .compat_v1.services import unregister_services as unregister_legacy_services
         unregister_legacy_services(hass)
     return ok
+
+
+async def async_remove_entry(hass: Any, entry: Any) -> None:
+    """Remove only Mobility-scoped Foundation technical intent on genuine deletion."""
+    foundation_api=_load_foundation_registry_api(hass)
+    remove=foundation_api.get("remove_domain_configuration")
+    if callable(remove):
+        await remove(hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
