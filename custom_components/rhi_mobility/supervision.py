@@ -8,7 +8,7 @@ from .coverage import completeness_gate, normalized_property_coverage, source_ca
 from .readiness import evaluate_asset_readiness
 
 CONTRACT_ID = "RHI_DOMAIN_SUPERVISORY_STATUS_V1"
-CONTRACT_VERSION = "1.0.0"
+CONTRACT_VERSION = "1.1.0"
 
 _PRIORITY = {
     "BLOCKED": 60,
@@ -26,7 +26,12 @@ def _worst(*statuses: str) -> str:
 
 
 class MobilityDomainSupervisoryStatusProvider:
-    """Mobility-owned health/readiness details exposed as a generic Foundation envelope."""
+    """Mobility-owned generic technical readiness exposed to Foundation.
+
+    Domain intelligence and business meaning remain Mobility-owned and are available
+    through ``details()``/Mobility public contracts. They deliberately do not influence
+    the shared Foundation supervisory envelope.
+    """
 
     def __init__(
         self,
@@ -149,6 +154,7 @@ class MobilityDomainSupervisoryStatusProvider:
         return status, {"normalized": normalized, "source": source, "gate": gate, "asset_readiness": readiness_rows}, issues
 
     def _intelligence_status(self, runtime_status: str) -> tuple[str, list[dict[str, Any]]]:
+        """Mobility-owned product intelligence status; never part of Foundation readiness."""
         if runtime_status == "BLOCKED":
             return "BLOCKED", [self._issue(
                 "mobility:intelligence:evidence",
@@ -173,8 +179,6 @@ class MobilityDomainSupervisoryStatusProvider:
         rows = list(snapshot.get("vehicles", [])) + list(snapshot.get("chargers", []))
         if not rows:
             return "CONFIGURATION_REQUIRED", []
-        # Intelligence is not allowed to report READY merely because evaluation ran.
-        # At least one evidence-backed family must be non-unknown on each published asset.
         evidence_missing = []
         for row in rows:
             families = [value for key, value in row.items() if key.endswith("_intelligence") and isinstance(value, dict)]
@@ -196,7 +200,7 @@ class MobilityDomainSupervisoryStatusProvider:
         attempt = dict(getattr(self.manager, "last_build_attempt", {}) or {})
         configuration_status = self._configuration_status(attempt)
         build_status = self._build_status(attempt)
-        runtime_status, runtime_evidence, issues = self._runtime()
+        runtime_status, _runtime_evidence, issues = self._runtime()
 
         compat = facade_parity_health(self.compatibility)
         contract_status = "OK" if compat.get("status") == "PASS" else "BLOCKED"
@@ -232,9 +236,7 @@ class MobilityDomainSupervisoryStatusProvider:
                 details="rhi_mobility:diagnostics:build_handoff",
             ))
 
-        intelligence_status, intelligence_issues = self._intelligence_status(runtime_status)
-        issues.extend(intelligence_issues)
-        overall = _worst(configuration_status, contract_status, build_status, runtime_status, intelligence_status)
+        overall = _worst(configuration_status, contract_status, build_status, runtime_status)
         blocking = sum(1 for issue in issues if issue.get("blocking"))
         warnings = sum(1 for issue in issues if issue.get("severity") == "WARNING")
         observed = datetime.now(timezone.utc).isoformat()
@@ -253,7 +255,6 @@ class MobilityDomainSupervisoryStatusProvider:
             "contract_status": contract_status,
             "build_status": build_status,
             "runtime_status": runtime_status,
-            "intelligence_status": intelligence_status,
             "overall_domain_readiness": overall,
             "issue_count": len(issues),
             "blocking_issue_count": blocking,
@@ -266,9 +267,12 @@ class MobilityDomainSupervisoryStatusProvider:
 
     def details(self) -> dict[str, Any]:
         runtime_status, runtime_evidence, _ = self._runtime()
+        intelligence_status, intelligence_issues = self._intelligence_status(runtime_status)
         return {
             "runtime_status": runtime_status,
             "runtime_evidence": runtime_evidence,
             "compatibility": facade_parity_health(self.compatibility),
+            "intelligence_status": intelligence_status,
+            "intelligence_issues": intelligence_issues,
             "experience": self.experience.snapshot(),
         }

@@ -1,5 +1,16 @@
 # Changelog
 
+## M0.7.3 — Runtime quiescence and supervision boundary recovery
+
+- Require Foundation `F1.8.1` / Shared Baseline `1.8.1` as the exact compatible control-plane contract.
+- Remove all Mobility runtime/control notifications back into Foundation supervision; supervision registration is lifecycle-only and downstream observability never re-enters discovery or binding.
+- Adopt `RHI_DOMAIN_SUPERVISORY_STATUS_V1` contract `1.1.0`: shared supervision contains generic technical/domain readiness only; Mobility intelligence remains Mobility-owned and does not affect Foundation readiness.
+- Stop the command executor from waking the command/control publication lane on ordinary telemetry when no execution is awaiting late readback.
+- Move broad Mobility/intelligence device surfaces off the per-asset runtime telemetry listener; scalar properties remain live through asset-scoped listeners while broad summaries update on bounded topology/control changes.
+- Add regression gates for boot quiescence, no supervision feedback, no broad-surface telemetry subscription and exact Foundation/Mobility baseline pairing.
+- Preserve M0.7.2 semantic catalogs, integration adapters, V1 facade, profile/property/relationship/command contracts and public entity IDs; this release is a runtime/recovery delta, not a semantic remap.
+- Target Home Assistant cold-boot, restart, unload/reload, upgrade and rollback acceptance remains mandatory before public promotion.
+
 ## M0.7.2 — V1 facade closure and domain supervision
 
 - Adopt Shared Baseline `1.8.0` and publish Mobility domain supervisory status without moving Mobility semantic ownership into Foundation.

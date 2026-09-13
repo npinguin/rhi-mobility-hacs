@@ -37,8 +37,11 @@ class MobilityCommandExecutor:
 
     @callback
     def _manager_changed(self):
+        # Normal telemetry must not wake the command/control publication lane.
+        # Late-readback reconciliation is only useful while an execution is UNKNOWN.
+        if not self._unknown:
+            return
         self.hass.async_create_task(self.async_reconcile_unknowns())
-        self._notify()
 
     def is_blocked(self,producer_id: str,conflict_family: str) -> bool:
         return (producer_id,conflict_family) in self._unknown

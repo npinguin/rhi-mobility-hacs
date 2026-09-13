@@ -19,8 +19,8 @@ from .const import (
 
 PLATFORMS=["sensor","number","button","select","text","switch"]
 _LOGGER=logging.getLogger(__name__)
-_REQUIRED_FOUNDATION_RELEASE="F1.8.0"
-_REQUIRED_FOUNDATION_BASELINE="1.8.0"
+_REQUIRED_FOUNDATION_RELEASE="F1.8.1"
+_REQUIRED_FOUNDATION_BASELINE="1.8.1"
 
 
 def _selected_input_payloads(hass: Any) -> list[dict]:
@@ -48,26 +48,24 @@ async def _async_import_existing_selected_inputs(hass: Any, manager: Any) -> Non
         _LOGGER.warning("Mobility initial Foundation handoff was rejected; diagnostics retained: %s",exc)
 
 
-def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, notify_supervision: Any=None) -> None:
-    notify_supervision=notify_supervision or (lambda *args,**kwargs: None)
+def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any) -> None:
+    """Consume structural Foundation handoffs without feeding status back upstream."""
     async def rebuild(event: Any) -> None:
         if (getattr(event,"data",{}) or {}).get("domain_id")!=FOUNDATION_DOMAIN_ID: return
         try:
             await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
             from .projection import async_reconcile_projection
             await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
-            notify_supervision(hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,reason="foundation_handoff_rebuilt")
         except Exception as exc:
             _LOGGER.warning("Mobility Foundation handoff rebuild rejected; previous runtime retained: %s",exc)
-            notify_supervision(hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,reason="foundation_handoff_rejected")
     def changed(event: Any) -> None:
         if (getattr(event,"data",{}) or {}).get("domain_id")==FOUNDATION_DOMAIN_ID:
             hass.async_create_task(rebuild(event))
     entry.async_on_unload(hass.bus.async_listen(SELECTED_BUILD_INPUTS_CHANGED_EVENT,changed))
 
 
-def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any, notify_supervision: Any=None) -> None:
-    notify_supervision=notify_supervision or (lambda *args,**kwargs: None)
+def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any) -> None:
+    """Rebuild only Mobility-owned semantic state when Mobility config changes."""
     from copy import deepcopy
     from .domain_config import GUEST_VEHICLES_KEY
     previous=deepcopy((getattr(entry,"options",{}) or {}).get(GUEST_VEHICLES_KEY,{}))
@@ -79,7 +77,6 @@ def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any,
         await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
         from .projection import async_reconcile_projection
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
-        notify_supervision(hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,reason="domain_configuration_changed")
     add=getattr(entry,"add_update_listener",None)
     if callable(add): entry.async_on_unload(add(updated))
 
@@ -88,7 +85,6 @@ def _load_foundation_registry_api() -> dict[str,Any]:
     try:
         from custom_components.rhi_foundation.const import RELEASE as foundation_release, SHARED_BASELINE_VERSION as foundation_baseline
         from custom_components.rhi_foundation.shared_registry import (
-            notify_domain_supervisory_status_changed,
             register_domain_build_specification_provider,
             register_domain_supervisory_status_provider,
             unregister_domain_build_specification_provider,
@@ -98,8 +94,8 @@ def _load_foundation_registry_api() -> dict[str,Any]:
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
         except ImportError:
-            raise RuntimeError("RHI Mobility requires RHI Foundation F1.8.0 / Shared Baseline 1.8.0 before runtime setup") from exc
-        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.8.0 / Shared Baseline 1.8.0. Install/update Foundation and retry setup.") from exc
+            raise RuntimeError("RHI Mobility requires RHI Foundation F1.8.1 / Shared Baseline 1.8.1 before runtime setup") from exc
+        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.8.1 / Shared Baseline 1.8.1. Install/update Foundation and retry setup.") from exc
 
     if foundation_release != _REQUIRED_FOUNDATION_RELEASE or foundation_baseline != _REQUIRED_FOUNDATION_BASELINE:
         message=(
@@ -119,7 +115,6 @@ def _load_foundation_registry_api() -> dict[str,Any]:
         "unregister_build": unregister_domain_build_specification_provider,
         "register_supervision": register_domain_supervisory_status_provider,
         "unregister_supervision": unregister_domain_supervisory_status_provider,
-        "notify_supervision": notify_domain_supervisory_status_changed,
     }
 
 
@@ -129,7 +124,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     from .commands.interop import MobilityCommandProvider
     from .compat_v1 import MobilityV1Facade
     from .compat_v1.services import collision_ids as legacy_service_collisions, register_services as register_legacy_services, unregister_services as unregister_legacy_services
-    from .compat_v1.state_publisher import MobilityV1StatePublisher
+    from .compat_v1.quiescent_publisher import MobilityV1StatePublisher
     from .domain_config import MobilityDomainConfiguration
     from .device_surfaces import MobilityDeviceSurfaceProvider, MobilitySourceDiagnosticsProvider
     from .energy import MobilityEnergyV2Provider
@@ -194,6 +189,11 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         "legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],
         "unregister_supervision":foundation_api["unregister_supervision"],
     }
+
+    # Subscribe before provider registration. Registration wakes Foundation discovery;
+    # installing the consumer first guarantees that a fast resulting SDBI publication
+    # cannot fall into the startup gap between initial import and listener setup.
+    _install_selected_input_lifecycle(hass,manager,entry)
     foundation_api["register_build"](hass,publisher_domain=DOMAIN,provider=provider,publication_revision=provider.publication_revision)
     await _async_import_existing_selected_inputs(hass,manager)
     from .projection import async_reconcile_projection
@@ -201,33 +201,24 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     foundation_api["register_supervision"](
         hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,provider=supervision_provider
     )
-    _install_selected_input_lifecycle(hass,manager,entry,foundation_api["notify_supervision"])
-    _install_domain_configuration_lifecycle(hass,manager,entry,foundation_api["notify_supervision"])
+    _install_domain_configuration_lifecycle(hass,manager,entry)
 
     interop=hass.data.setdefault(INTEROP_PROVIDER_REGISTRY_KEY,{})
     interop.update({ENERGY_PROVIDER_ID:energy_provider,ENERGY_COMPAT_PROVIDER_ID:energy_compat_provider,COMMAND_PROVIDER_ID:command_provider,
         PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID:legacy_facade,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider})
 
     async def execute_command(call: Any):
-        result=await command_provider.async_execute({"asset_id":call.data["asset_id"],"command_key":call.data["command_key"],"request_id":call.data.get("request_id")})
-        foundation_api["notify_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,reason="command_executed")
-        return result
+        return await command_provider.async_execute({"asset_id":call.data["asset_id"],"command_key":call.data["command_key"],"request_id":call.data.get("request_id")})
     async def set_requested_power(call: Any):
-        result=await command_provider.async_set_requested_power({"asset_id":call.data["asset_id"],"power_kw":call.data["power_kw"],"request_id":call.data.get("request_id")})
-        foundation_api["notify_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,reason="requested_power_changed")
-        return result
+        return await command_provider.async_set_requested_power({"asset_id":call.data["asset_id"],"power_kw":call.data["power_kw"],"request_id":call.data.get("request_id")})
     async def rearm_execution(call: Any):
-        result=await controller.async_rearm(call.data["asset_id"],call.data["conflict_family"])
-        foundation_api["notify_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,reason="execution_rearmed")
-        return result
+        return await controller.async_rearm(call.data["asset_id"],call.data["conflict_family"])
 
     hass.services.async_register(DOMAIN,SERVICE_EXECUTE_COMMAND,execute_command,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("command_key"):str,vol.Optional("request_id"):str}))
     hass.services.async_register(DOMAIN,SERVICE_SET_REQUESTED_POWER,set_requested_power,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("power_kw"):vol.Coerce(float),vol.Optional("request_id"):str}))
     hass.services.async_register(DOMAIN,SERVICE_REARM_EXECUTION,rearm_execution,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("conflict_family"):str}))
 
-    def notify_legacy(reason: str) -> None:
-        foundation_api["notify_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,reason=reason)
-    register_legacy_services(hass,legacy_facade,command_provider,notify=notify_legacy)
+    register_legacy_services(hass,legacy_facade,command_provider)
 
     try:
         await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)

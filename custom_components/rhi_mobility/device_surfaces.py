@@ -122,10 +122,9 @@ class MobilitySourceDiagnosticsProvider:
 class MobilityDeviceSurfaceProvider:
     """Backend-owned logical device surfaces for supervision and broad intelligence.
 
-    HA renders these snapshots and performs no domain inference. Broad intelligence is
-    deliberately stable at Mobility, Vehicle and Charger level. Future per-asset
-    intelligence devices may consume the same experience contract without moving or
-    redefining these existing surface identifiers.
+    Foundation-level supervision is generic technical readiness only. Mobility
+    intelligence is derived exclusively from Mobility experience/business semantics and
+    never from the shared Foundation supervisory contract.
     """
 
     CONTRACT_ID = "MOBILITY_DEVICE_SURFACES_V1"
@@ -165,9 +164,8 @@ class MobilityDeviceSurfaceProvider:
         chargers = list(experience.get("chargers") or [])
         vehicle_state, vehicle_warnings, vehicle_unknown = self._family_state(vehicles)
         charger_state, charger_warnings, charger_unknown = self._family_state(chargers)
-        intelligence_status = str(supervision.get("intelligence_status") or "UNKNOWN").upper()
-        if intelligence_status in {"BLOCKED", "DEGRADED", "CONFIGURATION_REQUIRED", "UNKNOWN"}:
-            mobility_intelligence_state = intelligence_status
+        if not vehicles and not chargers:
+            mobility_intelligence_state = "CONFIGURATION_REQUIRED"
         elif "ATTENTION" in {vehicle_state, charger_state}:
             mobility_intelligence_state = "ATTENTION"
         elif "LIMITED" in {vehicle_state, charger_state}:
@@ -186,7 +184,6 @@ class MobilityDeviceSurfaceProvider:
                 "contract_status": supervision.get("contract_status"),
                 "build_status": supervision.get("build_status"),
                 "runtime_status": supervision.get("runtime_status"),
-                "intelligence_status": supervision.get("intelligence_status"),
                 "issue_count": supervision.get("issue_count", 0),
                 "blocking_issue_count": supervision.get("blocking_issue_count", 0),
                 "warning_count": supervision.get("warning_count", 0),

@@ -342,8 +342,11 @@ class BroadDeviceSurfaceSensor(SensorEntity):
             self._attr_icon="mdi:shield-search"
 
     async def async_added_to_hass(self):
-        add_runtime=getattr(self.manager,"add_runtime_listener",self.manager.add_listener)
-        self.async_on_remove(add_runtime(self._changed))
+        # Broad surfaces are summaries, not telemetry mirrors. Updating them for every
+        # source event caused four expensive whole-domain recomputations per asset
+        # refresh. They now update only for structural topology and explicit control
+        # changes. Scalar property entities remain live through asset-scoped listeners.
+        self.async_on_remove(self.manager.add_topology_listener(self._changed))
         add_control=getattr(self.controller,"add_listener",None)
         if callable(add_control): self.async_on_remove(add_control(self._changed))
 

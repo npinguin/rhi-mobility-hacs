@@ -13,7 +13,7 @@
   ],
   "legacy_reference": {"release":"R43.2.65","legacy_adapter_count":11,"migration":"11 legacy integration adapters consolidated into 3 physical source families plus person presence and manual-profile configuration builders"},
   "safety": {"creates_binding":false,"creates_runtime_truth":false,"creates_public_contract":false,"executes_commands":false},
-  "release": "M0.7.2",
+  "release": "M0.7.3",
   "closure": {
     "step":3,
     "full_feature_migration":true,
@@ -42,7 +42,7 @@
   },
   "legacy_adapter_consolidation":{"migration":"11 integration observer adapters consolidated into 3 physical builder families plus person presence and manual-profile product builders"},
   "step3_closure":{"legacy_compatibility":"exact_public_entity_facade","entity_id_drop_in":true},
-  "shared_baseline":"1.8.0",
+  "shared_baseline":"1.8.1",
   "selected_domain_build_input_contract":"1.2.0",
   "foundation_capability_candidate_contract":"1.1.0"
 }
