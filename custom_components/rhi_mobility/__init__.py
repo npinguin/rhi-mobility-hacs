@@ -5,6 +5,7 @@ local to async_setup_entry so config-flow loading never depends on runtime readi
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import logging
 from typing import Any
 
@@ -23,6 +24,11 @@ _REQUIRED_FOUNDATION_RELEASE="F1.8.1"
 _REQUIRED_FOUNDATION_BASELINE="1.8.1"
 
 
+def _selected_input_registry_present(hass: Any) -> bool:
+    registry=hass.data.get(SELECTED_BUILD_INPUT_REGISTRY_KEY,{}) or {}
+    return isinstance(registry,dict) and FOUNDATION_DOMAIN_ID in registry
+
+
 def _selected_input_payloads(hass: Any) -> list[dict]:
     entry=hass.data.get(SELECTED_BUILD_INPUT_REGISTRY_KEY,{}).get(FOUNDATION_DOMAIN_ID)
     if entry is None: return []
@@ -37,6 +43,20 @@ def _selected_input_payloads(hass: Any) -> list[dict]:
             if isinstance(rows,(list,tuple)): candidates.extend(x for x in rows if isinstance(x,dict))
         return [x for x in candidates if x.get("kind")=="selected_domain_build_input"]
     return []
+
+
+def _mark_selected_input_gap(manager: Any, reason: str) -> None:
+    """Retain last-good runtime when Foundation handoff storage is transiently absent."""
+    state=dict(getattr(manager,"last_build_attempt",{}) or {})
+    state.update({
+        "status":"STALE",
+        "observed_at":datetime.now(timezone.utc).isoformat(),
+        "reason":reason,
+        "retained_previous_runtime":bool(getattr(manager,"assets",{})),
+    })
+    manager.last_build_attempt=state
+    notify=getattr(manager,"_notify",None)
+    if callable(notify): notify()
 
 
 async def _async_import_existing_selected_inputs(hass: Any, manager: Any) -> None:
@@ -63,9 +83,16 @@ def _idempotent_unload(entry: Any, raw_unsub: Any):
 def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any):
     """Consume structural Foundation handoffs without feeding status back upstream."""
     async def rebuild(event: Any) -> None:
-        if (getattr(event,"data",{}) or {}).get("domain_id")!=FOUNDATION_DOMAIN_ID: return
+        data=getattr(event,"data",{}) or {}
+        if data.get("domain_id")!=FOUNDATION_DOMAIN_ID: return
+        reason=str(data.get("reason") or "refreshed")
+        if reason!="removed" and not _selected_input_registry_present(hass):
+            _mark_selected_input_gap(manager,f"foundation_event_registry_gap:{reason}")
+            _LOGGER.warning("Mobility retained last-good runtime because Foundation handoff storage is temporarily absent; reason=%s",reason)
+            return
         try:
-            await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
+            payloads=[] if reason=="removed" else _selected_input_payloads(hass)
+            await manager.async_replace_selected_build_inputs(payloads)
             from .projection import async_reconcile_projection
             await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
         except Exception as exc:
@@ -86,6 +113,10 @@ def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any)
         current=deepcopy((getattr(updated_entry,"options",{}) or {}).get(GUEST_VEHICLES_KEY,{}))
         if current==previous: return
         previous=current
+        if not _selected_input_registry_present(hass):
+            _mark_selected_input_gap(manager,"domain_configuration_changed_while_foundation_handoff_missing")
+            _LOGGER.warning("Mobility retained last-good runtime because semantic configuration changed while Foundation handoff storage was absent")
+            return
         await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
         from .projection import async_reconcile_projection
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))

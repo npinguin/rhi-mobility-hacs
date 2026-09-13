@@ -1,6 +1,8 @@
 from __future__ import annotations
+import logging
 from typing import Any
 
+_LOGGER=logging.getLogger(__name__)
 _UNKNOWN_TOKENS={"unknown","unavailable","none","null",""}
 
 def _text(value: Any) -> str | None:
@@ -346,3 +348,30 @@ def maintenance_state(integration_domain: str, value: Any) -> dict[str,str | Non
     if key in {'warning','warn'}:return {'value':'warning'}
     if key in {'critical','fault','error'}:return {'value':'critical'}
     return {'value':'unknown'}
+
+
+_normalize_unchecked=normalize
+
+def normalize(rule: str, integration_domain: str, value: Any, unit: str | None) -> dict[str, Any]:
+    """Normalize one source value while containing source/adapter conversion faults.
+
+    Unknown normalizer names remain programming/contract errors and fail closed. Runtime
+    data conversion failures are isolated to this property so unrelated properties/assets
+    keep refreshing; the caller will surface the empty result as unavailable/degraded truth.
+    """
+    try:
+        return _normalize_unchecked(rule,integration_domain,value,unit)
+    except ValueError as exc:
+        if str(exc).startswith("unknown Mobility normalizer:"):
+            raise
+        _LOGGER.warning(
+            "Mobility property normalization failed rule=%s integration=%s error=%s",
+            rule,integration_domain,type(exc).__name__,
+        )
+        return {}
+    except Exception as exc:
+        _LOGGER.warning(
+            "Mobility property normalization failed rule=%s integration=%s error=%s",
+            rule,integration_domain,type(exc).__name__,
+        )
+        return {}
