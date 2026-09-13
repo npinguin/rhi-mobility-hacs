@@ -109,10 +109,11 @@ def _idempotent_unload(entry: Any, raw_unsub: Any):
 
 
 def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_rebuilt=None):
-    """Consume structural Foundation handoffs without runtime/telemetry feedback upstream."""
-    async def rebuild(event: Any) -> None:
+    """Consume structural Foundation handoffs with one authoritative registry reread."""
+    async def changed(event: Any) -> None:
         data=getattr(event,"data",{}) or {}
-        if data.get("domain_id")!=FOUNDATION_DOMAIN_ID: return
+        if data.get("domain_id")!=FOUNDATION_DOMAIN_ID:
+            return
         reason=str(data.get("reason") or "refreshed")
         if reason!="removed" and not _selected_input_registry_present(hass):
             _mark_selected_input_gap(manager,f"foundation_event_registry_gap:{reason}")
@@ -127,9 +128,7 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_re
         except Exception as exc:
             _record_handoff_exception(manager,exc)
             _LOGGER.warning("Mobility Foundation handoff rebuild rejected; previous runtime retained: %s",exc)
-    def changed(event: Any) -> None:
-        if (getattr(event,"data",{}) or {}).get("domain_id")==FOUNDATION_DOMAIN_ID:
-            hass.async_create_task(rebuild(event))
+
     return _idempotent_unload(entry,hass.bus.async_listen(SELECTED_BUILD_INPUTS_CHANGED_EVENT,changed))
 
 
@@ -327,18 +326,21 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
 
 
 async def async_unload_entry(hass: Any, entry: Any) -> bool:
+    data=hass.data.get(DOMAIN,{}).get(entry.entry_id)
+    if data:
+        # Quiesce Mobility before Home Assistant starts dismantling its platforms.
+        # This prevents source/runtime/control callbacks from writing states while
+        # the entity platforms and Foundation registrations are being torn down.
+        for key in ("config_unsub","selected_unsub"):
+            unsub=data.get(key)
+            if unsub: unsub()
+        if data.get("legacy_state"): data["legacy_state"].stop()
+        if data.get("controller"): data["controller"].shutdown()
+        if data.get("runtime"): data["runtime"].clear_all()
+
     ok=await hass.config_entries.async_unload_platforms(entry,PLATFORMS)
     if ok:
-        data=hass.data.get(DOMAIN,{}).get(entry.entry_id)
         if data:
-            # Close inbound lifecycle callbacks first. Provider unregister can itself cause
-            # Foundation structural activity; no handoff may re-enter a runtime being torn down.
-            for key in ("config_unsub","selected_unsub"):
-                unsub=data.get(key)
-                if unsub: unsub()
-            if data.get("legacy_state"): data["legacy_state"].stop()
-            if data.get("controller"): data["controller"].shutdown()
-            if data.get("runtime"): data["runtime"].clear_all()
             supervision_unsub=data.get("supervision_registration_unsub")
             if not _call_registration_unsub(supervision_unsub) and data.get("unregister_supervision"):
                 data["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
