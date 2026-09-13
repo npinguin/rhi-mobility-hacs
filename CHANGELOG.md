@@ -1,5 +1,15 @@
 # Changelog
 
+## M0.7.6 — Runtime boundary quiescence
+
+- Restore the existing ownership boundary between Mobility runtime truth and command/activity control notifications without introducing a new event framework.
+- Split the frozen V1 compatibility publisher into independent coalesced runtime and control lanes; control changes now refresh only command/activity-owned surfaces.
+- Keep `sensor.mobility_energy_asset_publication` change-only and remove command-history churn (`last_command_result`) as a changing Mobility-to-Energy dependency while preserving its exact V1 attribute shape.
+- Preserve M0.7.5 startup handoff convergence, all normalized properties, profiles, relationships, command semantics, public entity IDs and R43.2.65/MOBILITY_PUBLIC_RUNTIME_V1 compatibility.
+- Keep Foundation F1.8.1 / Shared Baseline 1.8.1 unchanged and authoritative; canonical runtime model identity remains M0.7.2 because no mapping/normalization/business semantics changed.
+- Align all release/distribution identity metadata on M0.7.6 so HACS candidate staging remains fail-closed and reproducible.
+- Static qualification is green with 240/240 tests, contract/drift verification, Hassfest and deterministic packaging. Target Home Assistant quiescence, Energy coexistence, unload/reload and bounded event convergence remain mandatory runtime gates.
+
 ## M0.7.5 — Startup handoff convergence
 
 - Close the target-HA startup race proven by M0.7.4 diagnostics: Mobility consumed a pre-publication Foundation slice before Foundation's provider-triggered structural refresh completed during the same setup window.
@@ -96,7 +106,7 @@
 
 - Migrated approved `M0.5.7` self-contained package into the standard `rhi-mobility` repository topology.
 - Incremented Home Assistant integration version to `0.5.8` and release identity to `M0.5.8`.
-- Added HACS metadata, GitHub workflows, repository build/verification scripts and migration inventories.
+- Added HACS metadata, GitHub workflows, repository build/verification scripts and migration inventories, checksums and CI gates.
 - Preserved Shared Baseline 1.7.0 exactly.
 - No intended runtime, normalization, public entity, command, unique-ID or domain-contract semantic change.
 
