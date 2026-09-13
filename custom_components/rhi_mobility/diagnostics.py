@@ -52,6 +52,7 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
     provider = data.get("provider")
     public = data.get("public_provider")
     domain_config = data.get("domain_config")
+    handoff = _bounded_handoff(hass)
     normalized: dict[str, Any] = {}
     sources: dict[str, Any] = {}
     completeness: dict[str, Any] = {"status": "NOT_READY"}
@@ -63,7 +64,12 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
         resolver = PropertyResolver(manager, public)
         normalized = normalized_property_coverage(manager, public)
         sources = source_capability_coverage(manager)
-        completeness = completeness_gate(normalized, sources)
+        completeness = completeness_gate(
+            normalized,
+            sources,
+            configured_input_count=int(handoff.get("input_count", 0) or 0),
+            materialized_asset_count=len(manager.assets),
+        )
         profiles = [
             {"asset_id": asset_id, "asset_type": asset.concept_id, **profile_metadata(manager, asset_id)}
             for asset_id, asset in sorted(manager.assets.items())
@@ -95,7 +101,7 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
             "asset_readiness": readiness,
         },
         "configuration": {
-            "foundation_handoff": _bounded_handoff(hass),
+            "foundation_handoff": handoff,
             "domain_configuration_available": domain_config is not None,
         },
         "build_handoff": {} if manager is None else manager.diagnostics_snapshot(),

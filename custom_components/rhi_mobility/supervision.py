@@ -86,27 +86,40 @@ class MobilityDomainSupervisoryStatusProvider:
     @staticmethod
     def _build_status(attempt: dict[str, Any]) -> str:
         status = str(attempt.get("status") or "UNKNOWN").upper()
-        if status in {"OK", "READY", "COMPLETE", "SUCCESS"}:
+        if status in {"OK", "READY", "COMPLETE", "SUCCESS", "ACCEPTED"}:
             return "OK"
         if status in {"PARTIAL", "DEGRADED"}:
             return "DEGRADED"
-        if status in {"REMOVED", "EMPTY", "WAITING_FOR_FOUNDATION"}:
+        if status in {"REMOVED", "EMPTY", "WAITING_FOR_FOUNDATION", "WAITING_FOR_FOUNDATION_REFRESH"}:
             return "CONFIGURATION_REQUIRED"
-        if status in {"ERROR", "FAILED", "INVALID", "BLOCKED"}:
+        if status in {"STALE"}:
+            return "STALE"
+        if status in {"ERROR", "FAILED", "INVALID", "BLOCKED", "REJECTED"}:
             return "BLOCKED"
         return "UNKNOWN"
 
     def _runtime(self) -> tuple[str, dict[str, Any], list[dict[str, Any]]]:
         normalized = normalized_property_coverage(self.manager, self.public)
         source = source_capability_coverage(self.manager)
-        gate = completeness_gate(normalized, source)
+        attempt = dict(getattr(self.manager, "last_build_attempt", {}) or {})
+        gate = completeness_gate(
+            normalized,
+            source,
+            configured_input_count=int(attempt.get("selected_input_count", 0) or 0),
+            materialized_asset_count=len(self.manager.assets),
+        )
         issues: list[dict[str, Any]] = []
         if gate.get("status") != "PASS":
+            reason = (
+                "RUNTIME_MATERIALIZATION_EMPTY"
+                if gate.get("configured_inputs_without_assets")
+                else "RUNTIME_COMPLETENESS_GATE_FAILED"
+            )
             issues.append(self._issue(
                 "mobility:runtime:completeness",
                 severity="CRITICAL",
                 category="PROPERTY_RESOLUTION",
-                reason_code="RUNTIME_COMPLETENESS_GATE_FAILED",
+                reason_code=reason,
                 blocking=True,
                 scope=["mobility", "MOBILITY_PUBLIC_RUNTIME_V2"],
                 details="rhi_mobility:diagnostics:coverage",

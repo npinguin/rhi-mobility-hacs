@@ -137,8 +137,21 @@ def source_capability_coverage(manager: Any) -> dict[str, Any]:
     }
 
 
-def completeness_gate(normalized: dict[str, Any], sources: dict[str, Any]) -> dict[str, Any]:
+def completeness_gate(
+    normalized: dict[str, Any],
+    sources: dict[str, Any],
+    *,
+    configured_input_count: int = 0,
+    materialized_asset_count: int = 0,
+) -> dict[str, Any]:
+    """Fail closed on unresolved evidence and on a configured-but-empty runtime.
+
+    Zero assets is valid only when no authoritative Mobility build inputs were
+    consumed. A non-empty SelectedDomainBuildInput slice that produces no logical
+    assets is a materialization failure, not a passing coverage result.
+    """
     blockers = {
+        "configured_inputs_without_assets": int(configured_input_count > 0 and materialized_asset_count == 0),
         "ambiguous": int(sources.get("ambiguous_count", 0) or 0),
         "unmapped_source_capabilities": int(sources.get("unmapped_source_capability_count", 0) or 0),
         "unclassified_source_capabilities": int(sources.get("unclassified_source_capability_count", 0) or 0),

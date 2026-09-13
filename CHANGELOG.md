@@ -1,5 +1,18 @@
 # Changelog
 
+## M0.7.4 — Foundation handoff and materialization recovery
+
+- Fix the startup/control-plane race that allowed Mobility to remain at `WAITING_FOR_FOUNDATION` even when Foundation F1.8.1 had already published a valid `SelectedDomainBuildInput` slice.
+- Preserve domain-first startup: if the Mobility handoff slice is not published yet, record bounded `WAITING_FOR_FOUNDATION_REFRESH` evidence with timestamp/reason and consume the later structural Foundation event instead of adding a hard config-entry readiness dependency.
+- Keep Mobility build-specification publication Foundation-owned at the shared registry boundary and consume only the authoritative `SelectedDomainBuildInput`; no Foundation private candidate store or runtime measurement path is introduced.
+- Register or structurally refresh Mobility supervision only after a handoff build result has actually been processed, so Foundation does not retain a stale pre-build `CONFIGURATION_REQUIRED` snapshot; runtime telemetry never triggers Foundation supervision.
+- Preserve capability-isolated materialization: valid Audi/MBAPI/OCPP/Peblar/MQTT selections can materialize independently while source-specific Wallbox/Cupra findings remain scoped to their own selection/capability.
+- Recognize the manager's canonical `ACCEPTED` build result as `OK` in shared supervision; `STALE` and `REJECTED` remain explicit fail-closed states.
+- Make coverage fail closed when configured Mobility build inputs exist but zero logical assets materialize; a configured-empty runtime can no longer report a false-green completeness PASS.
+- Preserve topology-driven dynamic HA projection: scalar, editable and diagnostic entities remain created from materialized logical assets, while the R43.2.65/MOBILITY_PUBLIC_RUNTIME_V1 surface remains a projection over canonical V2 truth.
+- No public entity ID, unique ID, service, command name, semantic property key, profile or ownership boundary is intentionally renamed or removed.
+- Target Home Assistant runtime qualification remains mandatory: this release may become a versioned test candidate after source/package/HACS/hassfest gates pass, but it is not production-approved until the exact F1.8.1 + M0.7.4 deployment is proven.
+
 ## M0.7.3 — Runtime quiescence and supervision boundary recovery
 
 - Require Foundation `F1.8.1` / Shared Baseline `1.8.1` as the exact compatible control-plane contract.

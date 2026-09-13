@@ -59,13 +59,41 @@ def _mark_selected_input_gap(manager: Any, reason: str) -> None:
     if callable(notify): notify()
 
 
-async def _async_import_existing_selected_inputs(hass: Any, manager: Any) -> None:
+def _record_handoff_exception(manager: Any, exc: Exception) -> None:
+    """Never leave an attempted Foundation handoff looking like it never ran."""
+    state=dict(getattr(manager,"last_build_attempt",{}) or {})
+    if state.get("status") in {None,"WAITING_FOR_FOUNDATION","WAITING_FOR_FOUNDATION_REFRESH"}:
+        state.update({
+            "status":"REJECTED",
+            "observed_at":datetime.now(timezone.utc).isoformat(),
+            "error_type":type(exc).__name__,
+            "error":str(exc),
+            "retained_previous_runtime":bool(getattr(manager,"assets",{})),
+        })
+        manager.last_build_attempt=state
+        notify=getattr(manager,"_notify",None)
+        if callable(notify): notify()
+
+
+async def _async_import_existing_selected_inputs(hass: Any, manager: Any) -> bool:
     registry=hass.data.get(SELECTED_BUILD_INPUT_REGISTRY_KEY,{}) or {}
-    if FOUNDATION_DOMAIN_ID not in registry: return
+    if FOUNDATION_DOMAIN_ID not in registry:
+        manager.last_build_attempt={
+            "status":"WAITING_FOR_FOUNDATION_REFRESH",
+            "observed_at":datetime.now(timezone.utc).isoformat(),
+            "reason":"selected_domain_build_input_not_yet_published",
+            "retained_previous_runtime":bool(getattr(manager,"assets",{})),
+        }
+        notify=getattr(manager,"_notify",None)
+        if callable(notify): notify()
+        return False
     try:
         await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
+        return True
     except Exception as exc:
+        _record_handoff_exception(manager,exc)
         _LOGGER.warning("Mobility initial Foundation handoff was rejected; diagnostics retained: %s",exc)
+        return False
 
 
 def _idempotent_unload(entry: Any, raw_unsub: Any):
@@ -80,8 +108,8 @@ def _idempotent_unload(entry: Any, raw_unsub: Any):
     return unsub
 
 
-def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any):
-    """Consume structural Foundation handoffs without feeding status back upstream."""
+def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_rebuilt=None):
+    """Consume structural Foundation handoffs without runtime/telemetry feedback upstream."""
     async def rebuild(event: Any) -> None:
         data=getattr(event,"data",{}) or {}
         if data.get("domain_id")!=FOUNDATION_DOMAIN_ID: return
@@ -95,7 +123,9 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any):
             await manager.async_replace_selected_build_inputs(payloads)
             from .projection import async_reconcile_projection
             await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
+            if callable(on_rebuilt): on_rebuilt()
         except Exception as exc:
+            _record_handoff_exception(manager,exc)
             _LOGGER.warning("Mobility Foundation handoff rebuild rejected; previous runtime retained: %s",exc)
     def changed(event: Any) -> None:
         if (getattr(event,"data",{}) or {}).get("domain_id")==FOUNDATION_DOMAIN_ID:
@@ -125,7 +155,7 @@ def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any)
     return _idempotent_unload(entry,add(updated))
 
 
-def _load_foundation_registry_api() -> dict[str,Any]:
+def _load_foundation_registry_api(hass: Any) -> dict[str,Any]:
     try:
         from custom_components.rhi_foundation.const import RELEASE as foundation_release, SHARED_BASELINE_VERSION as foundation_baseline
         from custom_components.rhi_foundation.shared_registry import (
@@ -167,7 +197,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     from .runtime.manager import MobilityRuntimeManager
     from .supervision import MobilityDomainSupervisoryStatusProvider
 
-    foundation_api=_load_foundation_registry_api()
+    foundation_api=_load_foundation_registry_api(hass)
     registry=MobilityModelRegistry(); provider=MobilityBuildSpecificationProvider(registry)
     domain_config=MobilityDomainConfiguration(hass,entry); manager=MobilityRuntimeManager(hass,registry,domain_config)
     controller=MobilityControlController(hass,manager,registry); public_provider=MobilityPublicRuntimeProvider(manager,controller,registry)
@@ -193,7 +223,18 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     interop_ids=(ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID)
     service_names=(SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION)
     selected_unsub=None; config_unsub=None; setup_data=None
-    build_registration_attempted=False; supervision_registration_attempted=False; legacy_services_registered=False; platforms_forward_started=False
+    build_registration_attempted=False; supervision_registered=False; legacy_services_registered=False; platforms_forward_started=False
+
+    def sync_supervision_after_structural_build() -> None:
+        """Refresh shared supervision only on structural handoff lifecycle, never telemetry."""
+        nonlocal supervision_registered
+        status=str((getattr(manager,"last_build_attempt",{}) or {}).get("status") or "")
+        if status not in {"ACCEPTED","PARTIAL","REMOVED","REJECTED"}:
+            return
+        if supervision_registered:
+            foundation_api["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
+        foundation_api["register_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,provider=supervision_provider)
+        supervision_registered=True
 
     async def execute_command(call: Any): return await command_provider.async_execute({"asset_id":call.data["asset_id"],"command_key":call.data["command_key"],"request_id":call.data.get("request_id")})
     async def set_requested_power(call: Any): return await command_provider.async_set_requested_power({"asset_id":call.data["asset_id"],"power_kw":call.data["power_kw"],"request_id":call.data.get("request_id")})
@@ -202,14 +243,14 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     try:
         setup_data={"registry":registry,"provider":provider,"runtime":manager,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"energy_compat_provider":energy_compat_provider,"command_provider":command_provider,"public_provider":public_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"compatibility_provider":legacy_facade,"legacy_facade":legacy_facade,"legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"]}
         hass.data.setdefault(DOMAIN,{})[entry.entry_id]=setup_data
-        selected_unsub=_install_selected_input_lifecycle(hass,manager,entry); setup_data["selected_unsub"]=selected_unsub
+        selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_supervision_after_structural_build); setup_data["selected_unsub"]=selected_unsub
         build_registration_attempted=True
         foundation_api["register_build"](hass,publisher_domain=DOMAIN,provider=provider,publication_revision=provider.publication_revision)
-        await _async_import_existing_selected_inputs(hass,manager)
+        imported=await _async_import_existing_selected_inputs(hass,manager)
         from .projection import async_reconcile_projection
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
-        supervision_registration_attempted=True
-        foundation_api["register_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,provider=supervision_provider)
+        if imported:
+            sync_supervision_after_structural_build()
         config_unsub=_install_domain_configuration_lifecycle(hass,manager,entry); setup_data["config_unsub"]=config_unsub
         interop.update({ENERGY_PROVIDER_ID:energy_provider,ENERGY_COMPAT_PROVIDER_ID:energy_compat_provider,COMMAND_PROVIDER_ID:command_provider,PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID:legacy_facade,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider})
         hass.services.async_register(DOMAIN,SERVICE_EXECUTE_COMMAND,execute_command,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("command_key"):str,vol.Optional("request_id"):str}))
@@ -236,7 +277,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
             if unsub:
                 try: unsub()
                 except Exception: _LOGGER.exception("Mobility setup rollback: %s listener cleanup failed",label)
-        if supervision_registration_attempted:
+        if supervision_registered:
             try: foundation_api["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
             except Exception: _LOGGER.exception("Mobility setup rollback: supervision cleanup failed")
         if build_registration_attempted:
