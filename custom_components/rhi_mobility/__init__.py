@@ -258,6 +258,15 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         hass.services.async_register(DOMAIN,SERVICE_REARM_EXECUTION,rearm_execution,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("conflict_family"):str}))
         legacy_services_registered=True; register_legacy_services(hass,legacy_facade,command_provider)
         platforms_forward_started=True; await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)
+        # One bounded convergence read closes the startup race between provider registration
+        # and Foundation's coalesced structural refresh. This is not polling: lifecycle
+        # events remain authoritative after setup, while the final setup read guarantees
+        # Mobility cannot finish startup on a pre-publication handoff that Foundation
+        # replaced while platform setup was in progress.
+        converged=await _async_import_existing_selected_inputs(hass,manager)
+        await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
+        if converged:
+            sync_supervision_after_structural_build()
         legacy_state.start(); return True
     except Exception:
         try: legacy_state.stop()

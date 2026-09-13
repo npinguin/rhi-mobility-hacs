@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.7.5 — Startup handoff convergence
+
+- Close the target-HA startup race proven by M0.7.4 diagnostics: Mobility consumed a pre-publication Foundation slice before Foundation's provider-triggered structural refresh completed during the same setup window.
+- Perform exactly one final `SelectedDomainBuildInput` read after Home Assistant platform setup, then reconcile projection and shared structural supervision before starting the V1 state publisher.
+- Keep Foundation F1.8.1 / Shared Baseline 1.8.1 unchanged and authoritative; the fix belongs entirely in Mobility's consumption/startup lifecycle.
+- Keep the existing structural Foundation event listener as the only ongoing handoff trigger after setup; no polling, timer, retry loop, sleep or Foundation refresh call is introduced.
+- Preserve all M0.7.4 semantic catalogs, normalized property keys, profiles, relationships, commands, public entity IDs and R43.2.65/MOBILITY_PUBLIC_RUNTIME_V1 projection contracts.
+- Static qualification is green with 235/235 tests, contract/drift verification, Hassfest and deterministic packaging. Target Home Assistant runtime proof remains mandatory before production approval.
+
 ## M0.7.4 — Foundation handoff and materialization recovery
 
 - Fix the startup/control-plane race that allowed Mobility to remain at `WAITING_FOR_FOUNDATION` even when Foundation F1.8.1 had already published a valid `SelectedDomainBuildInput` slice.
