@@ -5,6 +5,7 @@ local to async_setup_entry so config-flow loading never depends on runtime readi
 """
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 import logging
 from typing import Any
@@ -20,7 +21,7 @@ from .const import (
 
 PLATFORMS=["sensor","number","button","select","text","switch"]
 _LOGGER=logging.getLogger(__name__)
-_SUPPORTED_FOUNDATION_RELEASES=("F1.8.1","F1.8.2")
+_SUPPORTED_FOUNDATION_RELEASES=("F1.8.1","F1.8.2","F1.8.3")
 _REQUIRED_FOUNDATION_BASELINE="1.8.1"
 
 
@@ -109,25 +110,32 @@ def _idempotent_unload(entry: Any, raw_unsub: Any):
 
 
 def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_rebuilt=None):
-    """Consume structural Foundation handoffs with one authoritative registry reread."""
+    """Consume structural Foundation handoffs serially from the authoritative registry."""
+    structural_lock=asyncio.Lock()
+
     async def changed(event: Any) -> None:
         data=getattr(event,"data",{}) or {}
         if data.get("domain_id")!=FOUNDATION_DOMAIN_ID:
             return
         reason=str(data.get("reason") or "refreshed")
-        if reason!="removed" and not _selected_input_registry_present(hass):
-            _mark_selected_input_gap(manager,f"foundation_event_registry_gap:{reason}")
-            _LOGGER.warning("Mobility retained last-good runtime because Foundation handoff storage is temporarily absent; reason=%s",reason)
-            return
-        try:
-            payloads=[] if reason=="removed" else _selected_input_payloads(hass)
-            await manager.async_replace_selected_build_inputs(payloads)
-            from .projection import async_reconcile_projection
-            await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
-            if callable(on_rebuilt): on_rebuilt()
-        except Exception as exc:
-            _record_handoff_exception(manager,exc)
-            _LOGGER.warning("Mobility Foundation handoff rebuild rejected; previous runtime retained: %s",exc)
+        async with structural_lock:
+            registry_present=_selected_input_registry_present(hass)
+            if reason!="removed" and not registry_present:
+                _mark_selected_input_gap(manager,f"foundation_event_registry_gap:{reason}")
+                _LOGGER.warning("Mobility retained last-good runtime because Foundation handoff storage is temporarily absent; reason=%s",reason)
+                return
+            try:
+                # Foundation F1.8.3 keeps the authoritative slice across ordinary
+                # reloads. If an older/stale removed event is still queued while a
+                # newer slice is already present, the registry wins over event age.
+                payloads=_selected_input_payloads(hass) if registry_present else []
+                await manager.async_replace_selected_build_inputs(payloads)
+                from .projection import async_reconcile_projection
+                await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
+                if callable(on_rebuilt): on_rebuilt()
+            except Exception as exc:
+                _record_handoff_exception(manager,exc)
+                _LOGGER.warning("Mobility Foundation handoff rebuild rejected; previous runtime retained: %s",exc)
 
     return _idempotent_unload(entry,hass.bus.async_listen(SELECTED_BUILD_INPUTS_CHANGED_EVENT,changed))
 
@@ -162,8 +170,8 @@ def _load_foundation_registry_api(hass: Any) -> dict[str,Any]:
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
         except ImportError:
-            raise RuntimeError("RHI Mobility requires RHI Foundation F1.8.1 or F1.8.2 / Shared Baseline 1.8.1 before runtime setup") from exc
-        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.8.1 or F1.8.2 / Shared Baseline 1.8.1. Install/update Foundation and retry setup.") from exc
+            raise RuntimeError("RHI Mobility requires RHI Foundation F1.8.1, F1.8.2 or F1.8.3 / Shared Baseline 1.8.1 before runtime setup") from exc
+        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.8.1, F1.8.2 or F1.8.3 / Shared Baseline 1.8.1. Install/update Foundation and retry setup.") from exc
     if foundation_release not in _SUPPORTED_FOUNDATION_RELEASES or foundation_baseline != _REQUIRED_FOUNDATION_BASELINE:
         supported=", ".join(_SUPPORTED_FOUNDATION_RELEASES)
         message=("RHI Mobility requires an explicitly supported RHI Foundation release " f"({supported}) with Shared Baseline {_REQUIRED_FOUNDATION_BASELINE}; " f"loaded Foundation is {foundation_release} / {foundation_baseline}. " "Bindings and supervision are intentionally not started against an incompatible shared contract.")
@@ -282,11 +290,6 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         hass.services.async_register(DOMAIN,SERVICE_REARM_EXECUTION,rearm_execution,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("conflict_family"):str}))
         legacy_services_registered=True; register_legacy_services(hass,legacy_facade,command_provider)
         platforms_forward_started=True; await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)
-        # One bounded convergence read closes the startup race between provider registration
-        # and Foundation's coalesced structural refresh. This is not polling: lifecycle
-        # events remain authoritative after setup, while the final setup read guarantees
-        # Mobility cannot finish startup on a pre-publication handoff that Foundation
-        # replaced while platform setup was in progress.
         converged=await _async_import_existing_selected_inputs(hass,manager)
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
         if converged:
@@ -328,9 +331,6 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
 async def async_unload_entry(hass: Any, entry: Any) -> bool:
     data=hass.data.get(DOMAIN,{}).get(entry.entry_id)
     if data:
-        # Quiesce Mobility before Home Assistant starts dismantling its platforms.
-        # This prevents source/runtime/control callbacks from writing states while
-        # the entity platforms and Foundation registrations are being torn down.
         for key in ("config_unsub","selected_unsub"):
             unsub=data.get(key)
             if unsub: unsub()
