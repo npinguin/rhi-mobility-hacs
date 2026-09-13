@@ -7,9 +7,11 @@
 - Adopt `RHI_DOMAIN_SUPERVISORY_STATUS_V1` contract `1.1.0`: shared supervision contains generic technical/domain readiness only; Mobility intelligence remains Mobility-owned and does not affect Foundation readiness.
 - Stop the command executor from waking the command/control publication lane on ordinary telemetry when no execution is awaiting late readback.
 - Move broad Mobility/intelligence device surfaces off the per-asset runtime telemetry listener; scalar properties remain live through asset-scoped listeners while broad summaries update on bounded topology/control changes.
-- Add regression gates for boot quiescence, no supervision feedback, no broad-surface telemetry subscription and exact Foundation/Mobility baseline pairing.
+- Retain the last-good Mobility runtime across transient Foundation selected-input registry gaps; only an explicit Foundation `removed` event clears the authoritative Mobility slice.
+- Isolate source/property normalization conversion failures so one bad value cannot abort unrelated asset truth; required failures degrade the affected asset, optional failures remain scoped and diagnosable, and unknown normalizer names still fail closed as contract/programming errors.
+- Add regression gates for boot quiescence, no supervision feedback, no broad-surface telemetry subscription, exact Foundation/Mobility baseline pairing, transient handoff gaps, explicit removal, and required/optional normalization-fault isolation.
 - Preserve M0.7.2 semantic catalogs, integration adapters, V1 facade, profile/property/relationship/command contracts and public entity IDs; this release is a runtime/recovery delta, not a semantic remap.
-- Target Home Assistant cold-boot, restart, unload/reload, upgrade and rollback acceptance remains mandatory before public promotion.
+- Source validation, deterministic packaging, hassfest, candidate publication and public HACS validation are green for the merged candidate. Target Home Assistant cold-boot, restart, unload/reload, clean-install, upgrade and rollback acceptance remains mandatory before stable public promotion.
 
 ## M0.7.2 — V1 facade closure and domain supervision
 
@@ -20,7 +22,7 @@
 - Add Mobility-owned logical device surfaces and source diagnostics while keeping HA device/entity projection a renderer of backend-owned semantics.
 - Keep guest vehicles Mobility-owned, preserve add/edit/remove persistence, and retain the Home Assistant 2026.9 options-flow correction without reintroducing obsolete `battery_energy_kwh` form authoring.
 - Add zero-runtime-tech-debt and device-surface architecture gates alongside canonical contract authority, normalized mapping coverage and completeness/presentation gates.
-- Preserve the M0.7.1 normalized property, profile, image, relationship, Energy interop and physical command behavior with no intentional public entity ID, unique ID, service or command rename/removal.
+- Preserve the complete M0.7.1 normalized property, profile, image, relationship, Energy interop and physical command behavior with no intentional public entity ID, unique ID, service or command rename/removal.
 - Static source, package, test and hassfest validation are required to be green for the merge candidate. Target Home Assistant clean-install, upgrade, rollback and full V1 runtime parity remain explicit post-merge test-candidate acceptance gates.
 
 ## M0.7.1 — Structural runtime chain recovery
@@ -35,8 +37,7 @@
 - Keep OCPP physical connector state distinct from central-system status and retain measured charger power as an optional capability.
 - Preserve historical runtime-observed evidence as history rather than forcing old published matches to equal current canonical matching rules.
 - Derive build/package release identity from the integration manifest and runtime release constant instead of hardcoded legacy versions.
-- Preserve the complete M0.7.0/M0.6.7 public property, profile, image, guest-vehicle, relationship, command and V1 compatibility surfaces while repairing the authority chain.
-- Target Home Assistant acceptance remains mandatory before the release can be declared complete.
+- Preserve the complete M0.7.0/M0.6.7 public property, profile, image/presentation surface; target Home Assistant runtime acceptance remains mandatory before release can be declared complete.
 
 ## M0.7.0 — Runtime truth architecture
 
