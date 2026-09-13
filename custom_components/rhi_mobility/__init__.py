@@ -125,9 +125,6 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_re
                 _LOGGER.warning("Mobility retained last-good runtime because Foundation handoff storage is temporarily absent; reason=%s",reason)
                 return
             try:
-                # Foundation F1.8.3 keeps the authoritative slice across ordinary
-                # reloads. If an older/stale removed event is still queued while a
-                # newer slice is already present, the registry wins over event age.
                 payloads=_selected_input_payloads(hass) if registry_present else []
                 await manager.async_replace_selected_build_inputs(payloads)
                 from .projection import async_reconcile_projection
@@ -254,12 +251,13 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         supervision_registered=False
 
     def sync_supervision_after_structural_build() -> None:
-        """Refresh shared supervision only on structural handoff lifecycle, never telemetry."""
+        """Register shared supervision once for this Mobility load generation."""
         nonlocal supervision_registered, supervision_registration_unsub
+        if supervision_registered:
+            return
         status=str((getattr(manager,"last_build_attempt",{}) or {}).get("status") or "")
         if status not in {"ACCEPTED","PARTIAL","REMOVED","REJECTED"}:
             return
-        close_supervision_registration()
         handle=foundation_api["register_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN,provider=supervision_provider)
         supervision_registration_unsub=handle if callable(handle) else None
         supervision_registered=True

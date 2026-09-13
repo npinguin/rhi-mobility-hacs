@@ -3,10 +3,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from .compat_v1.health import facade_parity_health
-from .coverage import completeness_gate, normalized_property_coverage, source_capability_coverage
-from .readiness import evaluate_asset_readiness
-
 CONTRACT_ID = "RHI_DOMAIN_SUPERVISORY_STATUS_V1"
 CONTRACT_VERSION = "1.1.0"
 
@@ -26,11 +22,12 @@ def _worst(*statuses: str) -> str:
 
 
 class MobilityDomainSupervisoryStatusProvider:
-    """Mobility-owned generic technical readiness exposed to Foundation.
+    """Bounded Mobility readiness envelope consumed by Foundation.
 
-    Domain intelligence and business meaning remain Mobility-owned and are available
-    through ``details()``/Mobility public contracts. They deliberately do not influence
-    the shared Foundation supervisory envelope.
+    This provider intentionally never resolves the full property catalog, rebuilds the
+    V1 facade, evaluates product intelligence, or reads physical source state.  Those are
+    Mobility diagnostics/product concerns.  Foundation supervision gets only already
+    materialized runtime/build facts, just like the Energy domain.
     """
 
     def __init__(
@@ -51,6 +48,7 @@ class MobilityDomainSupervisoryStatusProvider:
         self.compatibility = compatibility_facade
         self.build_spec_provider = build_spec_provider
         self.release = release
+        self._last_success_at: str | None = None
 
     @staticmethod
     def _issue(
@@ -61,7 +59,6 @@ class MobilityDomainSupervisoryStatusProvider:
         reason_code: str,
         blocking: bool,
         scope: list[str],
-        details: str,
     ) -> dict[str, Any]:
         return {
             "issue_id": issue_id,
@@ -71,12 +68,11 @@ class MobilityDomainSupervisoryStatusProvider:
             "reason_code": reason_code,
             "blocking": blocking,
             "affected_scope": scope,
-            "first_seen": None,
-            "last_seen": None,
-            "details_reference": details,
+            "details_reference": "rhi_mobility:diagnostics",
         }
 
-    def _configuration_status(self, attempt: dict[str, Any]) -> str:
+    @staticmethod
+    def _configuration_status(attempt: dict[str, Any]) -> str:
         if int(attempt.get("selected_input_count", 0) or 0) == 0:
             return "CONFIGURATION_REQUIRED"
         if int(attempt.get("selection_error_count", 0) or 0) > 0:
@@ -90,144 +86,101 @@ class MobilityDomainSupervisoryStatusProvider:
             return "OK"
         if status in {"PARTIAL", "DEGRADED"}:
             return "DEGRADED"
-        if status in {"REMOVED", "EMPTY", "WAITING_FOR_FOUNDATION", "WAITING_FOR_FOUNDATION_REFRESH"}:
+        if status in {
+            "REMOVED",
+            "EMPTY",
+            "WAITING_FOR_FOUNDATION",
+            "WAITING_FOR_FOUNDATION_REFRESH",
+        }:
             return "CONFIGURATION_REQUIRED"
-        if status in {"STALE"}:
+        if status == "STALE":
             return "STALE"
         if status in {"ERROR", "FAILED", "INVALID", "BLOCKED", "REJECTED"}:
             return "BLOCKED"
         return "UNKNOWN"
 
-    def _runtime(self) -> tuple[str, dict[str, Any], list[dict[str, Any]]]:
-        normalized = normalized_property_coverage(self.manager, self.public)
-        source = source_capability_coverage(self.manager)
-        attempt = dict(getattr(self.manager, "last_build_attempt", {}) or {})
-        gate = completeness_gate(
-            normalized,
-            source,
-            configured_input_count=int(attempt.get("selected_input_count", 0) or 0),
-            materialized_asset_count=len(self.manager.assets),
-        )
+    def _contract_status(self) -> str:
+        """Validate static V1 facade shape without materializing runtime rows."""
+        try:
+            expected = len(self.compatibility.contract.get("property_definitions") or ())
+            actual = sum(len(rows) for rows in self.compatibility.defs_by_type.values())
+            entities = len(self.compatibility.required_entity_ids)
+        except Exception:
+            return "BLOCKED"
+        return "OK" if expected == actual and expected > 0 and entities > 0 else "BLOCKED"
+
+    def _runtime_status(self, attempt: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+        """Read only already-materialized runtime health; never recompute properties."""
         issues: list[dict[str, Any]] = []
-        if gate.get("status") != "PASS":
-            reason = (
-                "RUNTIME_MATERIALIZATION_EMPTY"
-                if gate.get("configured_inputs_without_assets")
-                else "RUNTIME_COMPLETENESS_GATE_FAILED"
-            )
+        selected = int(attempt.get("selected_input_count", 0) or 0)
+        assets = dict(getattr(self.manager, "assets", {}) or {})
+        snapshots = dict(getattr(self.manager, "snapshots", {}) or {})
+
+        if selected > 0 and not assets:
             issues.append(self._issue(
-                "mobility:runtime:completeness",
+                "mobility:runtime:materialization",
                 severity="CRITICAL",
-                category="PROPERTY_RESOLUTION",
-                reason_code=reason,
+                category="RUNTIME",
+                reason_code="RUNTIME_MATERIALIZATION_EMPTY",
                 blocking=True,
-                scope=["mobility", "MOBILITY_PUBLIC_RUNTIME_V2"],
-                details="rhi_mobility:diagnostics:coverage",
+                scope=["mobility"],
             ))
-            return "BLOCKED", {"normalized": normalized, "source": source, "gate": gate}, issues
+            return "BLOCKED", issues
+        if not assets:
+            return "CONFIGURATION_REQUIRED", issues
 
-        readiness_rows = []
-        for asset_id in sorted(self.manager.assets):
-            resolutions = []
-            try:
-                from .property_resolver import PropertyResolver
-                resolutions = list(PropertyResolver(self.manager, self.public).resolve_asset(asset_id).values())
-            except Exception:
-                resolutions = []
-            readiness_rows.append(evaluate_asset_readiness(self.manager, self.controller, asset_id, resolutions).as_dict())
-        states = {str(row.get("product_readiness") or "UNKNOWN").upper() for row in readiness_rows}
-        if "BLOCKED" in states:
+        missing = sorted(set(assets) - set(snapshots))
+        if missing:
+            issues.append(self._issue(
+                "mobility:runtime:snapshot_missing",
+                severity="ERROR",
+                category="RUNTIME",
+                reason_code="RUNTIME_SNAPSHOT_MISSING",
+                blocking=True,
+                scope=missing[:20],
+            ))
+            return "BLOCKED", issues
+
+        health = {
+            str(getattr(snapshot, "health", "UNKNOWN") or "UNKNOWN").upper()
+            for snapshot in snapshots.values()
+            if getattr(snapshot, "asset_id", None) in assets
+        }
+        if health & {"BLOCKED", "INVALID", "ERROR", "FAILED"}:
             status = "BLOCKED"
-        elif states & {"DEGRADED", "LIMITED", "CONFIGURATION_REQUIRED"}:
+        elif health & {"DEGRADED", "STALE", "UNKNOWN", "UNAVAILABLE"}:
             status = "DEGRADED"
-        elif readiness_rows:
-            status = "OK"
         else:
-            status = "CONFIGURATION_REQUIRED"
-        if status == "DEGRADED":
-            issues.append(self._issue(
-                "mobility:runtime:asset_readiness",
-                severity="WARNING",
-                category="RUNTIME",
-                reason_code="ASSET_READINESS_DEGRADED",
-                blocking=False,
-                scope=["mobility"],
-                details="rhi_mobility:diagnostics:asset_readiness",
-            ))
-        elif status == "BLOCKED":
-            issues.append(self._issue(
-                "mobility:runtime:asset_readiness",
-                severity="ERROR",
-                category="RUNTIME",
-                reason_code="ASSET_READINESS_BLOCKED",
-                blocking=True,
-                scope=["mobility"],
-                details="rhi_mobility:diagnostics:asset_readiness",
-            ))
-        return status, {"normalized": normalized, "source": source, "gate": gate, "asset_readiness": readiness_rows}, issues
+            status = "OK"
 
-    def _intelligence_status(self, runtime_status: str) -> tuple[str, list[dict[str, Any]]]:
-        """Mobility-owned product intelligence status; never part of Foundation readiness."""
-        if runtime_status == "BLOCKED":
-            return "BLOCKED", [self._issue(
-                "mobility:intelligence:evidence",
-                severity="ERROR",
-                category="INTELLIGENCE",
-                reason_code="INTELLIGENCE_BLOCKED_BY_RUNTIME_EVIDENCE",
-                blocking=True,
-                scope=["mobility.intelligence"],
-                details="rhi_mobility:diagnostics:intelligence",
-            )]
-        if runtime_status in {"DEGRADED", "CONFIGURATION_REQUIRED", "UNKNOWN"}:
-            return "DEGRADED", [self._issue(
-                "mobility:intelligence:evidence",
-                severity="WARNING",
-                category="INTELLIGENCE",
-                reason_code="INTELLIGENCE_EVIDENCE_DEGRADED",
-                blocking=False,
-                scope=["mobility.intelligence"],
-                details="rhi_mobility:diagnostics:intelligence",
-            )]
-        snapshot = dict(self.experience.snapshot() or {})
-        rows = list(snapshot.get("vehicles", [])) + list(snapshot.get("chargers", []))
-        if not rows:
-            return "CONFIGURATION_REQUIRED", []
-        evidence_missing = []
-        for row in rows:
-            families = [value for key, value in row.items() if key.endswith("_intelligence") and isinstance(value, dict)]
-            if families and all(str(value.get("source_quality") or "missing").lower() == "missing" for value in families):
-                evidence_missing.append(str(row.get("asset_id") or "unknown"))
-        if evidence_missing:
-            return "DEGRADED", [self._issue(
-                "mobility:intelligence:missing_evidence",
-                severity="WARNING",
-                category="INTELLIGENCE",
-                reason_code="INTELLIGENCE_REQUIRED_EVIDENCE_MISSING",
-                blocking=False,
-                scope=evidence_missing[:20],
-                details="rhi_mobility:diagnostics:intelligence",
-            )]
-        return "READY", []
+        if status != "OK":
+            issues.append(self._issue(
+                "mobility:runtime:asset_health",
+                severity="ERROR" if status == "BLOCKED" else "WARNING",
+                category="RUNTIME",
+                reason_code=f"RUNTIME_ASSET_HEALTH_{status}",
+                blocking=status == "BLOCKED",
+                scope=["mobility"],
+            ))
+        return status, issues
 
     def snapshot(self) -> dict[str, Any]:
+        """Return a cheap shared supervisory envelope suitable for synchronous reads."""
         attempt = dict(getattr(self.manager, "last_build_attempt", {}) or {})
         configuration_status = self._configuration_status(attempt)
         build_status = self._build_status(attempt)
-        runtime_status, _runtime_evidence, issues = self._runtime()
+        contract_status = self._contract_status()
+        runtime_status, issues = self._runtime_status(attempt)
 
-        compat = facade_parity_health(self.compatibility)
-        contract_status = "OK" if compat.get("status") == "PASS" else "BLOCKED"
-        if contract_status == "BLOCKED":
+        if contract_status != "OK":
             issues.append(self._issue(
-                "mobility:compatibility:v1_feature_parity",
+                "mobility:compatibility:v1_contract",
                 severity="CRITICAL",
                 category="COMPATIBILITY",
-                reason_code="V1_FEATURE_PARITY_INCOMPLETE",
+                reason_code="V1_STATIC_CONTRACT_INCOMPLETE",
                 blocking=True,
                 scope=["MOBILITY_PUBLIC_RUNTIME_V1"],
-                details="rhi_mobility:diagnostics:compatibility",
             ))
-
         if build_status == "DEGRADED":
             issues.append(self._issue(
                 "mobility:build:partial",
@@ -236,7 +189,6 @@ class MobilityDomainSupervisoryStatusProvider:
                 reason_code="DOMAIN_BUILD_PARTIAL",
                 blocking=False,
                 scope=["mobility"],
-                details="rhi_mobility:diagnostics:build_handoff",
             ))
         elif build_status == "BLOCKED":
             issues.append(self._issue(
@@ -246,15 +198,31 @@ class MobilityDomainSupervisoryStatusProvider:
                 reason_code="DOMAIN_BUILD_BLOCKED",
                 blocking=True,
                 scope=["mobility"],
-                details="rhi_mobility:diagnostics:build_handoff",
             ))
 
-        overall = _worst(configuration_status, contract_status, build_status, runtime_status)
-        blocking = sum(1 for issue in issues if issue.get("blocking"))
-        warnings = sum(1 for issue in issues if issue.get("severity") == "WARNING")
+        overall = _worst(
+            configuration_status,
+            contract_status,
+            build_status,
+            runtime_status,
+        )
+        if all(
+            value == "OK"
+            for value in (
+                configuration_status,
+                contract_status,
+                build_status,
+                runtime_status,
+            )
+        ):
+            overall = "READY"
+
         observed = datetime.now(timezone.utc).isoformat()
-        last_success = attempt.get("observed_at") if overall in {"OK", "READY"} else None
-        publication_revision = int(getattr(self.build_spec_provider, "publication_revision", 0) or 0)
+        if overall == "READY":
+            self._last_success_at = observed
+        publication_revision = int(
+            getattr(self.build_spec_provider, "publication_revision", 0) or 0
+        )
         return {
             "contract_id": CONTRACT_ID,
             "contract_version": CONTRACT_VERSION,
@@ -270,22 +238,52 @@ class MobilityDomainSupervisoryStatusProvider:
             "runtime_status": runtime_status,
             "overall_domain_readiness": overall,
             "issue_count": len(issues),
-            "blocking_issue_count": blocking,
-            "warning_count": warnings,
+            "blocking_issue_count": sum(bool(row.get("blocking")) for row in issues),
+            "warning_count": sum(row.get("severity") == "WARNING" for row in issues),
             "issues_summary": issues[:100],
-            "last_success_at": last_success,
+            "last_success_at": self._last_success_at,
             "last_observed_at": observed,
             "details_reference": "rhi_mobility:diagnostics",
         }
 
     def details(self) -> dict[str, Any]:
-        runtime_status, runtime_evidence, _ = self._runtime()
-        intelligence_status, intelligence_issues = self._intelligence_status(runtime_status)
+        """Run expensive Mobility-owned analysis only for explicit diagnostics."""
+        from .compat_v1.health import facade_parity_health
+        from .coverage import (
+            completeness_gate,
+            normalized_property_coverage,
+            source_capability_coverage,
+        )
+        from .property_resolver import PropertyResolver
+        from .readiness import evaluate_asset_readiness
+
+        normalized = normalized_property_coverage(self.manager, self.public)
+        source = source_capability_coverage(self.manager)
+        attempt = dict(getattr(self.manager, "last_build_attempt", {}) or {})
+        gate = completeness_gate(
+            normalized,
+            source,
+            configured_input_count=int(attempt.get("selected_input_count", 0) or 0),
+            materialized_asset_count=len(getattr(self.manager, "assets", {}) or {}),
+        )
+        readiness = []
+        for asset_id in sorted(getattr(self.manager, "assets", {}) or {}):
+            resolutions = list(
+                PropertyResolver(self.manager, self.public).resolve_asset(asset_id).values()
+            )
+            readiness.append(
+                evaluate_asset_readiness(
+                    self.manager, self.controller, asset_id, resolutions
+                ).as_dict()
+            )
         return {
-            "runtime_status": runtime_status,
-            "runtime_evidence": runtime_evidence,
+            "supervision": self.snapshot(),
+            "runtime_evidence": {
+                "normalized": normalized,
+                "source": source,
+                "gate": gate,
+                "asset_readiness": readiness,
+            },
             "compatibility": facade_parity_health(self.compatibility),
-            "intelligence_status": intelligence_status,
-            "intelligence_issues": intelligence_issues,
             "experience": self.experience.snapshot(),
         }

@@ -1,9 +1,8 @@
 """Quiescent scheduling wrapper for the frozen Mobility V1 state facade.
 
-M0.7.6 restores the existing ownership boundary instead of adding a new event layer:
-runtime truth may refresh the compatibility facade, while control/activity notifications
-may refresh only control-owned surfaces. The Mobility->Energy publication is therefore
-never republished merely because a command/activity lifecycle changed.
+Runtime truth may refresh the compatibility facade, while control/activity notifications
+refresh only control-owned surfaces.  One publication pass consumes one cached V2 read
+view so the 41 frozen V1 entities never trigger 41 independent domain recomputations.
 """
 from __future__ import annotations
 
@@ -48,9 +47,6 @@ class MobilityV1StatePublisher(_BasePublisher):
     def _payload(self, entity_id: str):
         state, attributes = super()._payload(entity_id)
         if entity_id == "sensor.mobility_energy_asset_publication":
-            # Keep the frozen V1 shape but remove command/activity history from the
-            # semantic Mobility->Energy dependency. Execution history remains owned
-            # by sensor.mobility_activity_index.
             attributes = dict(attributes)
             if "last_command_result" in attributes:
                 attributes["last_command_result"] = None
@@ -59,17 +55,26 @@ class MobilityV1StatePublisher(_BasePublisher):
     def _publish_ids(self, entity_ids) -> None:
         if not self._started:
             return
-        for entity_id in entity_ids:
-            state, attributes = self._payload(entity_id)
-            current = self.hass.states.get(entity_id)
-            if current is not None:
-                current_state = str(getattr(current, "state", ""))
-                current_attributes = dict(getattr(current, "attributes", {}) or {})
-                if current_state == str(state) and current_attributes == attributes:
-                    continue
-            self.hass.states.async_set(
-                entity_id, state, attributes, force_update=False
-            )
+        ids = tuple(entity_ids)
+        begin = getattr(self.facade, "begin_publication_cycle", None)
+        end = getattr(self.facade, "end_publication_cycle", None)
+        if callable(begin):
+            begin()
+        try:
+            for entity_id in ids:
+                state, attributes = self._payload(entity_id)
+                current = self.hass.states.get(entity_id)
+                if current is not None:
+                    current_state = str(getattr(current, "state", ""))
+                    current_attributes = dict(getattr(current, "attributes", {}) or {})
+                    if current_state == str(state) and current_attributes == attributes:
+                        continue
+                self.hass.states.async_set(
+                    entity_id, state, attributes, force_update=False
+                )
+        finally:
+            if callable(end):
+                end()
 
     def publish_runtime(self) -> None:
         """Project canonical runtime truth change-only across the frozen V1 facade."""
