@@ -14,11 +14,36 @@
   "options": {
     "step": {
       "init": {
-        "title": "Manage guest vehicles",
+        "title": "Manage Mobility products",
         "menu_options": {
+          "configure_product_asset": "Configure vehicle or charger",
           "add_guest_vehicle": "Add guest vehicle",
           "edit_guest_vehicle": "Edit guest vehicle",
           "remove_guest_vehicle": "Remove guest vehicle"
+        }
+      },
+      "configure_product_asset": {
+        "title": "Choose vehicle or charger",
+        "description": "Choose a logical Mobility asset. Technical integration and device selection remain owned by Foundation.",
+        "data": {
+          "product_asset": "Vehicle or charger"
+        }
+      },
+      "edit_product_asset": {
+        "title": "Configure {asset}",
+        "description": "Edit Mobility-owned product semantics. Actual/readback values remain source-owned and are never replaced by requested or configured values.",
+        "data": {
+          "asset.display_name": "Display name",
+          "asset.short_name": "Short name",
+          "asset.owner_label": "Owner",
+          "asset.location_label": "Location",
+          "asset.profile_id": "Mobility profile",
+          "vehicle.battery_capacity_kwh": "Battery capacity (kWh)",
+          "vehicle.target_soc_pct": "Target SoC (%)",
+          "vehicle.ready_by": "Ready by",
+          "vehicle.present": "Present",
+          "vehicle.mobility_charge_policy": "Charging policy",
+          "vehicle.selected_charger": "Assigned charger"
         }
       },
       "add_guest_vehicle": {"title": "Add guest vehicle", "description": "Create a Mobility-owned vehicle without a technical Foundation device."},
@@ -28,6 +53,8 @@
       "remove_guest": {"title": "Remove {name}", "description": "Remove this guest vehicle and its Mobility-owned configuration."}
     },
     "error": {
+      "invalid_product_configuration": "The Mobility product configuration is invalid for this vehicle or charger.",
+      "unknown_product_asset": "The selected Mobility asset no longer exists.",
       "invalid_guest_vehicle": "The guest vehicle values are invalid. Battery energy cannot exceed capacity and SoC must be between 0 and 100%.",
       "unknown_guest_vehicle": "The selected guest vehicle no longer exists."
     }

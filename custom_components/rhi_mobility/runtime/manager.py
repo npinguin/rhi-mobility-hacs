@@ -1,12 +1,12 @@
 from __future__ import annotations
 import logging
-from copy import deepcopy
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Callable
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event
 from ..builders.selected_input import prepare_selected_build_input
+from ..builders.semantic_input import apply_semantic_input_policy
 from ..eligibility import broad_all_matching_selection
 from ..models.contracts import AssetControlProfile, LogicalAssetBinding, RelationshipSnapshot, RuntimeSnapshot, VehiclePlanningProfile
 from .normalization import normalize
@@ -14,39 +14,6 @@ from .derived import apply_vehicle_derivations, apply_charger_derivations
 from .producer_candidates import collect_producer_candidates
 
 _LOGGER = logging.getLogger(__name__)
-
-def _cupra_canonical_odometer_candidate(candidate: dict) -> bool:
-    ident = candidate.get("source_identity") if isinstance(candidate, dict) else None
-    if not isinstance(ident, dict):
-        return False
-    unique_id = str(ident.get("unique_id") or "")
-    if "_" not in unique_id:
-        return False
-    return unique_id.split("_", 1)[1] in {"mileage", "mileage.value"}
-
-
-def _semantic_candidate_filter(payload: dict) -> dict:
-    """Domain-owned semantic disambiguation after Foundation technical discovery."""
-    if not isinstance(payload, dict):
-        return payload
-    selection = payload.get("selection") or {}
-    if payload.get("builder_id") != "mobility.vehicle.connected_vehicle.v1" or selection.get("integration_domain") != "cupra_eu_data_act":
-        return payload
-    out = deepcopy(payload)
-    evidence = {str(row.get("candidate_id")): row for row in out.get("candidate_evidence") or [] if isinstance(row, dict) and row.get("candidate_id")}
-    for group in out.get("candidate_groups") or []:
-        if not isinstance(group, dict) or group.get("input_id") != "vehicle_odometer":
-            continue
-        original_ids = [str(value) for value in group.get("candidate_ids") or []]
-        canonical_ids = [cid for cid in original_ids if _cupra_canonical_odometer_candidate(evidence.get(cid) or {})]
-        if len(canonical_ids) != 1:
-            continue
-        keep=set(canonical_ids)
-        group["candidate_ids"]=canonical_ids
-        group["candidate_count"]=1
-        group["candidate_matches"]=[row for row in group.get("candidate_matches") or [] if isinstance(row,dict) and str(row.get("candidate_id") or "") in keep]
-        group["mobility_semantic_filter"]={"rule":"cupra_eu_data_act_canonical_odometer_field","technical_candidate_count":len(original_ids),"accepted_candidate_count":1}
-    return out
 
 
 class MobilityRuntimeManager:
@@ -66,10 +33,9 @@ class MobilityRuntimeManager:
         self._selection_control_profiles: dict[str,dict[str,AssetControlProfile]]={}
         self._selection_planning_profiles: dict[str,dict[str,VehiclePlanningProfile]]={}
         self._unsubs: dict[str,list[Callable[[],None]]]={}
-        # Scoped notifications keep high-frequency telemetry off the topology path.
-        self.listeners: list[Callable[[],None]]=[]  # small domain/monitoring audience only
+        self.listeners: list[Callable[[],None]]=[]
         self._topology_listeners: list[Callable[[],None]]=[]
-        self._runtime_listeners: list[Callable[[],None]]=[]  # small publisher/controller audience
+        self._runtime_listeners: list[Callable[[],None]]=[]
         self._asset_listeners: dict[str,list[Callable[[],None]]]=defaultdict(list)
         self._pending_refresh_assets: set[str]=set()
         self._refresh_flush_scheduled=False
@@ -95,7 +61,6 @@ class MobilityRuntimeManager:
         return profile
 
     def effective_profile_id(self, asset_id: str) -> str | None:
-        """Resolve only an explicitly configured, type-compatible Mobility profile."""
         configured = self.configuration_value(asset_id, "asset.profile_id", None)
         if configured in (None, ""):
             return None
@@ -114,8 +79,6 @@ class MobilityRuntimeManager:
         merged: dict[str, AssetControlProfile] = {}
         for selection_id in sorted(self._selection_control_profiles):
             merged.update(self._selection_control_profiles[selection_id])
-        # Domain profiles are Mobility-owned semantic configuration. They may add
-        # physical limits/defaults but never replace a measured actual value.
         for asset_id, asset in self.assets.items():
             profile = self._selected_profile(asset_id)
             if not profile:
@@ -256,9 +219,6 @@ class MobilityRuntimeManager:
 
     @property
     def effective_relationships(self) -> dict[str, RelationshipSnapshot]:
-        # Mobility owns logical assignment semantics. A local semantic assignment may supersede
-        # a Foundation-carried default relationship, but it never changes technical source
-        # bindings or SelectedDomainBuildInput identity.
         out={rid:rel for rid,rel in self.relationships.items() if rel.relationship_type!='configured_assignment'}
         foundation_by_vehicle={}
         for rel in self.relationships.values():
@@ -296,7 +256,6 @@ class MobilityRuntimeManager:
             if not internal_canonical_write and asset.concept_id not in set(editable.get('asset_types') or []):
                 raise ValueError(f'{property_key} is not editable for {asset.concept_id}')
         else:
-            # Test/backward fixture compatibility only; production registry always carries the canonical catalog.
             fallback={'asset.display_name','asset.short_name','asset.owner_label','asset.location_label','asset.profile_id','asset.lifecycle_status','vehicle.selected_charger','vehicle.target_soc_pct','vehicle.ready_by','vehicle.present','vehicle.battery_capacity_kwh','vehicle.mobility_charge_policy','vehicle.soc_pct','vehicle.battery_energy_kwh'}
             if property_key not in fallback:
                 raise ValueError(f'unsupported Mobility domain property: {property_key}')
@@ -369,11 +328,6 @@ class MobilityRuntimeManager:
         }
 
     def add_listener(self, cb: Callable[[],None]) -> Callable[[],None]:
-        """Subscribe to low-volume domain/runtime status changes.
-
-        Property entities must use add_asset_listener(); topology projection must use
-        add_topology_listener(). This prevents one telemetry update from waking every entity.
-        """
         self.listeners.append(cb)
         def unsub() -> None:
             if cb in self.listeners: self.listeners.remove(cb)
@@ -386,10 +340,6 @@ class MobilityRuntimeManager:
         return unsub
 
     def add_runtime_listener(self, cb: Callable[[],None]) -> Callable[[],None]:
-        """Subscribe a small backend consumer that needs any asset-value change.
-
-        This path is for the compatibility publisher/controller, never for per-property HA entities.
-        """
         self._runtime_listeners.append(cb)
         def unsub() -> None:
             if cb in self._runtime_listeners: self._runtime_listeners.remove(cb)
@@ -405,7 +355,6 @@ class MobilityRuntimeManager:
         return unsub
 
     def _notify(self) -> None:
-        """Backward-compatible domain status notification; intentionally small audience."""
         for cb in tuple(self.listeners): cb()
 
     def _notify_topology(self) -> None:
@@ -418,7 +367,6 @@ class MobilityRuntimeManager:
         for cb in tuple(self._runtime_listeners): cb()
 
     def _schedule_refresh(self, asset_id: str) -> None:
-        """Coalesce multiple source events for the same asset into one event-loop refresh."""
         if asset_id not in self.assets:
             return
         self._pending_refresh_assets.add(asset_id)
@@ -448,7 +396,7 @@ class MobilityRuntimeManager:
         self._selection_asset_roles.clear(); self._selection_asset_ids.clear(); self._selection_diagnostics.clear(); self._capability_diagnostics.clear(); self._selection_relationship_ids.clear(); self._selection_control_profiles.clear(); self._selection_planning_profiles.clear(); self._health_cache.clear(); self._pending_refresh_assets.clear(); self._notify_topology()
 
     async def async_replace_selected_build_inputs(self, payloads: list[dict[str,Any]] | tuple[dict[str,Any], ...]) -> dict[str,Any]:
-        rows=[_semantic_candidate_filter(row) for row in list(payloads or [])]
+        rows=[apply_semantic_input_policy(row,self.registry) for row in list(payloads or [])]
         rejected=[row for row in rows if broad_all_matching_selection(row)]
         accepted=[row for row in rows if not broad_all_matching_selection(row)]
         result=await self._async_replace_selected_build_inputs_core(accepted)
@@ -461,14 +409,6 @@ class MobilityRuntimeManager:
         return result
 
     async def _async_replace_selected_build_inputs_core(self, payloads: list[dict[str,Any]] | tuple[dict[str,Any], ...]) -> dict[str,Any]:
-        """Reconcile the complete Foundation handoff slice with capability isolation.
-
-        Top-level malformed handoffs are isolated to their selection. Identifiable Mobility
-        objects are materialized even when individual capabilities are missing, ambiguous or
-        awaiting review. Only proven capabilities become source bindings; command/control
-        surfaces stay fail-closed. This keeps good runtime truth visible and makes the exact
-        integration/device/capability defect diagnosable.
-        """
         observed_at=datetime.now(timezone.utc).isoformat()
         prepared_rows=[]
         selection_errors=[]
@@ -579,9 +519,6 @@ class MobilityRuntimeManager:
                 problem_statuses={'MISSING','AMBIGUOUS','INVALID_EVIDENCE','BLOCKED_BY_REVIEW','BLOCKED_BY_TARGET_SCOPE'}
                 problems=[row for row in prepared.capability_diagnostics if row.get('status') in problem_statuses]
                 filtered=[row for row in prepared.capability_diagnostics if row.get('status') in {'REJECTED_UNSUPPORTED_DEVICE_TYPE','REJECTED_LEGACY_MANUAL_PROFILE'}]
-                # Unsupported technical devices are deliberately filtered, not runtime
-                # degradation. This lets an OCPP Central System remain selected in an old
-                # Foundation configuration without poisoning valid charge-point assets.
                 if filtered and not problems:
                     status='READY_WITH_FILTERED_DEVICES' if ids else 'FILTERED'
                 elif problems or prepared.discovery_assessment.get('review_required'):
@@ -595,9 +532,6 @@ class MobilityRuntimeManager:
                     'filtered_device_count':len(filtered),
                 }
 
-            # Guest/manual vehicles are Mobility semantic products, not technical
-            # devices. They never create an AcceptedSourceBinding and never enter
-            # Foundation's integration/device selection flow.
             guest_rows = self.domain_config.guest_vehicles() if self.domain_config is not None and hasattr(self.domain_config, 'guest_vehicles') else {}
             for asset_id, row in sorted(guest_rows.items()):
                 if not isinstance(row, dict) or not str(asset_id).startswith('vehicle_guest_'):
@@ -696,11 +630,6 @@ class MobilityRuntimeManager:
         }
 
     async def async_apply_selected_build_input(self, payload: dict[str,Any]) -> dict[str,Any]:
-        """Compatibility entrypoint: reconcile one authoritative selection payload.
-
-        The shared lifecycle uses complete-slice replacement. This method deliberately uses
-        the same capability-isolated semantics instead of maintaining a second builder path.
-        """
         return await self.async_replace_selected_build_inputs([payload])
 
     async def _async_bind_asset(self, asset_id: str) -> None:
@@ -768,9 +697,6 @@ class MobilityRuntimeManager:
         snap.values={k:v[1] for k,v in sorted(candidates.items())}
         snap.quality={k:f"candidate:{v[2]}" for k,v in sorted(candidates.items())}
 
-        # Explicit Mobility profile selection contributes only catalog-declared semantic defaults.
-        # Truth precedence is data-owned by semantic_property_catalog.json; measured actuals
-        # without a profile_field can never be fabricated by a profile.
         selected_profile=self._selected_profile(asset_id)
         if selected_profile:
             pid=str(selected_profile["profile_id"])
@@ -794,8 +720,6 @@ class MobilityRuntimeManager:
                 precedence=list(definition.get("truth_precedence") or [])
                 if "PROFILE" not in precedence:
                     continue
-                # Source values are replaced only where the catalog explicitly gives PROFILE
-                # higher precedence than SOURCE. Configuration is applied afterwards and wins.
                 if property_key in snap.values and "SOURCE" in precedence and precedence.index("SOURCE") < precedence.index("PROFILE"):
                     continue
                 snap.values[property_key]=value
@@ -804,8 +728,6 @@ class MobilityRuntimeManager:
         planning=self.planning_profile(asset_id)
         if planning and asset.concept_id=='vehicle' and planning.enabled and planning.ready_by is not None:
             snap.values['vehicle.ready_by']=planning.ready_by; snap.quality['vehicle.ready_by']='mobility_domain_configuration'
-        # Domain-owned semantic overrides are catalog-driven and always applied after
-        # source/profile facts. Special physical/manual semantics remain explicit below.
         semantic_properties=(getattr(self.registry,"semantic_catalog",{}).get("properties") or {})
         for property_key,definition in semantic_properties.items():
             precedence=list(definition.get("truth_precedence") or [])
@@ -821,7 +743,6 @@ class MobilityRuntimeManager:
             snap.values[property_key]=configured
             snap.quality[property_key]="mobility_domain_configuration"
         if not semantic_properties:
-            # Unit-test/legacy fixture fallback only; production uses the catalog-driven path above.
             fallback_keys={'asset.display_name','asset.short_name','asset.owner_label','asset.location_label','asset.profile_id','vehicle.target_soc_pct','vehicle.ready_by','vehicle.present','vehicle.battery_capacity_kwh','vehicle.mobility_charge_policy'}
             for property_key in fallback_keys:
                 sentinel=object(); configured=self.configuration_value(asset_id,property_key,sentinel)
@@ -835,8 +756,6 @@ class MobilityRuntimeManager:
             snap.values['asset.display_name']=source_name or asset.display_name
             snap.quality['asset.display_name']='source_device_identity' if source_name else 'logical_asset_identity'
         if asset.concept_id=='vehicle':
-            # Numeric configuration normalization remains explicit; the catalog owns which
-            # properties are configurable, while validation owns domain constraints.
             if snap.values.get('vehicle.target_soc_pct') is not None:
                 snap.values['vehicle.target_soc_pct']=float(snap.values['vehicle.target_soc_pct'])
             if snap.values.get('vehicle.battery_capacity_kwh') is not None:
@@ -900,7 +819,6 @@ class MobilityRuntimeManager:
         if after!=before: self._notify_asset(asset_id)
 
     def supported_property_keys(self, asset_id: str) -> set[str]:
-        """Return properties with concrete technical evidence without building diagnostics JSON."""
         keys: set[str] = set()
         for row in self._capability_diagnostics:
             if row.get("asset_id") != asset_id or row.get("status") == "UNSUPPORTED":
