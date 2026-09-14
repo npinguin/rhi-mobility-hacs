@@ -7,11 +7,17 @@ CONFIG_KEY = "domain_semantic_configuration"
 REVISION_KEY = "domain_semantic_configuration_revision"
 LEGACY_CONFIG_KEY = "domain_config_overrides"
 GUEST_VEHICLES_KEY = "guest_vehicles"
+PROFILES_KEY = "mobility_profiles"
+PROFILE_TYPES = {"vehicle", "charger"}
+
+
+def _slug(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(value).strip().lower()).strip("_")
 
 
 def _guest_asset_id(name: str, existing: set[str]) -> str:
     """Create a readable, stable local id without inventing a technical HA device."""
-    slug = re.sub(r"[^a-z0-9]+", "_", str(name).strip().lower()).strip("_") or "guest"
+    slug = _slug(name) or "guest"
     base = f"vehicle_guest_{slug[:32]}"
     candidate = base
     suffix = 2
@@ -20,25 +26,44 @@ def _guest_asset_id(name: str, existing: set[str]) -> str:
         suffix += 1
     return candidate
 
-class MobilityDomainConfiguration:
-    """Revisioned Mobility-owned semantic product configuration.
 
-    Foundation remains authority for technical integration/device/candidate selection and
-    SelectedDomainBuildInput revisions. This store contains only Mobility semantics that
-    never mutate AcceptedSourceBinding or technical source identity.
-    """
+def _profile_id(profile_type: str, name: str, existing: set[str]) -> str:
+    """Create a stable Mobility-owned logical profile id."""
+    prefix = "vehicle_profile" if profile_type == "vehicle" else "charger_profile"
+    base = f"{prefix}_{(_slug(name) or 'custom')[:40]}"
+    candidate = base
+    suffix = 2
+    while candidate in existing:
+        candidate = f"{base}_{suffix}"
+        suffix += 1
+    return candidate
+
+
+class MobilityDomainConfiguration:
+    """Revisioned Mobility-owned semantic product configuration."""
+
     def __init__(self, hass, entry) -> None:
         self.hass = hass
         self.entry = entry
         options = dict(getattr(entry, "options", {}) or {})
         raw = options.get(CONFIG_KEY, options.get(LEGACY_CONFIG_KEY, {}))
         self._data: dict[str, dict[str, Any]] = deepcopy(raw) if isinstance(raw, dict) else {}
+        raw_profiles = options.get(PROFILES_KEY, {})
+        self._profiles: dict[str, dict[str, Any]] = deepcopy(raw_profiles) if isinstance(raw_profiles, dict) else {}
         try:
             self._revision = max(0, int(options.get(REVISION_KEY, 0)))
         except (TypeError, ValueError):
             self._revision = 0
         self._legacy_migration_required = LEGACY_CONFIG_KEY in options and CONFIG_KEY not in options
         self._listeners: list[Callable[[str, str], None]] = []
+        # Normal package loading binds the registry overlay. Direct module unit tests do
+        # not have a package context and therefore intentionally skip this convenience.
+        try:
+            from .model_registry import set_profile_overlay_provider
+        except ImportError:
+            set_profile_overlay_provider = None
+        if callable(set_profile_overlay_provider):
+            set_profile_overlay_provider(self)
 
     def guest_vehicles(self) -> dict[str, dict[str, Any]]:
         raw = (getattr(self.entry, "options", {}) or {}).get(GUEST_VEHICLES_KEY, {})
@@ -46,6 +71,114 @@ class MobilityDomainConfiguration:
 
     def is_guest_vehicle(self, asset_id: str) -> bool:
         return asset_id in self.guest_vehicles()
+
+    def profiles(self) -> dict[str, dict[str, Any]]:
+        """Return Mobility-authored profiles; packaged catalog profiles remain immutable."""
+        return deepcopy(self._profiles)
+
+    def profile(self, profile_id: str | None) -> dict[str, Any] | None:
+        if not profile_id:
+            return None
+        row = self._profiles.get(str(profile_id))
+        return dict(row) if isinstance(row, dict) else None
+
+    def profiles_for_type(self, profile_type: str) -> list[dict[str, Any]]:
+        return [dict(row) for row in self._profiles.values() if row.get("profile_type") == profile_type]
+
+    async def async_add_profile(self, values: dict[str, Any]) -> str:
+        profiles = self.profiles()
+        validated = self._validate_profile(values)
+        profile_id = _profile_id(validated["profile_type"], validated["display_name"], set(profiles))
+        validated["profile_id"] = profile_id
+        profiles[profile_id] = validated
+        await self._async_store_profiles(profiles, profile_id, "profile_added")
+        return profile_id
+
+    async def async_update_profile(self, profile_id: str, values: dict[str, Any]) -> None:
+        profiles = self.profiles()
+        current = profiles.get(profile_id)
+        if not isinstance(current, dict):
+            raise ValueError(f"unknown Mobility-authored profile: {profile_id}")
+        validated = self._validate_profile(values)
+        if validated["profile_type"] != current.get("profile_type"):
+            raise ValueError("profile type cannot be changed")
+        validated["profile_id"] = profile_id
+        profiles[profile_id] = validated
+        await self._async_store_profiles(profiles, profile_id, "profile_updated")
+
+    async def async_remove_profile(self, profile_id: str) -> None:
+        profiles = self.profiles()
+        if profile_id not in profiles:
+            raise ValueError(f"unknown Mobility-authored profile: {profile_id}")
+        assigned = [
+            asset_id for asset_id, row in self._data.items()
+            if isinstance(row, dict) and row.get("asset.profile_id") == profile_id
+        ]
+        assigned.extend(
+            asset_id for asset_id, row in self.guest_vehicles().items()
+            if isinstance(row, dict) and row.get("profile_id") == profile_id
+        )
+        if assigned:
+            raise ValueError(f"profile is assigned to Mobility assets: {', '.join(sorted(set(assigned)))}")
+        profiles.pop(profile_id)
+        await self._async_store_profiles(profiles, profile_id, "profile_removed")
+
+    @staticmethod
+    def _validate_profile(values: dict[str, Any]) -> dict[str, Any]:
+        profile_type = str(values.get("profile_type") or "").strip().lower()
+        if profile_type not in PROFILE_TYPES:
+            raise ValueError("profile_type must be vehicle or charger")
+        display_name = str(values.get("display_name") or "").strip()
+        if not display_name:
+            raise ValueError("profile display_name is required")
+        short_name = str(values.get("short_name") or display_name).strip()
+        image_key = str(values.get("image_key") or ("generic_vehicle" if profile_type == "vehicle" else "generic_charger")).strip()
+        row: dict[str, Any] = {
+            "profile_type": profile_type,
+            "display_name": display_name,
+            "short_name": short_name,
+            "image_key": image_key,
+        }
+        if profile_type == "vehicle":
+            row.update({
+                "manufacturer": str(values.get("manufacturer") or "").strip() or None,
+                "model": str(values.get("model") or "").strip() or None,
+                "vehicle_kind": str(values.get("vehicle_kind") or "").strip() or None,
+                "battery_capacity_kwh": _optional_positive_float(values.get("battery_capacity_kwh")),
+                "nominal_range_km": _optional_positive_float(values.get("nominal_range_km")),
+                "max_ac_power_kw": _optional_positive_float(values.get("max_ac_power_kw")),
+                "phase_capability": _optional_phase_count(values.get("phase_capability")),
+                "default_target_soc_pct": _optional_percentage(values.get("default_target_soc_pct")),
+            })
+        else:
+            min_current = _optional_nonnegative_float(values.get("min_current_a"))
+            max_current = _optional_positive_float(values.get("max_current_a"))
+            if min_current is not None and max_current is not None and min_current > max_current:
+                raise ValueError("charger min_current_a cannot exceed max_current_a")
+            row.update({
+                "vendor": str(values.get("vendor") or "").strip() or None,
+                "model": str(values.get("model") or "").strip() or None,
+                "max_current_a": max_current,
+                "min_current_a": min_current,
+                "max_power_kw": _optional_positive_float(values.get("max_power_kw")),
+                "phase_capability": _optional_phase_count(values.get("phase_capability")),
+                "nominal_voltage_v": _optional_positive_float(values.get("nominal_voltage_v")),
+                "supports_current_control": bool(values.get("supports_current_control", False)),
+                "supports_remote_start_stop": bool(values.get("supports_remote_start_stop", False)),
+                "current_step_a": _optional_positive_float(values.get("current_step_a")),
+            })
+        return {key: value for key, value in row.items() if value is not None}
+
+    async def _async_store_profiles(self, profiles: dict[str, dict[str, Any]], profile_id: str, change: str) -> None:
+        options = dict(getattr(self.entry, "options", {}) or {})
+        options[PROFILES_KEY] = deepcopy(profiles)
+        options.pop(LEGACY_CONFIG_KEY, None)
+        self._revision += 1
+        options[REVISION_KEY] = self._revision
+        self._profiles = deepcopy(profiles)
+        self.hass.config_entries.async_update_entry(self.entry, options=options)
+        for callback in tuple(self._listeners):
+            callback(profile_id, change)
 
     async def async_add_guest_vehicle(self, values: dict[str, Any]) -> str:
         guests = self.guest_vehicles()
@@ -69,17 +202,15 @@ class MobilityDomainConfiguration:
         updated = deepcopy(self._data)
         updated.pop(asset_id, None)
         self._data = updated
-        await self._async_store_guests(
-            guests, asset_id, "guest_vehicle_removed", semantic_data=updated
-        )
+        await self._async_store_guests(guests, asset_id, "guest_vehicle_removed", semantic_data=updated)
 
     @staticmethod
-    def _validate_guest_vehicle(values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_guest_vehicle(values: dict[str, Any], allowed_profile_ids: set[str] | None = None) -> dict[str, Any]:
         name = str(values.get("name") or "").strip()
         profile_id = str(values.get("profile_id") or "").strip()
         if not name:
             raise ValueError("guest vehicle name is required")
-        if profile_id not in {"guest_phev_1phase", "guest_ev_3phase"}:
+        if not profile_id or (allowed_profile_ids is not None and profile_id not in allowed_profile_ids):
             raise ValueError("unsupported guest vehicle profile")
         capacity = float(values.get("battery_capacity_kwh"))
         soc = float(values.get("soc_pct", 0))
@@ -189,3 +320,39 @@ class MobilityDomainConfiguration:
         self._legacy_migration_required = False
         for callback in tuple(self._listeners):
             callback(asset_id, property_key)
+
+
+def _optional_positive_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    parsed = float(value)
+    if parsed <= 0:
+        raise ValueError("value must be positive")
+    return parsed
+
+
+def _optional_nonnegative_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    parsed = float(value)
+    if parsed < 0:
+        raise ValueError("value must be non-negative")
+    return parsed
+
+
+def _optional_phase_count(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    parsed = int(value)
+    if parsed not in {1, 2, 3}:
+        raise ValueError("phase_capability must be 1, 2 or 3")
+    return parsed
+
+
+def _optional_percentage(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    parsed = float(value)
+    if not 0 <= parsed <= 100:
+        raise ValueError("percentage must be between 0 and 100")
+    return parsed

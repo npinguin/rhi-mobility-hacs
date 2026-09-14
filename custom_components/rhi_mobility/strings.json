@@ -17,6 +17,10 @@
         "title": "Manage Mobility products",
         "menu_options": {
           "configure_product_asset": "Configure vehicle or charger",
+          "add_vehicle_profile": "Add vehicle profile",
+          "add_charger_profile": "Add charger profile",
+          "edit_profile": "Edit profile",
+          "remove_profile": "Remove profile",
           "add_guest_vehicle": "Add guest vehicle",
           "edit_guest_vehicle": "Edit guest vehicle",
           "remove_guest_vehicle": "Remove guest vehicle"
@@ -46,6 +50,18 @@
           "vehicle.selected_charger": "Assigned charger"
         }
       },
+      "add_vehicle_profile": {
+        "title": "Add vehicle profile",
+        "description": "Create a Mobility-owned VehicleProfile. Model identity, matching illustration and model characteristics stay inside Mobility."
+      },
+      "add_charger_profile": {
+        "title": "Add charger profile",
+        "description": "Create a Mobility-owned ChargerProfile. Model identity, matching illustration and electrical characteristics stay inside Mobility."
+      },
+      "edit_profile": {"title": "Choose profile", "data": {"profile": "Profile"}},
+      "edit_selected_profile": {"title": "Edit {name}"},
+      "remove_profile": {"title": "Choose profile", "data": {"profile": "Profile"}},
+      "remove_selected_profile": {"title": "Remove {name}", "description": "A profile can only be removed when no Mobility asset or guest vehicle uses it."},
       "add_guest_vehicle": {"title": "Add guest vehicle", "description": "Create a Mobility-owned vehicle without a technical Foundation device."},
       "edit_guest_vehicle": {"title": "Choose guest vehicle"},
       "edit_guest": {"title": "Edit guest vehicle"},
@@ -55,6 +71,9 @@
     "error": {
       "invalid_product_configuration": "The Mobility product configuration is invalid for this vehicle or charger.",
       "unknown_product_asset": "The selected Mobility asset no longer exists.",
+      "invalid_profile": "The Mobility profile values are invalid.",
+      "unknown_profile": "The selected Mobility-authored profile no longer exists.",
+      "profile_in_use": "This profile is still assigned to a Mobility asset or guest vehicle.",
       "invalid_guest_vehicle": "The guest vehicle values are invalid. Battery energy cannot exceed capacity and SoC must be between 0 and 100%.",
       "unknown_guest_vehicle": "The selected guest vehicle no longer exists."
     }

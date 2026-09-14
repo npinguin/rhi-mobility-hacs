@@ -3,7 +3,13 @@ from copy import deepcopy
 import voluptuous as vol
 from homeassistant import config_entries
 from .const import DOMAIN, NAME
-from .domain_config import GUEST_VEHICLES_KEY, REVISION_KEY, MobilityDomainConfiguration, _guest_asset_id
+from .domain_config import (
+    GUEST_VEHICLES_KEY,
+    PROFILES_KEY,
+    REVISION_KEY,
+    MobilityDomainConfiguration,
+    _guest_asset_id,
+)
 
 
 class RhiMobilityConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -27,9 +33,8 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     """Mobility-owned product configuration.
 
     Foundation owns technical selection. This flow edits only canonical Mobility product
-    semantics already declared by the semantic property/profile catalogs. It contains no
-    integration-specific configuration branches, so new integrations automatically use the
-    same vehicle/charger authoring surface after they materialize a logical asset.
+    semantics. VehicleProfile and ChargerProfile are first-class Mobility-owned logical
+    entities and are managed here without Foundation reconfiguration.
     """
 
     _PRODUCT_WRITE_KINDS = {"configuration", "profile", "selected_charger"}
@@ -38,6 +43,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         self._provided_config_entry = config_entry
         self._target_guest: str | None = None
         self._target_product_asset: str | None = None
+        self._target_profile: str | None = None
 
     def _entry(self):
         try:
@@ -65,8 +71,15 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     def _registry(self):
         return self._domain_data().get("registry")
 
+    def _domain_config(self):
+        return self._domain_data().get("domain_config")
+
     def _guests(self) -> dict[str, dict]:
         rows = self._options().get(GUEST_VEHICLES_KEY, {})
+        return deepcopy(rows) if isinstance(rows, dict) else {}
+
+    def _authored_profiles(self) -> dict[str, dict]:
+        rows = self._options().get(PROFILES_KEY, {})
         return deepcopy(rows) if isinstance(rows, dict) else {}
 
     def _charger_options(self) -> dict[str, str]:
@@ -77,29 +90,44 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 rows[asset_id] = getattr(asset, "display_name", None) or asset_id
         return rows
 
-    @staticmethod
-    def _guest_profiles() -> dict[str, str]:
-        return {
-            "guest_phev_1phase": "Guest PHEV (1 phase)",
-            "guest_ev_3phase": "Guest EV (3 phase)",
-        }
+    def _profile_options_for_type(self, profile_type: str, *, include_empty: bool = False) -> dict[str, str]:
+        rows = {"": "Not configured"} if include_empty else {}
+        registry = self._registry()
+        if registry is None:
+            return rows
+        for profile in registry.profiles_for_type(profile_type):
+            if not isinstance(profile, dict) or not profile.get("profile_id"):
+                continue
+            profile_id = str(profile["profile_id"])
+            rows[profile_id] = str(profile.get("display_name") or profile_id)
+        return rows
+
+    def _guest_profiles(self) -> dict[str, str]:
+        return self._profile_options_for_type("vehicle")
+
+    def _profile_image_options(self, profile_type: str) -> dict[str, str]:
+        fallback = "generic_vehicle" if profile_type == "vehicle" else "generic_charger"
+        rows = {fallback: "Generic"}
+        registry = self._registry()
+        if registry is not None:
+            for profile in registry.profiles_for_type(profile_type):
+                key = str(profile.get("image_key") or "").strip()
+                if key:
+                    rows[key] = str(profile.get("display_name") or key)
+        return rows
 
     def _vehicle_schema(self, current: dict | None = None):
         row = current or {}
-        # Keep the public Mobility runtime contract unchanged. This options form is
-        # only an authoring surface for Mobility-owned guest vehicles. Battery energy
-        # is derived canonically from capacity * SoC and is therefore not requested
-        # from the user. Existing stored/public battery_energy_kwh remains supported.
+        profiles = self._guest_profiles()
+        default_profile = str(row.get("profile_id") or "")
+        if default_profile not in profiles and profiles:
+            default_profile = next(iter(profiles))
         return vol.Schema({
             vol.Required("name", default=row.get("name", "Guest vehicle")): str,
-            vol.Required("profile_id", default=row.get("profile_id", "guest_phev_1phase")): vol.In(self._guest_profiles()),
+            vol.Required("profile_id", default=default_profile): vol.In(profiles),
             vol.Required("battery_capacity_kwh", default=row.get("battery_capacity_kwh", 20.0)): vol.All(vol.Coerce(float), vol.Range(min=1, max=200)),
             vol.Required("soc_pct", default=row.get("soc_pct", 50.0)): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
             vol.Required("present", default=row.get("present", True)): bool,
-            # Empty string represents the UI choice 'No charger assigned'. It must be
-            # optional because HA 2026.9 may omit an empty-string radio value from the
-            # submitted payload; marking it Required causes the misleading frontend
-            # error 'Not all required fields are filled'.
             vol.Optional("selected_charger", default=row.get("selected_charger") or ""): vol.In(self._charger_options()),
             vol.Required("lifecycle_status", default=row.get("lifecycle_status", "active")): vol.In({"active": "Active", "disabled": "Disabled"}),
         })
@@ -107,12 +135,9 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     def _validated_vehicle(self, user_input: dict) -> dict:
         values = dict(user_input)
         values["selected_charger"] = values.get("selected_charger") or None
-        # The options form intentionally does not author battery_energy_kwh. Preserve
-        # backwards compatibility for callers that still send the key, otherwise let
-        # the canonical validator derive it from battery_capacity_kwh * soc_pct.
         if "battery_energy_kwh" not in user_input:
             values["battery_energy_kwh"] = None
-        return MobilityDomainConfiguration._validate_guest_vehicle(values)
+        return MobilityDomainConfiguration._validate_guest_vehicle(values, set(self._guest_profiles()))
 
     def _result(self, guests: dict[str, dict]):
         options = self._options()
@@ -172,17 +197,10 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         return sorted(rows, key=lambda row: row[0])
 
     def _profile_options(self, asset_id: str) -> dict[str, str]:
-        registry = self._registry()
         asset = self._product_assets().get(asset_id)
-        rows = {"": "Not configured"}
-        if registry is None or asset is None:
-            return rows
-        for profile in registry.profiles_for_type(str(getattr(asset, "concept_id", ""))):
-            if not isinstance(profile, dict) or not profile.get("profile_id"):
-                continue
-            profile_id = str(profile["profile_id"])
-            rows[profile_id] = str(profile.get("display_name") or profile_id)
-        return rows
+        if asset is None:
+            return {"": "Not configured"}
+        return self._profile_options_for_type(str(getattr(asset, "concept_id", "")), include_empty=True)
 
     def _product_schema(self, asset_id: str):
         runtime = self._runtime()
@@ -231,10 +249,61 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             return None
         return value
 
+    def _profile_schema(self, profile_type: str, current: dict | None = None):
+        row = current or {}
+        common = {
+            vol.Required("profile_type", default=profile_type): vol.In({profile_type: profile_type.title()}),
+            vol.Required("display_name", default=row.get("display_name", "")): str,
+            vol.Required("short_name", default=row.get("short_name", "")): str,
+            vol.Optional("manufacturer" if profile_type == "vehicle" else "vendor", default=row.get("manufacturer" if profile_type == "vehicle" else "vendor", "")): str,
+            vol.Optional("model", default=row.get("model", "")): str,
+            vol.Required("image_key", default=row.get("image_key", "generic_vehicle" if profile_type == "vehicle" else "generic_charger")): vol.In(self._profile_image_options(profile_type)),
+            vol.Optional("phase_capability", default=row.get("phase_capability")): vol.Any(None, vol.All(vol.Coerce(int), vol.In([1, 2, 3]))),
+        }
+        if profile_type == "vehicle":
+            common.update({
+                vol.Optional("vehicle_kind", default=row.get("vehicle_kind", "")): vol.In({"": "Not specified", "ev": "EV", "phev": "PHEV"}),
+                vol.Optional("battery_capacity_kwh", default=row.get("battery_capacity_kwh")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=500))),
+                vol.Optional("nominal_range_km", default=row.get("nominal_range_km")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=2000))),
+                vol.Optional("max_ac_power_kw", default=row.get("max_ac_power_kw")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=100))),
+                vol.Optional("default_target_soc_pct", default=row.get("default_target_soc_pct", 80)): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0, max=100))),
+            })
+        else:
+            common.update({
+                vol.Optional("min_current_a", default=row.get("min_current_a")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0, max=200))),
+                vol.Optional("max_current_a", default=row.get("max_current_a")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=200))),
+                vol.Optional("max_power_kw", default=row.get("max_power_kw")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=1000))),
+                vol.Optional("nominal_voltage_v", default=row.get("nominal_voltage_v", 230)): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=1, max=1000))),
+                vol.Optional("current_step_a", default=row.get("current_step_a", 1)): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=100))),
+                vol.Required("supports_current_control", default=bool(row.get("supports_current_control", False))): bool,
+                vol.Required("supports_remote_start_stop", default=bool(row.get("supports_remote_start_stop", False))): bool,
+            })
+        return vol.Schema(common)
+
+    async def _store_profile(self, values: dict, *, profile_id: str | None = None):
+        domain_config = self._domain_config()
+        if domain_config is None:
+            raise ValueError("Mobility semantic configuration store unavailable")
+        if profile_id is None:
+            profile_id = await domain_config.async_add_profile(values)
+        else:
+            await domain_config.async_update_profile(profile_id, values)
+        runtime = self._runtime()
+        if runtime is not None:
+            for asset_id in sorted(getattr(runtime, "assets", {})):
+                if runtime.effective_profile_id(asset_id) == profile_id:
+                    runtime._refresh(asset_id)
+            notify = getattr(runtime, "_notify_topology", None)
+            if callable(notify):
+                notify()
+        return self.async_create_entry(title="", data=self._options())
+
     async def async_step_init(self, user_input=None):
-        choices = ["add_guest_vehicle"]
+        choices = ["add_vehicle_profile", "add_charger_profile", "add_guest_vehicle"]
         if self._product_assets():
             choices.insert(0, "configure_product_asset")
+        if self._authored_profiles():
+            choices.extend(["edit_profile", "remove_profile"])
         if self._guests():
             choices.extend(["edit_guest_vehicle", "remove_guest_vehicle"])
         return self.async_show_menu(step_id="init", menu_options=choices)
@@ -246,17 +315,10 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         if user_input is not None:
             asset_id = str(user_input.get("product_asset") or "")
             if asset_id not in choices:
-                return self.async_show_form(
-                    step_id="configure_product_asset",
-                    data_schema=vol.Schema({vol.Required("product_asset"): vol.In(choices)}),
-                    errors={"base": "unknown_product_asset"},
-                )
+                return self.async_show_form(step_id="configure_product_asset", data_schema=vol.Schema({vol.Required("product_asset"): vol.In(choices)}), errors={"base": "unknown_product_asset"})
             self._target_product_asset = asset_id
             return await self.async_step_edit_product_asset()
-        return self.async_show_form(
-            step_id="configure_product_asset",
-            data_schema=vol.Schema({vol.Required("product_asset"): vol.In(choices)}),
-        )
+        return self.async_show_form(step_id="configure_product_asset", data_schema=vol.Schema({vol.Required("product_asset"): vol.In(choices)}))
 
     async def async_step_edit_product_asset(self, user_input=None):
         asset_id = str(self._target_product_asset or "")
@@ -273,10 +335,71 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 if value == current:
                     continue
                 await runtime.async_set_configuration_property(asset_id, property_key, value)
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError):
             return self._product_form(asset_id, user_input=user_input, error="invalid_product_configuration")
-        # async_set_configuration_property persists through the canonical Mobility semantic
-        # store. Return the latest options so OptionsFlow does not overwrite that revision.
+        return self.async_create_entry(title="", data=self._options())
+
+    async def async_step_add_vehicle_profile(self, user_input=None):
+        if user_input is None:
+            return self.async_show_form(step_id="add_vehicle_profile", data_schema=self._profile_schema("vehicle"))
+        try:
+            return await self._store_profile(dict(user_input))
+        except (TypeError, ValueError):
+            return self.async_show_form(step_id="add_vehicle_profile", data_schema=self._profile_schema("vehicle", user_input), errors={"base": "invalid_profile"})
+
+    async def async_step_add_charger_profile(self, user_input=None):
+        if user_input is None:
+            return self.async_show_form(step_id="add_charger_profile", data_schema=self._profile_schema("charger"))
+        try:
+            return await self._store_profile(dict(user_input))
+        except (TypeError, ValueError):
+            return self.async_show_form(step_id="add_charger_profile", data_schema=self._profile_schema("charger", user_input), errors={"base": "invalid_profile"})
+
+    async def _select_profile(self, step_id: str, next_step: str, user_input=None):
+        profiles = self._authored_profiles()
+        labels = {profile_id: str(row.get("display_name") or profile_id) for profile_id, row in profiles.items()}
+        if not labels:
+            return await self.async_step_init()
+        if user_input is not None:
+            target = str(user_input.get("profile") or "")
+            if target not in profiles:
+                return self.async_show_form(step_id=step_id, data_schema=vol.Schema({vol.Required("profile"): vol.In(labels)}), errors={"base": "unknown_profile"})
+            self._target_profile = target
+            return await getattr(self, f"async_step_{next_step}")()
+        return self.async_show_form(step_id=step_id, data_schema=vol.Schema({vol.Required("profile"): vol.In(labels)}))
+
+    async def async_step_edit_profile(self, user_input=None):
+        return await self._select_profile("edit_profile", "edit_selected_profile", user_input)
+
+    async def async_step_edit_selected_profile(self, user_input=None):
+        target = str(self._target_profile or "")
+        current = self._authored_profiles().get(target)
+        if not isinstance(current, dict):
+            return await self.async_step_init()
+        profile_type = str(current.get("profile_type") or "")
+        if user_input is None:
+            return self.async_show_form(step_id="edit_selected_profile", data_schema=self._profile_schema(profile_type, current), description_placeholders={"name": str(current.get("display_name") or target)})
+        try:
+            return await self._store_profile(dict(user_input), profile_id=target)
+        except (TypeError, ValueError):
+            return self.async_show_form(step_id="edit_selected_profile", data_schema=self._profile_schema(profile_type, user_input), errors={"base": "invalid_profile"}, description_placeholders={"name": str(current.get("display_name") or target)})
+
+    async def async_step_remove_profile(self, user_input=None):
+        return await self._select_profile("remove_profile", "remove_selected_profile", user_input)
+
+    async def async_step_remove_selected_profile(self, user_input=None):
+        target = str(self._target_profile or "")
+        current = self._authored_profiles().get(target)
+        if not isinstance(current, dict):
+            return await self.async_step_init()
+        if user_input is None:
+            return self.async_show_form(step_id="remove_selected_profile", data_schema=vol.Schema({vol.Required("confirm", default=False): bool}), description_placeholders={"name": str(current.get("display_name") or target)})
+        if not user_input.get("confirm"):
+            return await self.async_step_init()
+        try:
+            await self._domain_config().async_remove_profile(target)
+        except (TypeError, ValueError):
+            return self.async_show_form(step_id="remove_selected_profile", data_schema=vol.Schema({vol.Required("confirm", default=False): bool}), errors={"base": "profile_in_use"}, description_placeholders={"name": str(current.get("display_name") or target)})
         return self.async_create_entry(title="", data=self._options())
 
     async def async_step_add_guest_vehicle(self, user_input=None):
@@ -297,11 +420,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             target = str(user_input.get("guest_vehicle") or "")
             if target not in guests:
                 labels = {asset_id: str(row.get("name") or asset_id) for asset_id, row in guests.items()}
-                return self.async_show_form(
-                    step_id=step_id,
-                    data_schema=vol.Schema({vol.Required("guest_vehicle"): vol.In(labels)}),
-                    errors={"base": "unknown_guest_vehicle"},
-                )
+                return self.async_show_form(step_id=step_id, data_schema=vol.Schema({vol.Required("guest_vehicle"): vol.In(labels)}), errors={"base": "unknown_guest_vehicle"})
             self._target_guest = target
             return await getattr(self, f"async_step_{next_step}")()
         labels = {asset_id: str(row.get("name") or asset_id) for asset_id, row in guests.items()}
@@ -333,11 +452,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         if target not in guests:
             return await self.async_step_init()
         if user_input is None:
-            return self.async_show_form(
-                step_id="remove_guest",
-                data_schema=vol.Schema({vol.Required("confirm", default=False): bool}),
-                description_placeholders={"name": str(guests.get(target, {}).get("name") or target)},
-            )
+            return self.async_show_form(step_id="remove_guest", data_schema=vol.Schema({vol.Required("confirm", default=False): bool}), description_placeholders={"name": str(guests.get(target, {}).get("name") or target)})
         if not user_input.get("confirm"):
             return await self.async_step_init()
         guests.pop(target, None)

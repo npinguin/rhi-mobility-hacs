@@ -4,6 +4,7 @@ from .models import CommandDescriptor, RequestedPowerDescriptor
 from ..models.contracts import SourceRef
 from ..runtime.normalization import current_a, power_kw
 
+
 class MobilityControlCatalog:
     def __init__(self,hass,manager,registry) -> None:
         self.hass=hass; self.manager=manager; self.registry=registry
@@ -19,12 +20,7 @@ class MobilityControlCatalog:
         return self._attributed_global_service_source(asset,input_id)
 
     def _vehicle_resource_id(self,asset) -> str | None:
-        """Recover an integration resource id only from an already accepted vehicle source.
-
-        mbapi2020 entity unique IDs are VIN-prefixed. This is not semantic discovery: the
-        vehicle object already exists through AcceptedSourceBinding and the prefix is used
-        only as the integration's required command resource id.
-        """
+        """Recover an integration resource id only from an already accepted vehicle source."""
         if asset.source_integration_domain!='mbapi2020':
             return None
         for binding in asset.source_bindings.values():
@@ -49,12 +45,9 @@ class MobilityControlCatalog:
     def _attributed_global_service_source(self,asset,input_id: str) -> SourceRef | None:
         """Bind a Foundation-proven config-entry service to one already proven vehicle.
 
-        Foundation correctly publishes integration-global service candidates as
-        config-entry scoped. Such a surface may support an existing vehicle but may never
-        create one. Attribution is therefore allowed only when the current Mobility
-        selection contains exactly one accepted vehicle for that integration; otherwise
-        it remains fail-closed. The original Foundation candidate id and published match
-        are retained as provenance.
+        Global surfaces can support an existing accepted vehicle but never create one.
+        Attribution is allowed only when exactly one accepted vehicle exists for the
+        integration, preserving the original Foundation candidate as provenance.
         """
         if asset.concept_id!='vehicle' or not asset.source_device_id or not asset.source_integration_domain:
             return None
@@ -102,6 +95,38 @@ class MobilityControlCatalog:
             availability='available',
         )
 
+    def _live_source_availability(self, source: SourceRef) -> tuple[bool,str]:
+        """Evaluate execution readiness from the live accepted source, not frozen discovery quality.
+
+        Foundation candidate availability is evidence at handoff time. It may legitimately be
+        temporary and must never permanently block an already accepted entity write surface.
+        Source identity remains immutable; only its live Home Assistant state is consulted.
+        """
+        if source.source_kind=='entity':
+            if not source.entity_id:
+                return False,'source_missing'
+            state=self.hass.states.get(source.entity_id)
+            if state is None:
+                return False,'source_temporarily_unavailable'
+            if str(getattr(state,'state','')).lower() in {'unknown','unavailable',''}:
+                return False,'source_temporarily_unavailable'
+            return True,'available'
+        if source.source_kind=='service':
+            ident=source.identity or {}
+            domain=str(ident.get('service_domain') or '')
+            name=str(ident.get('service_name') or '')
+            has_service=getattr(getattr(self.hass,'services',None),'has_service',None)
+            if not domain or not name:
+                return False,'source_missing'
+            if callable(has_service) and not has_service(domain,name):
+                return False,'source_temporarily_unavailable'
+            return True,'available'
+        if source.availability=='missing':
+            return False,'source_missing'
+        if source.availability=='temporarily_unavailable':
+            return False,'source_temporarily_unavailable'
+        return True,'available'
+
     def command_descriptors(self) -> dict[str,CommandDescriptor]:
         out={}
         for asset_id,asset in self.manager.assets.items():
@@ -126,15 +151,14 @@ class MobilityControlCatalog:
     def _descriptor_precedence(self,asset,descriptor) -> int:
         for binding in asset.source_bindings.values():
             if descriptor.source in binding.inputs.values(): return binding.source_precedence
-        # Attributed global services inherit the accepted vehicle object's precedence,
-        # but can never displace an explicit AcceptedSourceBinding command source.
         if descriptor.source.identity.get('command_binding_basis'):
             return min((b.source_precedence for b in asset.source_bindings.values()),default=0)-1
         return -1
 
     def _command_readiness(self,asset_id,key,source,snap):
-        if source.availability=='missing': return False,'source_missing'
-        if source.availability=='temporarily_unavailable': return False,'source_temporarily_unavailable'
+        source_ready,source_reason=self._live_source_availability(source)
+        if not source_ready:
+            return False,source_reason
         if source.identity.get('requires_security_pin'):
             return False,'integration_security_pin_required'
         values=snap.values if snap else {}
@@ -159,6 +183,8 @@ class MobilityControlCatalog:
             direct=direct or binding.inputs.get('charger_power_limit_write')
             current=current or binding.inputs.get('charger_current_limit_write')
         if direct and direct.entity_id:
+            source_ready,_=self._live_source_availability(direct)
+            if not source_ready: return None
             state=self.hass.states.get(direct.entity_id)
             unit=direct.native_unit or (state.attributes.get('unit_of_measurement') if state else None)
             mn=power_kw(state.attributes.get('min'),unit) if state else None
@@ -167,6 +193,8 @@ class MobilityControlCatalog:
             if mn is not None and mx is not None and st and st>0:
                 return RequestedPowerDescriptor(asset_id,direct,'direct_power',mn,mx,st)
         if current and current.entity_id:
+            source_ready,_=self._live_source_availability(current)
+            if not source_ready: return None
             profile=self.manager.effective_charging_profile(asset_id)
             if profile is None: return None
             state=self.hass.states.get(current.entity_id)

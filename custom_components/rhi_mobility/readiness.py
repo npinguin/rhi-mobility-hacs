@@ -49,12 +49,18 @@ class AssetReadiness:
         }
 
 
+# Missing feature configuration must not make an otherwise valid vehicle/charger globally
+# unusable. The profile relationship is the only product-identity requirement currently
+# promoted to CONFIGURATION_REQUIRED. Charging target, ready-by, owner/location and charger
+# assignment remain explicit feature limitations until configured.
+_ASSET_CONFIGURATION_REQUIREMENTS = {"asset.profile_id"}
+
+
 def _binding_health(manager: Any, asset_id: str) -> tuple[HealthState, list[str]]:
     asset = manager.assets.get(asset_id)
     if asset is None:
         return HealthState.BLOCKED, ["asset_missing"]
     if not asset.source_bindings:
-        # Manual/guest assets deliberately have no technical binding.
         return HealthState.OK, []
     reasons: list[str] = []
     for row in getattr(manager, "_capability_diagnostics", ()) or ():
@@ -86,9 +92,12 @@ def _resolution_health(resolutions: Iterable[PropertyResolution]) -> tuple[Healt
                 observation = HealthState.LIMITED if observation == HealthState.OK else observation
             reasons.append(f"observation:{row.property_id}:temporary")
         elif row.status == PropertyResolutionStatus.CONFIGURATION_REQUIRED:
-            configuration_required = True
             properties = HealthState.LIMITED if properties == HealthState.OK else properties
-            reasons.append(f"configuration:{row.property_id}:required")
+            if row.property_id in _ASSET_CONFIGURATION_REQUIREMENTS:
+                configuration_required = True
+                reasons.append(f"configuration:{row.property_id}:required")
+            else:
+                reasons.append(f"configuration_feature:{row.property_id}:not_configured")
     return observation, properties, configuration_required, reasons
 
 

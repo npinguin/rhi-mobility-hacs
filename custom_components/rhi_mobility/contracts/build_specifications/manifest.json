@@ -13,7 +13,7 @@
   ],
   "legacy_reference": {"release":"R43.2.65","legacy_adapter_count":11,"migration":"11 legacy integration adapters consolidated into 3 physical source families plus person presence and manual-profile configuration builders"},
   "safety": {"creates_binding":false,"creates_runtime_truth":false,"creates_public_contract":false,"executes_commands":false},
-  "release": "M0.9.0",
+  "release": "M0.9.1",
   "closure": {
     "step":3,
     "full_feature_migration":true,

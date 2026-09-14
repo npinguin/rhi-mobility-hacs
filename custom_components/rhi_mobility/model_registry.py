@@ -4,14 +4,33 @@ from copy import deepcopy
 import json
 from importlib.resources import files
 from typing import Any
+import weakref
+
+_PROFILE_OVERLAY_PROVIDER: weakref.ReferenceType | None = None
+
+
+def set_profile_overlay_provider(provider: Any) -> None:
+    """Bind the single loaded Mobility config entry as profile overlay authority.
+
+    The reference is weak so unload cannot leave a live semantic owner behind. Packaged
+    catalog profiles remain immutable defaults; Mobility-authored profiles are an overlay
+    owned by the integration options store.
+    """
+    global _PROFILE_OVERLAY_PROVIDER
+    _PROFILE_OVERLAY_PROVIDER = weakref.ref(provider)
+
+
+def _profile_overlay_provider() -> Any | None:
+    return None if _PROFILE_OVERLAY_PROVIDER is None else _PROFILE_OVERLAY_PROVIDER()
 
 
 class MobilityModelRegistry:
-    """Load generated authoritative Mobility contracts without runtime mutation.
+    """Load generated authoritative Mobility contracts plus Mobility-owned profiles.
 
     Contract generation and semantic ownership live in contracts/domain and the
-    deterministic generators. This loader must never rewrite matching, versions,
-    presentation, aliases, producer ownership, or other contract semantics.
+    deterministic generators. Technical matching, versions, aliases and producer ownership
+    are immutable at runtime. The only runtime overlay is the domain-owned logical profile
+    catalog; it never mutates Foundation evidence or accepted source bindings.
     """
 
     def __init__(self) -> None:
@@ -53,8 +72,19 @@ class MobilityModelRegistry:
     def profile(self, profile_id: str | None) -> dict[str, Any] | None:
         if not profile_id:
             return None
+        provider = _profile_overlay_provider()
+        getter = getattr(provider, "profile", None)
+        overlay = getter(str(profile_id)) if callable(getter) else None
+        if isinstance(overlay, dict):
+            return dict(overlay)
         row = self._profiles_by_id.get(str(profile_id))
         return None if row is None else dict(row)
 
     def profiles_for_type(self, profile_type: str) -> list[dict[str, Any]]:
-        return [dict(row) for row in self.profiles if row.get("profile_type") == profile_type]
+        rows = {str(row["profile_id"]): dict(row) for row in self.profiles if row.get("profile_type") == profile_type}
+        provider = _profile_overlay_provider()
+        getter = getattr(provider, "profiles_for_type", None)
+        for row in getter(profile_type) if callable(getter) else []:
+            if isinstance(row, dict) and row.get("profile_id"):
+                rows[str(row["profile_id"])] = dict(row)
+        return [rows[key] for key in sorted(rows)]
