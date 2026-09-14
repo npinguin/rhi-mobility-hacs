@@ -1,5 +1,17 @@
 # Changelog
 
+## M0.9.4 — Product configuration / runtime parity closure
+
+- Publish structured backend-owned profile and charger choices so the frozen UX receives readable labels instead of unusable raw option IDs.
+- Keep configured `vehicle.selected_charger` distinct from effective/physical relationship truth and allow explicit unassignment.
+- Keep VehicleProfile/ChargerProfile selection Mobility-owned, clearable and topology-published without mutating Foundation technical selection.
+- Restore profile-owned image selection end-to-end: assigning a profile drives canonical image identity; UX remains inference-free.
+- Honor catalog `hide_if_unavailable` semantics in the V1 facade for unavailable read-only rows while retaining all canonical V2 typed resolutions for diagnostics/coverage.
+- Keep editable configuration-required rows visible and writable.
+- Add behavioral gates for profile choices, charger assignment, clear semantics, configured-vs-effective separation, structured V1 editor metadata, image identity and empty-state presentation.
+- Preserve Shared Baseline 1.8.1, Foundation F1.8.3 target, exact R43.2.65/V1 entity identities, V2 canonical ownership and zero accepted technical debt.
+- Target Home Assistant persistence/runtime/upgrade/rollback proof remains mandatory before pilot or production approval.
+
 ## M0.9.3 — Release integrity / zero-debt closure
 
 - Make release correctness fail-closed: active documentation, release metadata, source validation, packaging, distribution provenance and approval must agree for the declared release state.

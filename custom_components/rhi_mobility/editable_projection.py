@@ -2,6 +2,9 @@ from __future__ import annotations
 from typing import Any
 
 
+NO_SELECTION = "__none__"
+
+
 def _properties(registry) -> dict[str, dict[str, Any]]:
     return dict((getattr(registry, "semantic_catalog", {}) or {}).get("properties") or {})
 
@@ -39,6 +42,8 @@ def is_available(manager, controller, asset_id: str, property_key: str, editable
     write_kind=editable.get("write_kind")
     if write_kind=="selected_charger":
         return any(a.concept_id=="charger" for a in manager.assets.values())
+    if write_kind=="profile":
+        return bool(getattr(manager.registry,"profiles_for_type",lambda _type: [])(asset.concept_id))
     if write_kind=="charger_requested_power":
         return controller.requested_power_descriptor(asset_id) is not None
     if write_kind=="vehicle_requested_power":
@@ -55,13 +60,50 @@ def is_available(manager, controller, asset_id: str, property_key: str, editable
     return True
 
 
+def choice_rows(manager, registry, asset_id: str, property_key: str, editable: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return product choices with stable IDs and backend-owned display labels.
+
+    HA SelectEntity still consumes the scalar values returned by ``options``.  The
+    compatibility/product projection consumes these structured rows so the frozen UX
+    never has to infer names from profile IDs or asset IDs.
+    """
+    asset=manager.assets.get(asset_id)
+    kind=editable.get("write_kind")
+    if kind=="profile":
+        if asset is None:
+            return []
+        rows=[]
+        for profile in registry.profiles_for_type(asset.concept_id):
+            if not isinstance(profile,dict) or not profile.get("profile_id"):
+                continue
+            profile_id=str(profile["profile_id"])
+            maker=str(profile.get("manufacturer") or profile.get("vendor") or "").strip()
+            model=str(profile.get("model") or "").strip()
+            secondary=" · ".join(part for part in (maker,model) if part)
+            rows.append({
+                "value":profile_id,
+                "label":str(profile.get("display_name") or profile_id),
+                "secondary_label":secondary,
+                "image_key":profile.get("image_key"),
+            })
+        return rows
+    if kind=="selected_charger":
+        return [
+            {"value":aid,"label":str(getattr(row,"display_name",None) or aid)}
+            for aid,row in sorted(manager.assets.items())
+            if row.concept_id=="charger"
+        ]
+    return [{"value":str(value),"label":str(value)} for value in editable.get("options") or []]
+
+
 def options(manager, registry, asset_id: str, property_key: str, editable: dict[str, Any]) -> list[str]:
     asset=manager.assets.get(asset_id)
     kind=editable.get("write_kind")
     if kind=="profile":
-        return [] if asset is None else [str(r["profile_id"]) for r in registry.profiles_for_type(asset.concept_id)]
+        rows=[] if asset is None else [str(r["profile_id"]) for r in registry.profiles_for_type(asset.concept_id)]
+        return [NO_SELECTION,*rows]
     if kind=="selected_charger":
-        return sorted(aid for aid,a in manager.assets.items() if a.concept_id=="charger")
+        return [NO_SELECTION,*sorted(aid for aid,a in manager.assets.items() if a.concept_id=="charger")]
     return [str(x) for x in editable.get("options") or []]
 
 
@@ -72,8 +114,12 @@ def value(manager, controller, asset_id: str, property_key: str, editable: dict[
         return manager.configuration_value(asset_id,"asset.lifecycle_status","active") != "disabled"
     if kind=="lifecycle_status_alias":
         return manager.configuration_value(asset_id,"asset.lifecycle_status","active")
+    if kind=="profile":
+        return manager.configuration_value(asset_id,"asset.profile_id",None) or NO_SELECTION
     if kind=="selected_charger":
-        return manager.effective_charger_for_vehicle(asset_id)
+        # This editor owns configured intent only.  Effective/physical relationships are
+        # separate canonical truths and must never substitute for configured selection.
+        return manager.configuration_value(asset_id,"vehicle.selected_charger",None) or NO_SELECTION
     if kind=="charger_requested_power":
         return controller.requested_power_readback(asset_id)
     if kind=="vehicle_requested_power":
@@ -114,6 +160,32 @@ def bounds(manager, controller, asset_id: str, property_key: str, editable: dict
     return minimum,maximum,float(editable.get("step",1.0))
 
 
+async def _write_structural_configuration(manager, asset_id: str, property_key: str, new_value) -> None:
+    """Persist a Mobility-owned structural association and republish its topology.
+
+    Clearing a profile/charger association is valid product configuration.  Older
+    manager validation rejected an empty charger reference before reaching the config
+    owner, so the compatibility editor normalizes the explicit no-selection token here
+    and uses the same MobilityDomainConfiguration owner directly for the clear case.
+    Foundation technical selection is deliberately untouched.
+    """
+    normalized=None if new_value in (None,"",NO_SELECTION) else new_value
+    if normalized is None:
+        domain_config=getattr(manager,"domain_config",None)
+        if domain_config is None:
+            raise RuntimeError("Mobility semantic configuration store unavailable")
+        await domain_config.async_set(asset_id,property_key,None)
+        affected=set(manager.assets) if property_key=="vehicle.selected_charger" else {asset_id}
+        for aid in affected:
+            if aid in getattr(manager,"snapshots",{}):
+                manager._refresh(aid)
+    else:
+        await manager.async_set_configuration_property(asset_id,property_key,normalized)
+    notify=getattr(manager,"_notify_topology",None)
+    if callable(notify):
+        notify()
+
+
 async def async_write(manager, controller, asset_id: str, property_key: str, editable: dict[str, Any], new_value) -> None:
     kind=editable.get("write_kind")
     if kind=="lifecycle_enabled_alias":
@@ -121,6 +193,12 @@ async def async_write(manager, controller, asset_id: str, property_key: str, edi
         return
     if kind=="lifecycle_status_alias":
         await manager.async_set_configuration_property(asset_id,"asset.lifecycle_status",str(new_value))
+        return
+    if kind=="profile":
+        await _write_structural_configuration(manager,asset_id,"asset.profile_id",new_value)
+        return
+    if kind=="selected_charger":
+        await _write_structural_configuration(manager,asset_id,"vehicle.selected_charger",new_value)
         return
     if kind=="charger_requested_power":
         result=await controller.async_set_requested_power(asset_id,float(new_value))
@@ -140,6 +218,6 @@ async def async_write(manager, controller, asset_id: str, property_key: str, edi
         result=await controller.async_set_vehicle_charge_mode(asset_id,str(new_value))
         if result.get("result")=="BLOCKED": raise ValueError(result.get("reason"))
         return
-    # profile, selected_charger, configuration and manual_vehicle_configuration all write
-    # through the canonical Mobility configuration owner; manager validates semantics.
+    # configuration and manual_vehicle_configuration write through the canonical
+    # Mobility configuration owner; manager validates their semantics.
     await manager.async_set_configuration_property(asset_id,property_key,new_value)

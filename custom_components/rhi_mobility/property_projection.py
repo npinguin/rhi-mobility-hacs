@@ -4,7 +4,9 @@ from typing import Any
 
 from .const import DOMAIN
 from .editable_projection import bounds as editable_bounds
+from .editable_projection import choice_rows as editable_choice_rows
 from .editable_projection import is_available as editable_is_available
+from .editable_projection import NO_SELECTION
 from .editable_projection import options as editable_options
 from .property_resolution import PropertyResolutionStatus
 from .property_resolver import PropertyResolver
@@ -94,7 +96,12 @@ class MobilityPropertyProjection:
         out={**base,"editable":available,"write_supported":available,"write_binding_type":platform,"write_service_domain":platform,"write_service_action":action,"write_target_entity":self.editor_entity_id(asset_id,property_key),"write_property_key":key}
         if platform=="number":
             minimum,maximum,step=editable_bounds(self.manager,self.controller,asset_id,key,editable); out.update({"min":minimum,"max":maximum,"step":step})
-        if platform=="select": out["options"]=editable_options(self.manager,self.registry,asset_id,key,editable)
+        if platform=="select":
+            out["options"]=editable_options(self.manager,self.registry,asset_id,key,editable)
+            out["choices"]=editable_choice_rows(self.manager,self.registry,asset_id,key,editable)
+            out["value_field"]="value"; out["label_field"]="label"; out["secondary_label_field"]="secondary_label"
+            if editable.get("write_kind") in {"profile","selected_charger"}:
+                out["allow_none"]=True; out["none_value"]=NO_SELECTION
         if available and not out["write_target_entity"]:
             out["write_supported"]=False; out["write_blocked_reason"]="editor_entity_not_registered"
         return out
