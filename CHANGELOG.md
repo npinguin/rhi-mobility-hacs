@@ -1,5 +1,74 @@
 # Changelog
 
+## M0.9.3 — Release integrity / zero-debt closure
+
+- Make release correctness fail-closed: active documentation, release metadata, source validation, packaging, distribution provenance and approval must agree for the declared release state.
+- Separate source/package verification from target-runtime approval so a fully qualified release can actually pass the production workflow.
+- Verify every generated install ZIP by reopening it and comparing the exact member set and bytes with `custom_components/rhi_mobility/`; reject duplicate, missing, unexpected, corrupt, path-unsafe or generated members.
+- Require two independent package builds with identical SHA-256 output in normal CI and candidate publication.
+- Bind recorded candidate package SHA-256 to the exact verified archive.
+- Verify candidate-to-production equivalence by exact runtime file set/hash plus version, Shared Baseline and Foundation target rather than brittle equality with an evidence-only source commit.
+- Make current sensitive-data scanning a mandatory public-distribution/release gate.
+- Publish HACS TEST CANDIDATE releases as GitHub prereleases and remove false-positive PASS/RELEASED summaries from failure paths.
+- Synchronize current README, product/architecture/ownership/lifecycle/requirements, installation/upgrade, pilot/handover, release governance, release notes and active release evidence with M0.9.3 / Shared Baseline 1.8.1 / Foundation F1.8.3.
+- Remove stale, non-consumed Foundation-carried `mobility_control_profile` / `mobility_planning_profile` authority metadata plus dead PreparedBuildInput/manager carrier lanes; current control/planning views remain derived from Mobility-owned VehicleProfile/ChargerProfile and semantic configuration.
+- Add a permanent zero-debt gate that rejects reintroduction of those Foundation semantic-profile carriers and verifies canonical/packaged runtime-model identity.
+- Preserve M0.9.2 observable runtime semantics, V2 canonical authority, frozen R43.2.65/V1 exterior, Foundation-facing shared contract versions, builder version/publication revision and frozen Mobility UX unchanged.
+- Known accepted technical debt remains exactly `0`.
+
+## M0.9.2 — Frozen UX V1 parity closure
+
+- Keep Mobility UX frozen and restore compatibility strictly in the V1 facade over canonical V2 truth.
+- Restore frozen-UX component/layout row shape and property-index ownership/placement metadata.
+- Project configured Mobility assignments into the historical V1 selected/effective relationship vocabulary without fabricating physical vehicle identity.
+- Restore legacy V1 command invocation metadata while V2 remains command support/readiness/execution owner.
+- Translate V2 profile/image identity into the frozen V1 image-key namespace.
+- Refresh profile projection from the current Mobility profile registry and restore compatibility health projection.
+- Preserve the required R43.2.65/V1 public entity identity set with no intentional Foundation-facing contract change.
+- Static parity/package/HACS gates passed for the test candidate; target Home Assistant parity and lifecycle acceptance remain separate gates.
+
+## M0.9.1 — Pilot closure: profiles and readiness
+
+- Keep exactly two profile types: `VehicleProfile` and `ChargerProfile`.
+- Add Mobility-owned create/edit/delete profile lifecycle and connected/guest asset profile assignment without mutating Foundation technical selection or `AcceptedSourceBinding`.
+- Treat packaged profiles as immutable defaults with a bounded Mobility-owned configured overlay; prevent deletion while referenced.
+- Allow guest vehicles to use the normal VehicleProfile inventory instead of two hard-coded guest profile IDs.
+- Keep model identity and image identity profile-owned rather than UX-inferred.
+- Stop optional feature configuration such as owner/location/target SoC/ready-by/charger assignment from globally collapsing otherwise valid asset readiness.
+- Evaluate accepted command execution readiness against the live accepted HA source so recovered OCPP write surfaces no longer remain permanently blocked by stale discovery-time availability.
+- Keep unsupported/unavailable writes fail-closed and preserve Peblar/read-only behavior where no attributable write evidence exists.
+- Preserve Shared Baseline 1.8.1, Foundation-facing contract versions, V1 identities and no-automatic-fusion rule.
+
+## M0.9.0 — Product semantic ownership
+
+- Move vehicle/charger semantic product configuration into Mobility ownership while Foundation remains technical discovery/configured technical-selection authority.
+- Drive product configuration from canonical semantic property/profile catalogs rather than per-integration product-flow branches.
+- Persist revisioned `domain_semantic_configuration` without allowing semantic changes to mutate technical source identity, selected candidates or Foundation build-input revision.
+- Add selected-input semantic policy for optional evidence and deterministic integration-specific semantic disambiguation without extending the shared SDBI envelope.
+- Keep automatic multi-source fusion forbidden and writable capability attributable to explicit accepted technical evidence only.
+- Keep Peblar read-only without write evidence and OCPP writes behind accepted attributable surfaces/readback semantics.
+- Preserve V2/V1/Energy/public command identity boundaries and one-generation lifecycle/teardown behavior.
+- Target-runtime product completeness, relationships, placement and physical execution proof remain mandatory before pilot approval.
+
+## M0.8.0 — KISS runtime projection
+
+- Simplify the Mobility runtime/projection path while preserving canonical V2 truth, V1 compatibility, command safety and Shared Baseline 1.8.1 ownership boundaries.
+- Keep runtime measurements direct from accepted source bindings and keep Foundation outside measurement/command fast paths.
+- Remove/avoid speculative generic runtime abstractions in favor of domain-specific typed projection and existing resolver/manager authorities.
+- Preserve public/entity/command semantics and require target Home Assistant acceptance before promotion.
+
+## M0.7.9 — Foundation reload serialization
+
+- Serialize Foundation/Mobility structural reload handling so overlapping provider/reload generations cannot create duplicate registrations or stale teardown effects.
+- Preserve last-good runtime semantics, generation-owned lifecycle cleanup and existing public/semantic surfaces.
+- Keep runtime telemetry outside Foundation structural refresh and require bounded convergence after reload/reconfiguration.
+
+## M0.7.8 — Reload quiescence
+
+- Harden unload/reload quiescence so old Mobility generations release listeners/providers/services before replacement activation.
+- Keep unsubscribe/teardown idempotent and prevent duplicate runtime subscriptions/event amplification across reload cycles.
+- Preserve the existing semantic catalogs, V1/V2 surfaces, Energy boundary and command execution semantics.
+
 ## M0.7.7 — Foundation 1.8.2 lifecycle compatibility
 
 - Accept Foundation F1.8.1 and F1.8.2 only while the Shared Baseline remains exactly 1.8.1; unknown Foundation releases still fail closed.
@@ -57,7 +126,7 @@
 ## M0.7.2 — V1 facade closure and domain supervision
 
 - Adopt Shared Baseline `1.8.0` and publish Mobility domain supervisory status without moving Mobility semantic ownership into Foundation.
-- Isolate all intentional V1 compatibility debt under `custom_components/rhi_mobility/compat_v1/`; V1 is a removable projection/facade over canonical `MOBILITY_PUBLIC_RUNTIME_V2` truth and command surfaces.
+- Isolate all intentional V1 compatibility code under `custom_components/rhi_mobility/compat_v1/`; V1 is a removable projection/facade over canonical `MOBILITY_PUBLIC_RUNTIME_V2` truth and command surfaces.
 - Add fail-closed V1 facade parity and compatibility-architecture audits so legacy entity shape, placement and write semantics cannot silently drift.
 - Complete command-surface closure checks from canonical command declaration through target resolution, execution lifecycle and readback attribution.
 - Add Mobility-owned logical device surfaces and source diagnostics while keeping HA device/entity projection a renderer of backend-owned semantics.

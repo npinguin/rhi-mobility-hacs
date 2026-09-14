@@ -8,10 +8,8 @@ from typing import Any
 from ..const import FOUNDATION_DOMAIN_ID
 from ..models.contracts import (
     AcceptedSourceBinding,
-    AssetControlProfile,
     RelationshipSnapshot,
     SourceRef,
-    VehiclePlanningProfile,
 )
 
 _SHARED_REQUIRED = {
@@ -55,8 +53,6 @@ class PreparedBuildInput:
     capability_diagnostics: tuple[dict[str, Any], ...]
     discovery_assessment: dict[str, Any]
     relationships: tuple[RelationshipSnapshot, ...]
-    control_profiles: tuple[AssetControlProfile, ...]
-    planning_profiles: tuple[VehiclePlanningProfile, ...]
 
 
 def _positive_revision(payload: dict[str, Any], key: str) -> int:
@@ -388,8 +384,6 @@ def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedB
             capability_diagnostics=(diagnostic,),
             discovery_assessment=assessment,
             relationships=(),
-            control_profiles=(),
-            planning_profiles=(),
         )
 
     # Object identity is intentionally narrower than candidate identity. One selected
@@ -677,5 +671,5 @@ def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedB
         source_configuration_revision=payload["configuration_revision"], candidate_revision=payload["candidate_revision"],
         build_input_revision=payload["build_input_revision"], source_bindings=tuple(source_bindings),
         asset_seeds=tuple(asset_seeds), capability_diagnostics=tuple(capability_diagnostics),
-        discovery_assessment=assessment, relationships=tuple(), control_profiles=tuple(), planning_profiles=tuple(),
+        discovery_assessment=assessment, relationships=tuple(),
     )

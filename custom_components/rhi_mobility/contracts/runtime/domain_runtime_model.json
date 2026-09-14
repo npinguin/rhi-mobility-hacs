@@ -4543,21 +4543,6 @@
     "periodization_owner": "rhi_energy",
     "attribution_owner": "rhi_energy"
   },
-  "control_profile_contract": {
-    "location": "candidate_group.domain_parameters.mobility_control_profile",
-    "charger_fields": [
-      "nominal_voltage_v",
-      "phase_count",
-      "min_current_a",
-      "max_current_a",
-      "current_step_a"
-    ],
-    "vehicle_fields": [
-      "ac_phase_count",
-      "max_ac_power_kw"
-    ],
-    "rule": "required only when requested power is implemented through a current-limit surface; values are domain configuration carried by Foundation, not technical discovery truth"
-  },
   "execution_contract": {
     "contract_id": "MOBILITY_COMMAND_EXECUTION_V1",
     "owner": "rhi_mobility",
@@ -4611,19 +4596,6 @@
     ],
     "rule": "Only explicit canonical unsafe/due values create attention; missing values remain unknown and do not create false alarms."
   },
-  "planning_profile_contract": {
-    "location": "candidate_group.domain_parameters.mobility_planning_profile",
-    "fields": [
-      "battery_capacity_kwh",
-      "target_soc_pct",
-      "ready_by",
-      "enabled"
-    ],
-    "owner": "rhi_mobility",
-    "configuration_carrier": "rhi_foundation",
-    "derived_fact": "vehicle.required_energy_kwh=max(0,(target_soc_pct-soc_pct)/100*battery_capacity_kwh)",
-    "rule": "Planning profile is user/domain intent, not technical discovery truth or OEM setpoint readback."
-  },
   "activity_contract": {
     "contract_id": "MOBILITY_ACTIVITY_V2",
     "provider_id": "mobility.activity.v2",
@@ -4666,7 +4638,6 @@
     "property_definition_source": "contracts/mobility/legacy_public_runtime_v1.json",
     "rule": "Exact R43.2.65 exterior is projected from V2 only; no V1 computation."
   },
-  "release": "M0.5.8",
   "authoring_contract": {
     "builder_input_authority": "builders.input_rules + builders.input_order",
     "dbs_role": "generated Foundation handoff contract"

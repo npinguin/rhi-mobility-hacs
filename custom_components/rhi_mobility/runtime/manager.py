@@ -30,8 +30,6 @@ class MobilityRuntimeManager:
         self._selection_diagnostics: dict[str,dict[str,Any]]={}
         self._capability_diagnostics: list[dict[str,Any]]=[]
         self._selection_relationship_ids: dict[str,set[str]]={}
-        self._selection_control_profiles: dict[str,dict[str,AssetControlProfile]]={}
-        self._selection_planning_profiles: dict[str,dict[str,VehiclePlanningProfile]]={}
         self._unsubs: dict[str,list[Callable[[],None]]]={}
         self.listeners: list[Callable[[],None]]=[]
         self._topology_listeners: list[Callable[[],None]]=[]
@@ -77,8 +75,6 @@ class MobilityRuntimeManager:
     @property
     def control_profiles(self) -> dict[str, AssetControlProfile]:
         merged: dict[str, AssetControlProfile] = {}
-        for selection_id in sorted(self._selection_control_profiles):
-            merged.update(self._selection_control_profiles[selection_id])
         for asset_id, asset in self.assets.items():
             profile = self._selected_profile(asset_id)
             if not profile:
@@ -111,8 +107,6 @@ class MobilityRuntimeManager:
     @property
     def planning_profiles(self) -> dict[str, VehiclePlanningProfile]:
         merged: dict[str, VehiclePlanningProfile] = {}
-        for selection_id in sorted(self._selection_planning_profiles):
-            merged.update(self._selection_planning_profiles[selection_id])
         for asset_id, asset in self.assets.items():
             if asset.concept_id != "vehicle":
                 continue
@@ -393,7 +387,7 @@ class MobilityRuntimeManager:
         self._producer_candidates_by_asset.clear()
         for asset_id in list(self._unsubs): self._clear_asset_listener(asset_id)
         self.assets.clear(); self.snapshots.clear(); self.relationships.clear()
-        self._selection_asset_roles.clear(); self._selection_asset_ids.clear(); self._selection_diagnostics.clear(); self._capability_diagnostics.clear(); self._selection_relationship_ids.clear(); self._selection_control_profiles.clear(); self._selection_planning_profiles.clear(); self._health_cache.clear(); self._pending_refresh_assets.clear(); self._notify_topology()
+        self._selection_asset_roles.clear(); self._selection_asset_ids.clear(); self._selection_diagnostics.clear(); self._capability_diagnostics.clear(); self._selection_relationship_ids.clear(); self._health_cache.clear(); self._pending_refresh_assets.clear(); self._notify_topology()
 
     async def async_replace_selected_build_inputs(self, payloads: list[dict[str,Any]] | tuple[dict[str,Any], ...]) -> dict[str,Any]:
         rows=[apply_semantic_input_policy(row,self.registry) for row in list(payloads or [])]
@@ -429,8 +423,6 @@ class MobilityRuntimeManager:
         selection_asset_roles: dict[str,set[tuple[str,str]]]={}
         selection_asset_ids: dict[str,set[str]]={}
         selection_relationship_ids: dict[str,set[str]]={}
-        selection_control_profiles: dict[str,dict[str,AssetControlProfile]]={}
-        selection_planning_profiles: dict[str,dict[str,VehiclePlanningProfile]]={}
         selection_diagnostics: dict[str,dict[str,Any]]={}
         capability_diagnostics: list[dict[str,Any]]=[]
         max_cfg_by_asset: dict[str,int]={}
@@ -512,8 +504,6 @@ class MobilityRuntimeManager:
                     proposed_relationships[rel.relationship_id]=rel
                     rel_ids.add(rel.relationship_id)
                 selection_relationship_ids[sid]=rel_ids
-                selection_control_profiles[sid]={row.asset_id:row for row in prepared.control_profiles}
-                selection_planning_profiles[sid]={row.asset_id:row for row in prepared.planning_profiles}
 
                 capability_diagnostics.extend(dict(row) for row in prepared.capability_diagnostics)
                 problem_statuses={'MISSING','AMBIGUOUS','INVALID_EVIDENCE','BLOCKED_BY_REVIEW','BLOCKED_BY_TARGET_SCOPE'}
@@ -545,18 +535,6 @@ class MobilityRuntimeManager:
                 max_cfg_by_asset[asset_id] = int(getattr(self.domain_config, 'revision', 0) or 0)
                 max_build_by_asset[asset_id] = 0
 
-            merged_control={}
-            for rows in selection_control_profiles.values():
-                for aid,profile in rows.items():
-                    if aid in merged_control and merged_control[aid] != profile:
-                        raise ValueError(f'conflicting Mobility control profiles for {aid}')
-                    merged_control[aid]=profile
-            merged_planning={}
-            for rows in selection_planning_profiles.values():
-                for aid,profile in rows.items():
-                    if aid in merged_planning and merged_planning[aid] != profile:
-                        raise ValueError(f'conflicting Mobility planning profiles for {aid}')
-                    merged_planning[aid]=profile
         except Exception as exc:
             self.last_build_attempt={
                 'status':'REJECTED','observed_at':observed_at,'error_type':type(exc).__name__,'error':str(exc),
@@ -567,8 +545,7 @@ class MobilityRuntimeManager:
             raise
 
         old=(self.assets,self.snapshots,self.relationships,self._selection_asset_roles,self._selection_asset_ids,
-             self._selection_relationship_ids,self._selection_control_profiles,self._selection_planning_profiles,
-             self._selection_diagnostics,self._capability_diagnostics)
+             self._selection_relationship_ids,self._selection_diagnostics,self._capability_diagnostics)
         try:
             for asset_id in list(self._unsubs): self._clear_asset_listener(asset_id)
             self.assets=proposed_assets
@@ -576,8 +553,6 @@ class MobilityRuntimeManager:
             self._selection_asset_roles=selection_asset_roles
             self._selection_asset_ids=selection_asset_ids
             self._selection_relationship_ids=selection_relationship_ids
-            self._selection_control_profiles=selection_control_profiles
-            self._selection_planning_profiles=selection_planning_profiles
             self._selection_diagnostics=selection_diagnostics
             self._capability_diagnostics=capability_diagnostics
             self.snapshots={}
@@ -592,8 +567,7 @@ class MobilityRuntimeManager:
         except Exception as exc:
             for asset_id in list(self._unsubs): self._clear_asset_listener(asset_id)
             (self.assets,self.snapshots,self.relationships,self._selection_asset_roles,self._selection_asset_ids,
-             self._selection_relationship_ids,self._selection_control_profiles,self._selection_planning_profiles,
-             self._selection_diagnostics,self._capability_diagnostics)=old
+             self._selection_relationship_ids,self._selection_diagnostics,self._capability_diagnostics)=old
             for aid in list(self.assets): await self._async_bind_asset(aid)
             self.last_build_attempt={
                 'status':'REJECTED','observed_at':observed_at,'error_type':type(exc).__name__,'error':str(exc),
