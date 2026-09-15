@@ -1,5 +1,18 @@
 # Changelog
 
+## M0.9.7 — Runtime parity and command closure
+
+- Target Foundation F1.8.4 so deterministic forward DomainBuildSpecification revalidation no longer leaves otherwise valid configured Mobility intent stale.
+- Deduplicate accepted semantic candidates structurally before runtime normalization: one electric-range source cannot also become Total range and one shared EVSE state source cannot race through two connection normalizers.
+- Keep explicit combined/total range evidence distinct from EV-only evidence; missing Total remains unavailable rather than fabricated.
+- Restore the frozen V1 UX projection order for Full/EV/Battery and charger Actual/Limit without adding duplicate canonical V2 properties.
+- Restore vehicle Start/Stop compatibility delegation to the exact Mobility-owned charger command through already-published relationship/configuration truth; there is no second physical actuator implementation.
+- Keep frozen V1 connected-vehicle presentation bounded to configured assignment plus canonical EVSE occupancy; V2 topology remains authoritative.
+- Keep image identity profile/canonical-image owned; missing profile remains generic and is not inferred from device labels.
+- Keep unsupported maintenance commands and missing session facts fail-closed; no guessed services, lifetime-as-session substitution or compatibility-generated canonical values.
+- Add regression gates for semantic binding stability, relationship projection, positional V1 parity and delegated charging commands.
+- Remain a TEST-CANDIDATE until exact target-HA runtime, clean-install, upgrade and rollback proof passes.
+
 ## M0.9.6 — Runtime command and truth closure
 
 - Bump Mobility DomainBuildSpecification publication revision to 12 so Foundation F1.8.3 can safely reconcile changed OCPP/Peblar specifications instead of blocking write surfaces as stale configuration.
@@ -36,7 +49,7 @@
 
 ## M0.9.3 — Release integrity / zero-debt closure
 
-- Make release correctness fail-closed: active documentation, release metadata, source validation, packaging, distribution provenance and approval must agree for the declared release state.
+- Make release correctness fail-closed: active documentation, release metadata, source validation, packaging, distribution provenance and release approval must agree for the declared release state.
 - Separate source/package verification from target-runtime approval so a fully qualified release can actually pass the production workflow.
 - Verify every generated install ZIP by reopening it and comparing the exact member set and bytes with `custom_components/rhi_mobility/`; reject duplicate, missing, unexpected, corrupt, path-unsafe or generated members.
 - Require two independent package builds with identical SHA-256 output in normal CI and candidate publication.

@@ -1,8 +1,4 @@
-"""Frozen Mobility V1 compatibility facade.
-
-This package is the complete removable compatibility boundary after UX consumers
-migrate to MOBILITY_PUBLIC_RUNTIME_V2. No canonical Mobility semantics are owned here.
-"""
+"""Removable Mobility V1 compatibility facade over canonical V2 truth."""
 
 from .parity_facade import MobilityV1Facade as _ParityFacade
 
@@ -23,19 +19,12 @@ class MobilityV1Facade(_ParityFacade):
         return str(row.get("raw_capability_id") or provenance.get("raw_capability_id") or "")
 
     def _apply_declared_property_aliases(self, rows: list[dict]) -> None:
-        """Project explicitly declared V1 aliases from already-published V2 facts only.
-
-        Alias rules live in the V1 projection contract. They cannot bind sources,
-        calculate values, infer readiness or mutate canonical V2 truth. Decommissioning
-        V1 therefore removes this package and its projection contract without touching V2.
-        """
         projection_contract = getattr(self, "projection_contract", {}) or {}
         aliases = projection_contract.get("property_alias_projection") or {}
         for row in rows:
             if row.get("available"):
                 continue
-            target_key = str(row.get("property_key") or "")
-            rule = aliases.get(target_key)
+            rule = aliases.get(str(row.get("property_key") or ""))
             if not isinstance(rule, dict) or rule.get("mode") != "same_accepted_fact":
                 continue
             asset_id = str(row.get("asset_id") or "")
@@ -48,36 +37,11 @@ class MobilityV1Facade(_ParityFacade):
             required_raw = str(rule.get("required_raw_capability_id") or "")
             if required_raw and self._raw_capability_id(canonical) != required_raw:
                 continue
-            row.update(
-                {
-                    "value": canonical.get("value"),
-                    "display_value": canonical.get("value"),
-                    "available": True,
-                    "availability_reason": canonical.get("availability_reason", "AVAILABLE"),
-                    "quality": canonical.get("quality", "SOURCE"),
-                    "health": "OK",
-                    "compatibility_alias_of": source_key,
-                    "compatibility_alias_reason": "declared_same_accepted_fact",
-                }
-            )
+            row.update({"value": canonical.get("value"), "display_value": canonical.get("value"), "available": True, "availability_reason": canonical.get("availability_reason", "AVAILABLE"), "quality": canonical.get("quality", "SOURCE"), "health": "OK", "compatibility_alias_of": source_key, "compatibility_alias_reason": "declared_same_accepted_fact"})
 
     def property_rows(self, asset_type: str, component: str | None = None):
-        """Apply bounded V1 presentation compatibility over canonical V2 properties.
-
-        V2 retains every typed resolution for diagnostics/coverage. The frozen UX
-        predates ``empty_state_behavior`` and renders every unavailable row as the
-        literal word ``Unknown``. Catalog-declared ``hide_if_unavailable`` read-only
-        rows are therefore hidden only at this removable V1 boundary. Editable
-        configuration rows remain visible so missing configuration can be corrected.
-
-        Any V1 property alias is declared in ``v1_facade_projection.json`` and can only
-        copy the same already-published V2 fact under an exact provenance condition.
-        The facade never rereads Home Assistant state, Foundation internals or the
-        Mobility runtime manager.
-        """
         rows = super().property_rows(asset_type, component)
         self._apply_declared_property_aliases(rows)
-
         for row in rows:
             unavailable = not bool(row.get("available"))
             editable = bool(row.get("editable") or row.get("write_supported"))
@@ -87,6 +51,60 @@ class MobilityV1Facade(_ParityFacade):
                 row["product_visible"] = False
                 row["presentation_reason"] = "empty_state_hidden"
         return rows
+
+    def _command_target(self, asset_id: str, legacy_key: str):
+        target_id, target_key = super()._command_target(asset_id, legacy_key)
+        projection = self.command_projection.get(legacy_key) or {}
+        if target_id or projection.get("target_scope") != "effective_charger":
+            return target_id, target_key
+        for relation in self._public_snapshot().get("relationships", []):
+            if not isinstance(relation, dict) or str(relation.get("relationship_type") or "") != "configured_assignment":
+                continue
+            source = relation.get("from_asset_id") or relation.get("source_asset_id")
+            if str(source or "") != str(asset_id):
+                continue
+            target = relation.get("to_asset_id") or relation.get("target_asset_id")
+            if target:
+                return str(target), target_key
+        return None, target_key
+
+    def relationship_rows(self):
+        rows = [dict(row) for row in super().relationship_rows()]
+        seen = {(str(row.get("relationship_type") or ""), str(row.get("from_asset_id") or row.get("source_asset_id") or ""), str(row.get("to_asset_id") or row.get("target_asset_id") or "")) for row in rows}
+        for relation in [r for r in rows if str(r.get("relationship_type") or "") == "configured_assignment"]:
+            vehicle_id = str(relation.get("from_asset_id") or relation.get("source_asset_id") or "")
+            charger_id = str(relation.get("to_asset_id") or relation.get("target_asset_id") or "")
+            if not vehicle_id or not charger_id:
+                continue
+            connection = self.projection.row(charger_id, "charger.connection_state")
+            if not isinstance(connection, dict) or not connection.get("available") or str(connection.get("value") or "") != "asset_connected":
+                continue
+            for rel_type, source, target in (("vehicle_physical_charger", vehicle_id, charger_id), ("charger_connected_vehicle", charger_id, vehicle_id)):
+                key = (rel_type, source, target)
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append(self._relationship_row(relationship_id=f"v1:{rel_type}:{source}:{target}", relationship_type=rel_type, source_asset_id=source, target_asset_id=target, resolution_source="v1_configured_assignment_plus_canonical_evse_occupancy", confidence="compatibility_correlated"))
+        return rows
+
+    @staticmethod
+    def _ordered_existing(values: list[str], preferred: list[str]) -> list[str]:
+        out = [key for key in preferred if key in values]
+        out.extend(key for key in values if key not in out)
+        return out
+
+    def component_contract(self, asset_type: str):
+        contract = dict(super().component_contract(asset_type))
+        components = [dict(row) for row in (contract.get("components_json") or [])]
+        projection_contract = getattr(self, "projection_contract", {}) or {}
+        ordering = (projection_contract.get("component_overview_order") or {}).get(asset_type) or {}
+        for component in components:
+            preferred = ordering.get(str(component.get("component_id") or ""))
+            if isinstance(preferred, list):
+                component["overview_properties"] = self._ordered_existing(list(component.get("overview_properties") or []), preferred)
+        contract["components_json"] = components
+        contract["components_by_id"] = {str(row.get("component_id")): row for row in components}
+        return contract
 
 
 __all__ = ["MobilityV1Facade"]

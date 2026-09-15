@@ -59,10 +59,8 @@ def _prune_not_applicable_optional_groups(payload: dict[str, Any], registry) -> 
         candidate_ids = list(group.get("candidate_ids") or [])
         candidate_matches = list(group.get("candidate_matches") or [])
         if candidate_ids or candidate_matches:
-            # Never hide unexpected technical evidence. The strict builder validates it.
             kept.append(group)
             continue
-        # Optional + no rule for this integration + no evidence = not applicable.
     out["candidate_groups"] = kept
     return out
 
@@ -88,8 +86,83 @@ def _candidate_device_group(candidate: dict[str, Any]) -> str | None:
     return f"group_{device_id}" if isinstance(device_id, str) and device_id else None
 
 
+def _remove_candidate_ids(group: dict[str, Any], rejected: set[str]) -> None:
+    """Remove already-classified semantic duplicates from one optional candidate group."""
+    if not rejected:
+        return
+    kept = [str(value) for value in group.get("candidate_ids") or [] if str(value) not in rejected]
+    keep = set(kept)
+    group["candidate_ids"] = kept
+    group["candidate_count"] = len(kept)
+    group["candidate_matches"] = [
+        row
+        for row in group.get("candidate_matches") or []
+        if isinstance(row, dict) and str(row.get("candidate_id") or "") in keep
+    ]
+
+
+def _deduplicate_vehicle_range_semantics(out: dict[str, Any]) -> None:
+    """Prevent one physical range observation from becoming both Total and EV range.
+
+    Older technical adapters intentionally had broad compatibility matches. That allowed the
+    same Data Act ``value_of_the_primary_range`` candidate, and MBAPI electric-range candidate,
+    to enter both ``vehicle_range`` and ``vehicle_ev_range``. The runtime then normalized one
+    source twice under different semantics. Mobility owns this semantic distinction and must
+    collapse it exactly once at AcceptedDomainBinding preparation, not at measurement runtime.
+
+    An explicit total/combined candidate remains in ``vehicle_range``. If the only candidate is
+    the same candidate already selected as EV range, Total stays unavailable rather than being
+    fabricated. This is stable across entity renames because comparison uses Foundation's stable
+    candidate identity, not ``entity_id`` or friendly name.
+    """
+    groups = {
+        str(group.get("input_id") or ""): group
+        for group in out.get("candidate_groups") or []
+        if isinstance(group, dict)
+    }
+    total = groups.get("vehicle_range")
+    ev = groups.get("vehicle_ev_range")
+    if not isinstance(total, dict) or not isinstance(ev, dict):
+        return
+    ev_ids = {str(value) for value in ev.get("candidate_ids") or [] if value}
+    shared = {
+        str(value)
+        for value in total.get("candidate_ids") or []
+        if str(value) in ev_ids
+    }
+    _remove_candidate_ids(total, shared)
+
+
+def _deduplicate_charger_connection_semantics(out: dict[str, Any]) -> None:
+    """Normalize a shared EVSE state source only once.
+
+    Full-EVSE operating-state normalization already publishes both canonical operating and
+    connection state. OCPP and Peblar commonly expose the exact same registry candidate for
+    ``charger_operating_state`` and ``charger_connection``. Accepting it twice lets two
+    normalizers race over ``charger.connection_state`` and caused Peblar ``charging`` to be
+    overwritten by a generic unknown connection value. Remove only the exact shared candidate
+    from the optional connection input. A distinct connector source remains accepted.
+    """
+    groups = {
+        str(group.get("input_id") or ""): group
+        for group in out.get("candidate_groups") or []
+        if isinstance(group, dict)
+    }
+    operating = groups.get("charger_operating_state")
+    connection = groups.get("charger_connection")
+    if not isinstance(operating, dict) or not isinstance(connection, dict):
+        return
+    operating_ids = {str(value) for value in operating.get("candidate_ids") or [] if value}
+    shared = {
+        str(value)
+        for value in connection.get("candidate_ids") or []
+        if str(value) in operating_ids
+    }
+    _remove_candidate_ids(connection, shared)
+
+
 def _adapt_cupra_vehicle(payload: dict[str, Any]) -> dict[str, Any]:
-    """Resolve the Data Act canonical odometer field without touching technical identity."""
+    """Resolve Data Act semantic collisions without touching technical identity."""
     out = deepcopy(payload)
     evidence = {
         str(row.get("candidate_id")): row
@@ -121,6 +194,8 @@ def _adapt_cupra_vehicle(payload: dict[str, Any]) -> dict[str, Any]:
         if issue_group:
             resolved_issue_groups.add(issue_group)
 
+    _deduplicate_vehicle_range_semantics(out)
+
     if not resolved_issue_groups:
         return out
 
@@ -141,8 +216,24 @@ def _adapt_cupra_vehicle(payload: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _adapt_mbapi_vehicle(payload: dict[str, Any]) -> dict[str, Any]:
+    out = deepcopy(payload)
+    _deduplicate_vehicle_range_semantics(out)
+    return out
+
+
+def _adapt_full_evse(payload: dict[str, Any]) -> dict[str, Any]:
+    out = deepcopy(payload)
+    _deduplicate_charger_connection_semantics(out)
+    return out
+
+
 _ADAPTERS: dict[tuple[str, str], SemanticAdapter] = {
     ("mobility.vehicle.connected_vehicle.v1", "cupra_eu_data_act"): _adapt_cupra_vehicle,
+    ("mobility.vehicle.connected_vehicle.v1", "mbapi2020"): _adapt_mbapi_vehicle,
+    ("mobility.charger.full_evse.v1", "ocpp"): _adapt_full_evse,
+    ("mobility.charger.full_evse.v1", "peblar"): _adapt_full_evse,
+    ("mobility.charger.full_evse.v1", "wallbox"): _adapt_full_evse,
 }
 
 
@@ -151,7 +242,8 @@ def apply_semantic_input_policy(payload: dict[str, Any], registry) -> dict[str, 
 
     New integrations extend the DBS first. They need an adapter only when equivalent technical
     evidence requires integration-specific semantic disambiguation; the runtime manager remains
-    integration-agnostic.
+    integration-agnostic. Semantic disambiguation is structural and runs only when build input is
+    accepted; measurement events never rediscover or reclassify a source.
     """
     out = _prune_not_applicable_optional_groups(payload, registry)
     if not isinstance(out, dict):

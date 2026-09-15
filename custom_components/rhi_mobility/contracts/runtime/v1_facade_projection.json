@@ -23,6 +23,32 @@
       "mode": "same_accepted_fact"
     }
   },
+  "component_overview_order": {
+    "vehicle": {
+      "range": [
+        "vehicle.range_total_km",
+        "vehicle.ev_range_km",
+        "vehicle.range_fuel_km"
+      ],
+      "battery": [
+        "vehicle.soc_pct"
+      ]
+    },
+    "charger": {
+      "metering": [
+        "charger.actual_current_a",
+        "charger.current_limit_a"
+      ],
+      "current": [
+        "charger.actual_current_a",
+        "charger.current_limit_a"
+      ],
+      "charging": [
+        "charger.actual_current_a",
+        "charger.current_limit_a"
+      ]
+    }
+  },
   "command_projection": {
     "vehicle.command.lock": {"target_scope": "same_asset", "v2_command_key": "vehicle.command.lock"},
     "vehicle.command.unlock": {"target_scope": "same_asset", "v2_command_key": "vehicle.command.unlock"},
