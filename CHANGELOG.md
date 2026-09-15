@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.9.8 — Foundation minimum compatibility
+
+- Replace the exact Foundation F1.8.1/F1.8.2/F1.8.3 bootstrap whitelist with a minimum Foundation release of F1.8.1.
+- Accept compatible later Foundation maintenance releases without requiring a Mobility code change solely to extend an allowlist.
+- Keep Shared Baseline 1.8.1 exact and fail closed on baseline drift, malformed Foundation release identities or releases older than F1.8.1.
+- Keep the change entirely Mobility-owned; no Foundation code, configuration lifecycle or cross-domain behavior is modified.
+- Preserve all M0.9.7 semantic/runtime/V1 behavior otherwise unchanged.
+- Remain a TEST-CANDIDATE until target Home Assistant runtime qualification passes.
+
 ## M0.9.7 — Runtime parity and command closure
 
 - Target Foundation F1.8.4 so deterministic forward DomainBuildSpecification revalidation no longer leaves otherwise valid configured Mobility intent stale.

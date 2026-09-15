@@ -21,8 +21,26 @@ from .const import (
 
 PLATFORMS=["sensor","number","button","select","text","switch"]
 _LOGGER=logging.getLogger(__name__)
-_SUPPORTED_FOUNDATION_RELEASES=("F1.8.1","F1.8.2","F1.8.3")
+_MIN_FOUNDATION_RELEASE="F1.8.1"
 _REQUIRED_FOUNDATION_BASELINE="1.8.1"
+
+
+def _foundation_release_tuple(release: str) -> tuple[int, ...] | None:
+    """Parse Foundation release identity without introducing a packaging dependency."""
+    value=str(release or "").strip()
+    if value.startswith("F"):
+        value=value[1:]
+    parts=value.split(".")
+    if not parts or any(not part.isdigit() for part in parts):
+        return None
+    return tuple(int(part) for part in parts)
+
+
+def _foundation_release_supported(release: str) -> bool:
+    """Accept current/future Foundation releases from the declared minimum onward."""
+    current=_foundation_release_tuple(release)
+    minimum=_foundation_release_tuple(_MIN_FOUNDATION_RELEASE)
+    return current is not None and minimum is not None and current >= minimum
 
 
 def _selected_input_registry_present(hass: Any) -> bool:
@@ -167,11 +185,10 @@ def _load_foundation_registry_api(hass: Any) -> dict[str,Any]:
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
         except ImportError:
-            raise RuntimeError("RHI Mobility requires RHI Foundation F1.8.1, F1.8.2 or F1.8.3 / Shared Baseline 1.8.1 before runtime setup") from exc
-        raise ConfigEntryNotReady("RHI Mobility requires RHI Foundation F1.8.1, F1.8.2 or F1.8.3 / Shared Baseline 1.8.1. Install/update Foundation and retry setup.") from exc
-    if foundation_release not in _SUPPORTED_FOUNDATION_RELEASES or foundation_baseline != _REQUIRED_FOUNDATION_BASELINE:
-        supported=", ".join(_SUPPORTED_FOUNDATION_RELEASES)
-        message=("RHI Mobility requires an explicitly supported RHI Foundation release " f"({supported}) with Shared Baseline {_REQUIRED_FOUNDATION_BASELINE}; " f"loaded Foundation is {foundation_release} / {foundation_baseline}. " "Bindings and supervision are intentionally not started against an incompatible shared contract.")
+            raise RuntimeError(f"RHI Mobility requires RHI Foundation {_MIN_FOUNDATION_RELEASE} or newer / Shared Baseline {_REQUIRED_FOUNDATION_BASELINE} before runtime setup") from exc
+        raise ConfigEntryNotReady(f"RHI Mobility requires RHI Foundation {_MIN_FOUNDATION_RELEASE} or newer / Shared Baseline {_REQUIRED_FOUNDATION_BASELINE}. Install/update Foundation and retry setup.") from exc
+    if not _foundation_release_supported(foundation_release) or foundation_baseline != _REQUIRED_FOUNDATION_BASELINE:
+        message=("RHI Mobility requires RHI Foundation " f"{_MIN_FOUNDATION_RELEASE} or newer with Shared Baseline {_REQUIRED_FOUNDATION_BASELINE}; " f"loaded Foundation is {foundation_release} / {foundation_baseline}. " "Bindings and supervision are intentionally not started against an incompatible shared contract.")
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
         except ImportError as exc: raise RuntimeError(message) from exc
