@@ -327,6 +327,24 @@ def _capability_diag(*, builder_id: str, integration_domain: str, selection_id: 
     }
 
 
+
+def _review_blocks_actuation(assessment: dict[str, Any], input_id: str) -> bool:
+    if assessment.get("review_required") is not True:
+        return False
+    issues = tuple(str(value) for value in assessment.get("issues") or ())
+    if not issues:
+        # An unscoped Foundation review remains fail-closed for actuation.
+        return True
+    for issue in issues:
+        # Publication/configuration lifecycle drift is selection-wide and must block.
+        if issue.startswith(("specification_", "configured_selection_", "selection_")):
+            return True
+        # Foundation cardinality issues carry the input_id as the second token.
+        parts = issue.split(":")
+        if len(parts) > 1 and parts[1] == input_id:
+            return True
+    return False
+
 def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedBuildInput:
     """Prepare as much trustworthy Mobility runtime state as the handoff proves.
 
@@ -536,10 +554,11 @@ def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedB
                 reject("AMBIGUOUS", "technical candidate is ambiguous")
                 ambiguous_inputs.add((technical_key, input_id))
                 continue
-            # Review blocks only actuation semantics. Mechanically proven observations
-            # remain usable and visible for diagnostics/runtime normalization.
-            if assessment.get("review_required") is True and usage in {"control", "command"}:
-                reject("BLOCKED_BY_REVIEW", "Foundation review is required before command/control promotion")
+            # Review is scoped. Global lifecycle/specification review blocks actuation;
+            # an ambiguity in an unrelated optional observation does not disable a
+            # separately proven command/control surface.
+            if usage in {"control", "command"} and _review_blocks_actuation(assessment, input_id):
+                reject("BLOCKED_BY_REVIEW", "Foundation review is required for this command/control promotion")
                 continue
             existing = asset_inputs[technical_key].get(input_id)
             if existing is not None:

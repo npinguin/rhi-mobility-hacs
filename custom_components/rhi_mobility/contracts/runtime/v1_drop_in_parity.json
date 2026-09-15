@@ -2680,10 +2680,17 @@
       "definition_index": 130,
       "asset_type": "vehicle",
       "property_key": "vehicle.ev_range_km",
-      "producer_type": "ALIAS",
-      "producer_key": "vehicle.range_km",
-      "implementation": "Compatibility facade alias to canonical V2 property",
-      "builder_sources": [],
+      "producer_type": "SOURCE",
+      "producer_key": "vehicle.ev_range_km",
+      "implementation": "Canonical V2 builder normalization from accepted technical evidence",
+      "builder_sources": [
+        {
+          "builder_id": "mobility.vehicle.connected_vehicle.v1",
+          "input_id": "vehicle_range",
+          "usage": "observation",
+          "normalizer": "distance_km"
+        }
+      ],
       "component_id": "range",
       "section_id": "overview",
       "ux_visibility": "product",

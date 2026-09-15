@@ -55,6 +55,15 @@ class AssetReadiness:
 # assignment remain explicit feature limitations until configured.
 _ASSET_CONFIGURATION_REQUIREMENTS = {"asset.profile_id"}
 
+_CONTROL_EVIDENCE_BLOCKERS = {
+    "AMBIGUOUS",
+    "CARDINALITY_ERROR",
+    "BLOCKED_BY_TARGET_SCOPE",
+    "INVALID_EVIDENCE",
+    "BLOCKED_BY_REVIEW",
+    "REJECTED_REVIEW_REQUIRED",
+}
+
 
 def _binding_health(manager: Any, asset_id: str) -> tuple[HealthState, list[str]]:
     asset = manager.assets.get(asset_id)
@@ -101,22 +110,78 @@ def _resolution_health(resolutions: Iterable[PropertyResolution]) -> tuple[Healt
     return observation, properties, configuration_required, reasons
 
 
-def _control_health(controller: Any, asset_id: str) -> tuple[HealthState, list[str]]:
+def _declared_control_input_ids(manager: Any, asset_id: str) -> set[str]:
+    """Return control/command inputs for the builders already bound to this asset.
+
+    This uses only Mobility-owned accepted bindings and Mobility's canonical builder model.
+    It does not rescan Home Assistant or interpret Foundation internals.
+    """
+    asset = manager.assets.get(asset_id)
+    if asset is None:
+        return set()
+    out: set[str] = set()
+    registry = getattr(manager, "registry", None)
+    if registry is None:
+        return out
+    for binding in getattr(asset, "source_bindings", ()) or ():
+        try:
+            model = registry.builder_model(binding.builder_id)
+        except Exception:
+            continue
+        for input_id, rule in (model.get("input_rules") or {}).items():
+            if str(rule.get("usage") or "observation") in {"control", "command"}:
+                out.add(str(input_id))
+    return out
+
+
+def _blocked_control_evidence(manager: Any, asset_id: str) -> list[dict[str, Any]]:
+    expected = _declared_control_input_ids(manager, asset_id)
+    if not expected:
+        return []
+    rows: list[dict[str, Any]] = []
+    for row in getattr(manager, "_capability_diagnostics", ()) or ():
+        if not isinstance(row, dict):
+            continue
+        if row.get("asset_id") != asset_id:
+            continue
+        if str(row.get("input_id") or "") not in expected:
+            continue
+        if str(row.get("status") or "").upper() in _CONTROL_EVIDENCE_BLOCKERS:
+            rows.append(row)
+    return rows
+
+
+def _control_health(manager: Any, controller: Any, asset_id: str) -> tuple[HealthState, list[str]]:
     descriptors = getattr(controller, "command_descriptors", None)
     if not callable(descriptors):
         return HealthState.UNKNOWN, ["control_descriptors_unavailable"]
+
     rows = [row for row in descriptors().values() if getattr(row, "asset_id", None) == asset_id]
+    blocked_evidence = _blocked_control_evidence(manager, asset_id)
+    evidence_reasons = [
+        f"control_evidence:{row.get('input_id', 'unknown')}:{str(row.get('status') or 'blocked').lower()}"
+        for row in blocked_evidence
+    ]
+
+    # M0.9.5 treated zero descriptors as healthy even when command/control promotion had
+    # been explicitly blocked by review. Absence of product commands is healthy only when
+    # there is no blocked declared control evidence for this asset.
     if not rows:
-        return HealthState.OK, []
+        return (HealthState.BLOCKED, evidence_reasons) if blocked_evidence else (HealthState.OK, [])
+
     allowed = [row for row in rows if bool(getattr(row, "execution_allowed", False))]
-    if len(allowed) == len(rows):
-        return HealthState.OK, []
-    reasons = [
+    descriptor_reasons = [
         f"control:{getattr(row, 'command_key', 'unknown')}:{getattr(row, 'blocked_reason', 'blocked')}"
         for row in rows
         if not bool(getattr(row, "execution_allowed", False))
     ]
-    return (HealthState.LIMITED if allowed else HealthState.BLOCKED), reasons
+    reasons = descriptor_reasons + evidence_reasons
+
+    if len(allowed) == len(rows) and not blocked_evidence:
+        return HealthState.OK, []
+    if allowed:
+        return HealthState.LIMITED, reasons
+    return HealthState.BLOCKED, reasons
 
 
 def evaluate_asset_readiness(
@@ -127,7 +192,7 @@ def evaluate_asset_readiness(
 ) -> AssetReadiness:
     binding, binding_reasons = _binding_health(manager, asset_id)
     observation, properties, configuration_required, property_reasons = _resolution_health(resolutions)
-    control, control_reasons = _control_health(controller, asset_id)
+    control, control_reasons = _control_health(manager, controller, asset_id)
     reasons = tuple(binding_reasons + property_reasons + control_reasons)
 
     if binding == HealthState.BLOCKED or control == HealthState.BLOCKED:

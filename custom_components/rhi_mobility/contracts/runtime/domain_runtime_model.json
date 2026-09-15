@@ -4207,6 +4207,24 @@
           ],
           "required": false,
           "cardinality": "zero_or_more_per_group"
+        },
+        "vehicle_ev_range": {
+          "normalizer": "distance_km",
+          "outputs": [
+            "vehicle.ev_range_km"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
         }
       },
       "command_rules": {
@@ -4275,6 +4293,7 @@
       "input_order": [
         "vehicle_soc",
         "vehicle_range",
+        "vehicle_ev_range",
         "vehicle_charging_state",
         "vehicle_location",
         "vehicle_odometer",

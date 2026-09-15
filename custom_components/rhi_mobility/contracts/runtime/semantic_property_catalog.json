@@ -5400,13 +5400,20 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "ALIAS"
+        "SOURCE"
       ],
-      "canonical_alias_of": "vehicle.range_km",
       "truth_precedence": [
-        "ALIAS"
+        "SOURCE"
       ],
-      "value_type": "number"
+      "value_type": "number",
+      "builder_sources": [
+        {
+          "builder_id": "mobility.vehicle.connected_vehicle.v1",
+          "input_id": "vehicle_range",
+          "usage": "observation",
+          "normalizer": "distance_km"
+        }
+      ]
     },
     "vehicle.external_power_state": {
       "component_id": "charging",

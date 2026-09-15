@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.9.6 — Runtime command and truth closure
+
+- Bump Mobility DomainBuildSpecification publication revision to 12 so Foundation F1.8.3 can safely reconcile changed OCPP/Peblar specifications instead of blocking write surfaces as stale configuration.
+- Keep Foundation review fail-closed, but scope an input-specific observation ambiguity to that input so an Audi odometer ambiguity cannot disable independently proven vehicle commands.
+- Make control health reflect blocked declared controls instead of reporting `OK` when command descriptors are absent because promotion was blocked.
+- Report effective compiled relationship counts consistently in build diagnostics.
+- Enforce zero known accepted feature debt alongside zero known accepted technical debt.
+- Remain a test candidate until exact target-HA command dispatch/readback, restart, lifecycle, clean install, upgrade and rollback evidence passes.
+
 ## M0.9.5 — Target runtime product parity recovery
 
 - Fix contradictory OCPP connection normalization: the same accepted status evidence now maps `Preparing`, `Charging`, `SuspendedEV`, `SuspendedEVSE` and `Finishing` consistently to `asset_connected` across both canonical normalizers.

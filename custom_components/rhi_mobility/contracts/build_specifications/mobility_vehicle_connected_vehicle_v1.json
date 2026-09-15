@@ -169,6 +169,45 @@
         ]
       },
       {
+        "input_id": "vehicle_ev_range",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "ev_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_rangeelectrickm"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "ev_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "value_of_the_primary_range"
+              }
+            ]
+          }
+        ]
+      },
+      {
         "input_id": "vehicle_charging_state",
         "technical_capabilities": {
           "any_of": [
