@@ -220,7 +220,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     energy_compat_provider=MobilityEnergyReadOnlyProvider(manager,registry,controller,public_provider); command_provider=MobilityCommandProvider(controller)
     experience_provider=MobilityExperienceProvider(public_provider,registry); activity_provider=MobilityActivityProvider(manager,controller)
     legacy_facade=MobilityV1Facade(projection=property_projection,public_provider=public_provider,command_provider=command_provider,experience_provider=experience_provider,activity_provider=activity_provider,energy_provider=energy_provider,registry=registry)
-    supervision_provider=MobilityDomainSupervisoryStatusProvider(manager=manager,controller=controller,public_provider=public_provider,experience_provider=experience_provider,compatibility_facade=legacy_facade,build_spec_provider=provider,release=RELEASE)
+    supervision_provider=MobilityDomainSupervisoryStatusProvider(manager=manager,controller=controller,public_provider=public_provider,experience_provider=experience_provider,build_spec_provider=provider,release=RELEASE)
     source_diagnostics_provider=MobilitySourceDiagnosticsProvider(manager,public_provider); device_surface_provider=MobilityDeviceSurfaceProvider(supervision_provider,experience_provider)
     legacy_facade.supervision=supervision_provider
     legacy_state=MobilityV1StatePublisher(hass,legacy_facade,subscribe_runtime=getattr(manager,'add_runtime_listener',manager.add_listener),subscribe_control=controller.add_listener)

@@ -1,5 +1,18 @@
 # Changelog
 
+## M0.9.5 — Target runtime product parity recovery
+
+- Fix contradictory OCPP connection normalization: the same accepted status evidence now maps `Preparing`, `Charging`, `SuspendedEV`, `SuspendedEVSE` and `Finishing` consistently to `asset_connected` across both canonical normalizers.
+- Keep Start Charging readiness fail-closed; remove only the false `vehicle_not_connected` result caused by that normalization contradiction. Stop remains protective.
+- Restore frozen V1 `vehicle.range_total_km` only when the published canonical V2 range fact carries exact `raw_capability_id=range_total_km` provenance; ordinary EV/primary range is never relabelled.
+- Keep the V1 facade projection-only: no Home Assistant source reread, no runtime-manager reach-through and no second range computation path.
+- Keep physical VehicleProfile/ChargerProfile identity explicit Mobility configuration. Missing profile remains configuration-required/generic; no fuzzy device-name/model/image inference is introduced.
+- Keep `vehicle.energy_needed_kwh` Mobility-owned and derived from canonical SoC, capacity and target SoC; Energy consumes the published kWh fact without reconstructing it.
+- Keep Peblar Start/Stop unsupported unless Foundation supplies accepted writable evidence.
+- Add regression gates for OCPP connection equivalence, Start readiness, evidence-bound total-range parity and energy-needed derivation.
+- Preserve Shared Baseline 1.8.1, Foundation F1.8.3 target, exact R43.2.65/V1 entity identities, V2 canonical ownership and zero accepted technical debt.
+- Target Home Assistant runtime, clean-install, M0.9.4→M0.9.5 upgrade and rollback proof remain mandatory before pilot or production approval.
+
 ## M0.9.4 — Product configuration / runtime parity closure
 
 - Publish structured backend-owned profile and charger choices so the frozen UX receives readable labels instead of unusable raw option IDs.
@@ -144,8 +157,7 @@
 - Add Mobility-owned logical device surfaces and source diagnostics while keeping HA device/entity projection a renderer of backend-owned semantics.
 - Keep guest vehicles Mobility-owned, preserve add/edit/remove persistence, and retain the Home Assistant 2026.9 options-flow correction without reintroducing obsolete `battery_energy_kwh` form authoring.
 - Add zero-runtime-tech-debt and device-surface architecture gates alongside canonical contract authority, normalized mapping coverage and completeness/presentation gates.
-- Preserve the complete M0.7.1 normalized property, profile, image, relationship, Energy interop and physical command behavior with no intentional public entity ID, unique ID, service or command rename/removal.
-- Static source, package, test and hassfest validation are required to be green for the merge candidate. Target Home Assistant clean-install, upgrade, rollback and full V1 runtime parity remain explicit post-merge test-candidate acceptance gates.
+- Preserve the complete M0.7.1 normalized property, profile, image/presentation surface; target Home Assistant clean-install, upgrade, rollback and full V1 runtime parity remain explicit post-merge test-candidate acceptance gates.
 
 ## M0.7.1 — Structural runtime chain recovery
 

@@ -16,6 +16,13 @@
     "activity_from_v2_activity_provider_only": true,
     "energy_from_v2_energy_provider_only": true
   },
+  "property_alias_projection": {
+    "vehicle.range_total_km": {
+      "source_property_key": "vehicle.range_km",
+      "required_raw_capability_id": "range_total_km",
+      "mode": "same_accepted_fact"
+    }
+  },
   "command_projection": {
     "vehicle.command.lock": {"target_scope": "same_asset", "v2_command_key": "vehicle.command.lock"},
     "vehicle.command.unlock": {"target_scope": "same_asset", "v2_command_key": "vehicle.command.unlock"},

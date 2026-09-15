@@ -300,13 +300,13 @@
         "integration_matches": [
           {
             "integration_domain": "peblar",
-            "raw_capability_id": "offered_current_a",
+            "raw_capability_id": "charge_current_limit_a",
             "source_kind": "entity",
             "all_of": [
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "limit_source"
+                "value": "charge_current_limit"
               }
             ]
           },
@@ -414,13 +414,13 @@
           },
           {
             "integration_domain": "peblar",
-            "raw_capability_id": "maximum_current",
+            "raw_capability_id": "charge_current_limit_a",
             "source_kind": "entity",
             "all_of": [
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "maximum_current"
+                "value": "charge_current_limit"
               }
             ]
           },
@@ -485,7 +485,7 @@
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "start_charging"
+                "value": "charge"
               }
             ]
           },
@@ -574,7 +574,7 @@
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "stop_charging"
+                "value": "charge"
               }
             ]
           },

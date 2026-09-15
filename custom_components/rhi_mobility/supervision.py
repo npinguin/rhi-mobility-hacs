@@ -5,6 +5,7 @@ from typing import Any
 
 CONTRACT_ID = "RHI_DOMAIN_SUPERVISORY_STATUS_V1"
 CONTRACT_VERSION = "1.1.0"
+_CANONICAL_RUNTIME_CONTRACT = "MOBILITY_PUBLIC_RUNTIME_V2"
 
 _PRIORITY = {
     "BLOCKED": 60,
@@ -22,12 +23,12 @@ def _worst(*statuses: str) -> str:
 
 
 class MobilityDomainSupervisoryStatusProvider:
-    """Bounded Mobility readiness envelope consumed by Foundation.
+    """Bounded canonical Mobility readiness envelope consumed by Foundation.
 
-    This provider intentionally never resolves the full property catalog, rebuilds the
-    V1 facade, evaluates product intelligence, or reads physical source state.  Those are
-    Mobility diagnostics/product concerns.  Foundation supervision gets only already
-    materialized runtime/build facts, just like the Energy domain.
+    Shared supervision depends only on already-materialized Mobility V2/build facts.
+    It does not depend on the transitional V1 facade, resolve the full property catalog,
+    evaluate product intelligence, or read physical source state. Removing V1 after UX
+    migration therefore does not change canonical Mobility supervision.
     """
 
     def __init__(
@@ -37,7 +38,6 @@ class MobilityDomainSupervisoryStatusProvider:
         controller: Any,
         public_provider: Any,
         experience_provider: Any,
-        compatibility_facade: Any,
         build_spec_provider: Any,
         release: str,
     ) -> None:
@@ -45,7 +45,6 @@ class MobilityDomainSupervisoryStatusProvider:
         self.controller = controller
         self.public = public_provider
         self.experience = experience_provider
-        self.compatibility = compatibility_facade
         self.build_spec_provider = build_spec_provider
         self.release = release
         self._last_success_at: str | None = None
@@ -100,14 +99,13 @@ class MobilityDomainSupervisoryStatusProvider:
         return "UNKNOWN"
 
     def _contract_status(self) -> str:
-        """Validate static V1 facade shape without materializing runtime rows."""
+        """Validate canonical V2 authority without materializing a runtime snapshot."""
         try:
-            expected = len(self.compatibility.contract.get("property_definitions") or ())
-            actual = sum(len(rows) for rows in self.compatibility.defs_by_type.values())
-            entities = len(self.compatibility.required_entity_ids)
+            contract_id = str(getattr(self.public, "CONTRACT_ID", "") or "")
+            properties = getattr(self.public, "properties", None)
         except Exception:
             return "BLOCKED"
-        return "OK" if expected == actual and expected > 0 and entities > 0 else "BLOCKED"
+        return "OK" if contract_id == _CANONICAL_RUNTIME_CONTRACT and isinstance(properties, dict) and properties else "BLOCKED"
 
     def _runtime_status(self, attempt: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
         """Read only already-materialized runtime health; never recompute properties."""
@@ -174,12 +172,12 @@ class MobilityDomainSupervisoryStatusProvider:
 
         if contract_status != "OK":
             issues.append(self._issue(
-                "mobility:compatibility:v1_contract",
+                "mobility:contract:v2_canonical_runtime",
                 severity="CRITICAL",
-                category="COMPATIBILITY",
-                reason_code="V1_STATIC_CONTRACT_INCOMPLETE",
+                category="CONTRACT",
+                reason_code="V2_CANONICAL_RUNTIME_CONTRACT_INCOMPLETE",
                 blocking=True,
-                scope=["MOBILITY_PUBLIC_RUNTIME_V1"],
+                scope=[_CANONICAL_RUNTIME_CONTRACT],
             ))
         if build_status == "DEGRADED":
             issues.append(self._issue(
@@ -247,8 +245,7 @@ class MobilityDomainSupervisoryStatusProvider:
         }
 
     def details(self) -> dict[str, Any]:
-        """Run expensive Mobility-owned analysis only for explicit diagnostics."""
-        from .compat_v1.health import facade_parity_health
+        """Run expensive canonical Mobility analysis only for explicit diagnostics."""
         from .coverage import (
             completeness_gate,
             normalized_property_coverage,
@@ -284,6 +281,5 @@ class MobilityDomainSupervisoryStatusProvider:
                 "gate": gate,
                 "asset_readiness": readiness,
             },
-            "compatibility": facade_parity_health(self.compatibility),
             "experience": self.experience.snapshot(),
         }

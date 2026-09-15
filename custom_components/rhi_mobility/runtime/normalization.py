@@ -94,9 +94,28 @@ def utility_charger_state(integration_domain: str, value: Any) -> dict[str, str 
     return {"charger.operating_state":"unknown"}
 
 def charger_connection(integration_domain: str, value: Any) -> dict[str, str | None]:
+    """Normalize physical connector state without contradicting charger_state.
+
+    OCPP exposes lifecycle states (Preparing/Charging/SuspendedEV/SuspendedEVSE/
+    Finishing) on the same accepted connector-status source.  Those states are
+    explicit evidence that an EV is physically connected.  Treating them as an
+    unknown generic token caused the higher-precedence charger_connection input to
+    overwrite the correct connection state published by charger_state and blocked
+    Start Charging with ``vehicle_not_connected`` on real OCPP chargers.
+    """
     raw=_text(value)
     if raw is None: return {"charger.connection_state":None}
-    key=raw.strip().lower().replace(" ","_")
+    compact=raw.strip().lower().replace(" ","").replace("_","").replace("-","")
+    key=raw.strip().lower().replace(" ","_").replace("-","_")
+    if integration_domain=="ocpp":
+        if compact in {"preparing","charging","suspendedev","suspendedevse","finishing"}:
+            return {"charger.connection_state":"asset_connected"}
+        if compact=="available":
+            return {"charger.connection_state":"no_asset_connected"}
+        if compact=="faulted":
+            return {"charger.connection_state":"fault"}
+        if compact in {"reserved","unavailable"}:
+            return {"charger.connection_state":"unknown"}
     if key in {"connected","asset_connected","plugged","plugged_in","occupied"}: return {"charger.connection_state":"asset_connected"}
     if key in {"disconnected","no_asset_connected","no_ev_connected","available"}: return {"charger.connection_state":"no_asset_connected"}
     if key in {"fault","faulted","error"}: return {"charger.connection_state":"fault"}
