@@ -8,6 +8,13 @@ _PROFILE_ASSET_DIR = Path(__file__).resolve().parent / "assets" / "profiles"
 
 
 def effective_profile(manager: Any, asset_id: str) -> dict[str, Any] | None:
+    """Return the explicitly configured Mobility profile for an asset.
+
+    Profile/model/image identity is Mobility-owned semantic configuration. Integration
+    domain, HA device names and entity labels are supporting source metadata only and
+    must never select a semantic profile. This keeps profile resolution deterministic,
+    rename-stable and fail-closed.
+    """
     getter = getattr(manager, "_selected_profile", None)
     profile = getter(asset_id) if callable(getter) else None
     return dict(profile) if isinstance(profile, dict) else None

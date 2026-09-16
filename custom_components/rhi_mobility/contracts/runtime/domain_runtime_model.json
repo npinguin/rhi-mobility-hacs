@@ -222,10 +222,12 @@
           "precedence": 30,
           "technical_capabilities": {
             "any_of": [
+              "button_write_surface",
               "service_command_surface"
             ]
           },
           "allowed_source_kinds": [
+            "entity",
             "service"
           ],
           "required": false,
@@ -237,10 +239,12 @@
           "precedence": 30,
           "technical_capabilities": {
             "any_of": [
+              "button_write_surface",
               "service_command_surface"
             ]
           },
           "allowed_source_kinds": [
+            "entity",
             "service"
           ],
           "required": false,
@@ -4630,7 +4634,6 @@
     "canonical_owner": "rhi_mobility",
     "aliases": {
       "lifecycle_status": "asset.lifecycle_status",
-      "vehicle.ev_range_km": "vehicle.range_km",
       "vehicle.charge_state": "vehicle.charging_state",
       "vehicle.charging_power_kw": "vehicle.charge_power_kw",
       "vehicle.range_fuel_km": "vehicle.fuel_range_km",

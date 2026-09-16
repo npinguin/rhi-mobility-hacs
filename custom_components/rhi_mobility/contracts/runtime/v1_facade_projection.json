@@ -31,7 +31,7 @@
         "vehicle.range_fuel_km"
       ],
       "battery": [
-        "vehicle.soc_pct"
+        "vehicle.current_energy_kwh"
       ]
     },
     "charger": {

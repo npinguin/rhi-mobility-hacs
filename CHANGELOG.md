@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.9.9 — Product state closure
+
+- Restore deterministic packaged presentation profiles for known VW ID4, Audi Q8, Mercedes GLA, Wallbox OCPP, Peblar and utility-plug source families while explicit Mobility profile configuration remains authoritative.
+- Derive `charger.actual_current_a` from authoritative phase-current readback only when a direct aggregate actual-current source is absent; direct actual source wins and current-limit/requested values are never substituted.
+- Make missing `asset.profile_id` a feature-scoped limitation instead of a global `CONFIGURATION_REQUIRED` blocker.
+- Keep configured/effective/physical topology distinct and do not fabricate physical vehicle identity from charger power or occupancy.
+- Keep maintenance/session technical discovery Foundation-owned; unsupported or undiscovered evidence stays absent rather than guessed.
+- Add target-runtime regression coverage and remain a TEST-CANDIDATE until target Home Assistant acceptance passes.
+
 ## M0.9.8 — Foundation minimum compatibility
 
 - Replace the exact Foundation F1.8.1/F1.8.2/F1.8.3 bootstrap whitelist with a minimum Foundation release of F1.8.1.

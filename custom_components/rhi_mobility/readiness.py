@@ -49,11 +49,11 @@ class AssetReadiness:
         }
 
 
-# Missing feature configuration must not make an otherwise valid vehicle/charger globally
-# unusable. The profile relationship is the only product-identity requirement currently
-# promoted to CONFIGURATION_REQUIRED. Charging target, ready-by, owner/location and charger
-# assignment remain explicit feature limitations until configured.
-_ASSET_CONFIGURATION_REQUIREMENTS = {"asset.profile_id"}
+# Product profile enriches profile-owned capabilities (image, capacity, electrical limits,
+# planning defaults). Its absence must not make an otherwise healthy physical asset globally
+# unconfigured. Configuration-required promotion is reserved for future properties that are
+# truly mandatory for the asset to exist or operate at all.
+_ASSET_CONFIGURATION_REQUIREMENTS: set[str] = set()
 
 _CONTROL_EVIDENCE_BLOCKERS = {
     "AMBIGUOUS",
@@ -163,9 +163,6 @@ def _control_health(manager: Any, controller: Any, asset_id: str) -> tuple[Healt
         for row in blocked_evidence
     ]
 
-    # M0.9.5 treated zero descriptors as healthy even when command/control promotion had
-    # been explicitly blocked by review. Absence of product commands is healthy only when
-    # there is no blocked declared control evidence for this asset.
     if not rows:
         return (HealthState.BLOCKED, evidence_reasons) if blocked_evidence else (HealthState.OK, [])
 

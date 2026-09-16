@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..profile_presentation import effective_profile
 from .normalization import normalize
 
 
@@ -90,7 +91,9 @@ def collect_producer_candidates(manager: Any, asset_id: str) -> dict[str, dict[s
         ledger.setdefault(property_id, {})["SOURCE"] = candidate
 
     semantic = (getattr(manager.registry, "semantic_catalog", {}) or {}).get("properties") or {}
-    selected_profile = manager._selected_profile(asset_id)
+    # Profile producers are created only from explicit Mobility semantic configuration.
+    # Integration identity, device labels and source families never select a product profile.
+    selected_profile = effective_profile(manager, asset_id)
     if isinstance(selected_profile, dict):
         profile_id = str(selected_profile.get("profile_id") or "")
         for property_id, definition in semantic.items():

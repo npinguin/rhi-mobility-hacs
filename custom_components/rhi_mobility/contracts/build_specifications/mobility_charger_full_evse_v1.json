@@ -620,15 +620,29 @@
         "input_id": "charger_restart_surface",
         "technical_capabilities": {
           "any_of": [
+            "button_write_surface",
             "service_command_surface"
           ]
         },
         "allowed_source_kinds": [
+          "entity",
           "service"
         ],
         "required": false,
         "cardinality": "zero_or_more_per_group",
         "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "restart",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "reset"
+              }
+            ]
+          },
           {
             "integration_domain": "ocpp",
             "raw_capability_id": "restart",
@@ -654,6 +668,18 @@
             ]
           },
           {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "restart",
+            "source_kind": "service",
+            "all_of": [
+              {
+                "field": "source_identity.service_name",
+                "operator": "contains",
+                "value": "reset"
+              }
+            ]
+          },
+          {
             "integration_domain": "wallbox",
             "raw_capability_id": "restart",
             "source_kind": "service",
@@ -671,15 +697,29 @@
         "input_id": "charger_unlock_surface",
         "technical_capabilities": {
           "any_of": [
+            "button_write_surface",
             "service_command_surface"
           ]
         },
         "allowed_source_kinds": [
+          "entity",
           "service"
         ],
         "required": false,
         "cardinality": "zero_or_more_per_group",
         "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "unlock",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "unlock"
+              }
+            ]
+          },
           {
             "integration_domain": "ocpp",
             "raw_capability_id": "unlock",

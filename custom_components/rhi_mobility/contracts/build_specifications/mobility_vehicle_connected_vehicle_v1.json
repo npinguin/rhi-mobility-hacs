@@ -4431,7 +4431,7 @@
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "primary_range_km"
+                "value": "sensor_primary_engine_range"
               }
             ]
           },
@@ -4482,7 +4482,7 @@
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "secondary_range_km"
+                "value": "sensor_secondary_engine_range"
               }
             ]
           },

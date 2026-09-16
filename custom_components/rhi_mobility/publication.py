@@ -10,7 +10,7 @@ class MobilityBuildSpecificationProvider:
     """
 
     publisher_domain = "rhi_mobility"
-    publication_revision = 12
+    publication_revision = 13
 
     def __init__(self, registry) -> None:
         self.registry = registry
