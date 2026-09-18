@@ -1,5 +1,18 @@
 # Changelog
 
+## M0.9.12 — OCPP materialization and control closure
+
+- Preserve additional governed canonical properties emitted by the single OCPP source-normalization boundary instead of filtering them back to the primary builder output.
+- Materialize `Current.Import` L1/L2/L3 telemetry into canonical phase-current producer candidates.
+- Materialize direct physical current-limit control from the accepted `maximum_current` number-write surface using live source min/max/step evidence.
+- Decouple direct ampere control from requested-power conversion: current control can work without an explicit product profile, while kW control still requires complete electrical mapping.
+- Execute current-limit writes only through the Mobility executor and confirm against physical source readback.
+- Publish current-control readiness/bounds to Energy without exposing the raw integration target.
+- Preserve device/source readback as operational truth; no automatic replay of stale pre-restart intent is introduced.
+- Add regressions for multi-output materialization and direct-current-control availability without a power profile.
+- Keep Shared Baseline 1.8.1, Foundation F1.8.1+ minimum compatibility, zero accepted technical debt and zero accepted feature debt.
+- Remain a TEST-CANDIDATE until exact target Home Assistant qualification proves OCPP materialization/control and isolates the known 32 A restart/reconnect behavior.
+
 ## M0.9.11 — OCPP source normalization closure
 
 - Add one accepted-source normalization boundary that consumes OCPP state plus structured attributes and emits integration-independent normalized properties.

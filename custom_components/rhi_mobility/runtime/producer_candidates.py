@@ -24,9 +24,22 @@ def _source_candidates(manager: Any, asset_id: str) -> dict[str, dict[str, Any]]
             normalized = normalize_source_observation(rule.get("normalizer"), source.integration_domain, source.raw_capability_id, raw, unit, state.attributes if state else {})
             outputs = [str(value) for value in rule.get("outputs") or []]
             if "value" in normalized and len(outputs) == 1:
-                normalized = {outputs[0]: normalized["value"]}
+                normalized = {**normalized, outputs[0]: normalized["value"]}
+            # Source normalization may legitimately materialize multiple canonical
+            # properties from one accepted observation (for example OCPP scalar
+            # Current.Import plus L1/L2/L3 attributes). The builder rule declares
+            # the primary output; additional normalized properties are accepted only
+            # when they are governed canonical semantic properties. This preserves
+            # the single normalization boundary without letting arbitrary source
+            # attributes escape into runtime truth.
+            semantic = (getattr(manager.registry, "semantic_catalog", {}) or {}).get("properties") or {}
+            normalized_outputs = [
+                key for key in normalized
+                if key != "value" and key in semantic
+            ]
+            materialized_outputs = list(dict.fromkeys([*outputs, *normalized_outputs]))
             precedence = binding.source_precedence * 100 + int(rule.get("precedence", 0) or 0)
-            for property_id in outputs:
+            for property_id in materialized_outputs:
                 value = normalized.get(property_id)
                 if value is None:
                     continue

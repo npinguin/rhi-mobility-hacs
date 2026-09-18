@@ -50,8 +50,7 @@ def is_available(manager, controller, asset_id: str, property_key: str, editable
         cid=effective_charger_id(manager,asset_id)
         return cid is not None and controller.requested_power_descriptor(cid) is not None
     if write_kind=="charger_requested_current":
-        desc=controller.requested_power_descriptor(asset_id)
-        return desc is not None and desc.mode=="current_limit"
+        return controller.requested_current_descriptor(asset_id) is not None
     if write_kind=="vehicle_charge_mode":
         return controller.vehicle_charge_mode_source(asset_id) is not None
     if editable.get("dynamic_max")=="battery_capacity":
@@ -143,14 +142,10 @@ def bounds(manager, controller, asset_id: str, property_key: str, editable: dict
         desc=controller.requested_power_descriptor(target) if target else None
         return (0.0,0.0,0.1) if desc is None else (round(desc.min_power_kw,3),round(desc.max_power_kw,3),round(desc.step_power_kw,3))
     if mode=="requested_current":
-        desc=controller.requested_power_descriptor(asset_id)
+        desc=controller.requested_current_descriptor(asset_id)
         if desc is None:
             return 0.0,0.0,1.0
-        return (
-            0.0 if desc.min_current_a is None else float(desc.min_current_a),
-            0.0 if desc.max_current_a is None else float(desc.max_current_a),
-            1.0 if desc.current_step_a is None else float(desc.current_step_a),
-        )
+        return (float(desc.min_current_a),float(desc.max_current_a),float(desc.current_step_a))
     minimum=float(editable.get("min",0.0))
     maximum=editable.get("max")
     if editable.get("dynamic_max")=="battery_capacity":

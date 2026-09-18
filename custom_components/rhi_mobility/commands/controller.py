@@ -45,12 +45,15 @@ class MobilityControlController:
     def requested_power_descriptor(self,asset_id):
         return self.catalog.requested_power_descriptor(asset_id)
 
+    def requested_current_descriptor(self,asset_id):
+        return self.catalog.requested_current_descriptor(asset_id)
+
     def requested_power_readback(self,asset_id):
         return self.catalog.requested_power_readback(asset_id)
 
     def requested_current_readback(self,asset_id: str) -> float | None:
-        desc=self.requested_power_descriptor(asset_id)
-        if desc is None or desc.mode!='current_limit' or not desc.source.entity_id:
+        desc=self.requested_current_descriptor(asset_id)
+        if desc is None or not desc.source.entity_id:
             return None
         state=self.hass.states.get(desc.source.entity_id)
         if state is None or state.state in ('unknown','unavailable',''):
@@ -83,20 +86,29 @@ class MobilityControlController:
         return {**result.__dict__,'accepted_requested_power_kw':accepted,'actual_readback_power_kw':self.requested_power_readback(asset_id)}
 
     async def async_set_requested_current(self,asset_id: str,current_a_value: float,request_id: str | None=None):
-        desc=self.requested_power_descriptor(asset_id)
-        if desc is None or desc.mode!='current_limit':
+        desc=self.requested_current_descriptor(asset_id)
+        if desc is None:
             return {'result':'BLOCKED','reason':'requested_current_write_not_ready','asset_id':asset_id}
-        if desc.effective_voltage_v is None or desc.effective_phase_count is None or desc.min_current_a is None or desc.max_current_a is None or desc.current_step_a is None:
-            return {'result':'BLOCKED','reason':'current_conversion_profile_incomplete','asset_id':asset_id}
         requested=float(current_a_value)
         if requested < desc.min_current_a-1e-9 or requested > desc.max_current_a+1e-9:
             return {'result':'BLOCKED','reason':'requested_current_out_of_range','asset_id':asset_id,'min_current_a':desc.min_current_a,'max_current_a':desc.max_current_a}
         steps=round((requested-desc.min_current_a)/desc.current_step_a)
         accepted=desc.min_current_a+steps*desc.current_step_a
         accepted=max(desc.min_current_a,min(desc.max_current_a,accepted))
-        power_kw=accepted*desc.effective_voltage_v*desc.effective_phase_count/1000.0
-        result=await self.async_set_requested_power(asset_id,power_kw,request_id)
-        return {**result,'accepted_requested_current_a':round(accepted,3),'actual_readback_current_a':self.requested_current_readback(asset_id)}
+        domain=desc.source.entity_id.split('.',1)[0] if desc.source.entity_id else ''
+        if domain not in {'number','input_number'}:
+            return {'result':'BLOCKED','reason':'requested_current_surface_not_number','asset_id':asset_id}
+        request=ExecutionRequest(
+            request_id=request_id or f'current_limit_{uuid4().hex}',asset_id=asset_id,
+            operation_key='charger.requested_current_limit',producer_id=desc.source.producer_id,
+            conflict_family='charger_physical',service_domain=domain,service_action='set_value',
+            target={'entity_id':desc.source.entity_id},service_data={'value':round(accepted,3)},
+            confirmation={'mode':'entity_state','entity_id':desc.source.entity_id,'expected':round(accepted,3),'tolerance':max(0.01,desc.current_step_a/3.0),'timeout_s':15.0},
+            protective=False,context={'candidate_id':desc.source.candidate_id,'write_kind':'charger_requested_current'},
+        )
+        result=await self.executor.async_execute(request)
+        self._changed()
+        return {**result.__dict__,'accepted_requested_current_a':round(accepted,3),'actual_readback_current_a':self.requested_current_readback(asset_id)}
 
 
     def vehicle_charge_mode_source(self,asset_id: str):

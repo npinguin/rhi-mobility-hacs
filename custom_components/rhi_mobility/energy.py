@@ -67,6 +67,13 @@ class MobilityEnergyV2Provider:
             return None
 
     def _requested_power_write_contract(self, asset_id: str | None, desc: Any) -> dict[str, Any]:
+        current_descriptor = getattr(self.controller, "requested_current_descriptor", None)
+        current_desc = current_descriptor(asset_id) if asset_id and callable(current_descriptor) else None
+        if current_desc is None and desc is not None and getattr(desc, "mode", None) == "current_limit":
+            # Backward-compatible provider/test controllers may only expose the
+            # established requested-power descriptor. A current-limit power
+            # descriptor already carries the same Mobility-owned physical bounds.
+            current_desc = desc
         if not asset_id or desc is None:
             return {
                 "requested_power_kw_write_owner": "rhi_mobility",
@@ -85,8 +92,11 @@ class MobilityEnergyV2Provider:
                 "requested_power_kw_readback_source_index": "sensor.mobility_charger_property_index",
                 "physical_write_owner": "rhi_mobility",
                 "physical_write_target_exposed_to_consumer": False,
-                "physical_mapping_mode": None,
-                "current_limit_a_write_supported": False,
+                "physical_mapping_mode": "current_limit_only" if current_desc is not None else None,
+                "current_limit_a_write_supported": current_desc is not None,
+                "current_limit_a_write_min": None if current_desc is None else float(current_desc.min_current_a),
+                "current_limit_a_write_max": None if current_desc is None else float(current_desc.max_current_a),
+                "current_limit_a_write_step": None if current_desc is None else float(current_desc.current_step_a),
             }
         return {
             "requested_power_kw_write_owner": "rhi_mobility",
@@ -108,7 +118,10 @@ class MobilityEnergyV2Provider:
             "physical_write_owner": "rhi_mobility",
             "physical_write_target_exposed_to_consumer": False,
             "physical_mapping_mode": str(desc.mode),
-            "current_limit_a_write_supported": bool(desc.mode == "current_limit"),
+            "current_limit_a_write_supported": current_desc is not None,
+            "current_limit_a_write_min": None if current_desc is None else float(current_desc.min_current_a),
+            "current_limit_a_write_max": None if current_desc is None else float(current_desc.max_current_a),
+            "current_limit_a_write_step": None if current_desc is None else float(current_desc.current_step_a),
         }
 
     def _energy_need_resolution(self, lifecycle: str, snap: Any, soc: Any, target: Any, cap: Any, profile_id: Any, profile_resolved: bool) -> str:

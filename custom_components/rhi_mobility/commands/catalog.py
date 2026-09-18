@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any
-from .models import CommandDescriptor, RequestedPowerDescriptor
+from .models import CommandDescriptor, CurrentLimitDescriptor, RequestedPowerDescriptor
 from ..models.contracts import SourceRef
 from ..runtime.normalization import current_a, power_kw
 
@@ -175,6 +175,25 @@ class MobilityControlCatalog:
             return False,'vehicle_runtime_not_ready'
         return True,'ready'
 
+    def requested_current_descriptor(self,asset_id: str) -> CurrentLimitDescriptor | None:
+        asset=self.manager.assets.get(asset_id)
+        if asset is None or asset.concept_id!='charger': return None
+        current=None
+        for binding in sorted(asset.source_bindings.values(),key=lambda b:b.source_precedence,reverse=True):
+            current=current or binding.inputs.get('charger_current_limit_write')
+        if current is None or not current.entity_id: return None
+        source_ready,_=self._live_source_availability(current)
+        if not source_ready: return None
+        state=self.hass.states.get(current.entity_id)
+        if state is None: return None
+        unit=current.native_unit or state.attributes.get('unit_of_measurement') or 'A'
+        mn=current_a(state.attributes.get('min'),unit)
+        mx=current_a(state.attributes.get('max'),unit)
+        st=current_a(state.attributes.get('step'),unit)
+        if mn is None or mx is None or st is None or st<=0 or mx<mn:
+            return None
+        return CurrentLimitDescriptor(asset_id,current,float(mn),float(mx),float(st))
+
     def requested_power_descriptor(self,asset_id: str) -> RequestedPowerDescriptor | None:
         asset=self.manager.assets.get(asset_id)
         if asset is None or asset.concept_id!='charger': return None
@@ -193,22 +212,16 @@ class MobilityControlCatalog:
             if mn is not None and mx is not None and st and st>0:
                 return RequestedPowerDescriptor(asset_id,direct,'direct_power',mn,mx,st)
         if current and current.entity_id:
-            source_ready,_=self._live_source_availability(current)
-            if not source_ready: return None
+            current_desc=self.requested_current_descriptor(asset_id)
             profile=self.manager.effective_charging_profile(asset_id)
-            if profile is None: return None
-            state=self.hass.states.get(current.entity_id)
-            unit=current.native_unit or (state.attributes.get('unit_of_measurement') if state else 'A')
-            attr_min=current_a(state.attributes.get('min'),unit) if state else None
-            attr_max=current_a(state.attributes.get('max'),unit) if state else None
-            attr_step=current_a(state.attributes.get('step'),unit) if state else None
-            min_a=max(profile['min_current_a'],attr_min) if attr_min is not None else profile['min_current_a']
-            max_a=min(profile['max_current_a'],attr_max) if attr_max is not None else profile['max_current_a']
-            step_a=max(profile['current_step_a'],attr_step) if attr_step is not None else profile['current_step_a']
+            if current_desc is None or profile is None: return None
+            min_a=max(float(profile['min_current_a']),current_desc.min_current_a)
+            max_a=min(float(profile['max_current_a']),current_desc.max_current_a)
+            step_a=max(float(profile['current_step_a']),current_desc.current_step_a)
             if max_a<min_a or step_a<=0: return None
             v=profile['nominal_voltage_v']; phases=int(profile['phase_count'])
             return RequestedPowerDescriptor(
-                asset_id,current,'current_limit',min_a*v*phases/1000.0,max_a*v*phases/1000.0,
+                asset_id,current_desc.source,'current_limit',min_a*v*phases/1000.0,max_a*v*phases/1000.0,
                 step_a*v*phases/1000.0,v,phases,min_a,max_a,step_a,
             )
         return None

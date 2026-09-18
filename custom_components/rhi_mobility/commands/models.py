@@ -60,6 +60,15 @@ class CommandDescriptor:
 
 
 @dataclass(frozen=True)
+class CurrentLimitDescriptor:
+    asset_id: str
+    source: SourceRef
+    min_current_a: float
+    max_current_a: float
+    current_step_a: float
+
+
+@dataclass(frozen=True)
 class RequestedPowerDescriptor:
     asset_id: str
     source: SourceRef
