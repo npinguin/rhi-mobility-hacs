@@ -45,6 +45,51 @@ def _bounded_handoff(hass: Any) -> dict[str, Any]:
     }
 
 
+def _charging_control_diagnostics(manager: Any, controller: Any) -> list[dict[str, Any]]:
+    """Expose the resolved Mobility charging-control chain without source reinterpretation."""
+    rows: list[dict[str, Any]] = []
+    for asset_id, asset in sorted(manager.assets.items()):
+        if asset.concept_id != "charger":
+            continue
+        snap = manager.snapshots.get(asset_id)
+        values = {} if snap is None else snap.values
+        quality = {} if snap is None else snap.quality
+        profile = manager.control_profile(asset_id)
+        envelope = manager.effective_charging_profile(asset_id)
+        current = controller.requested_current_descriptor(asset_id)
+        power = controller.requested_power_descriptor(asset_id)
+        rows.append({
+            "asset_id": asset_id,
+            "profile_id": manager.effective_profile_id(asset_id),
+            "measured_voltage_v": values.get("charger.voltage_v"),
+            "measured_voltage_quality": quality.get("charger.voltage_v"),
+            "nominal_voltage_v": values.get("charger.nominal_voltage_v"),
+            "nominal_voltage_quality": quality.get("charger.nominal_voltage_v"),
+            "profile_control_ready": profile is not None,
+            "profile_phase_count": None if profile is None else profile.phase_count,
+            "profile_min_current_a": None if profile is None else profile.min_current_a,
+            "profile_max_current_a": None if profile is None else profile.max_current_a,
+            "profile_current_step_a": None if profile is None else profile.current_step_a,
+            "charging_envelope": None if envelope is None else dict(envelope),
+            "physical_current_control_ready": current is not None,
+            "physical_current_entity_id": None if current is None else current.source.entity_id,
+            "physical_min_current_a": None if current is None else current.min_current_a,
+            "physical_max_current_a": None if current is None else current.max_current_a,
+            "physical_current_step_a": None if current is None else current.current_step_a,
+            "requested_power_supported": power is not None,
+            "requested_power_mode": None if power is None else power.mode,
+            "requested_power_min_kw": None if power is None else power.min_power_kw,
+            "requested_power_max_kw": None if power is None else power.max_power_kw,
+            "requested_power_step_kw": None if power is None else power.step_power_kw,
+            "effective_voltage_v": None if power is None else power.effective_voltage_v,
+            "effective_phase_count": None if power is None else power.effective_phase_count,
+            "requested_power_readback_kw": controller.requested_power_readback(asset_id),
+            "power_kw": values.get("charger.power_kw"),
+            "power_quality": quality.get("charger.power_kw"),
+        })
+    return rows
+
+
 async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str, Any]:
     data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
     manager = data.get("runtime")
@@ -60,6 +105,7 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
     readiness: list[dict[str, Any]] = []
     relationships: list[dict[str, Any]] = []
     resolution_evidence: list[dict[str, Any]] = []
+    charging_control: list[dict[str, Any]] = []
     if manager is not None and public is not None and controller is not None:
         resolver = PropertyResolver(manager, public)
         normalized = normalized_property_coverage(manager, public)
@@ -79,6 +125,7 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
             for asset_id, asset in sorted(manager.assets.items())
             if asset.concept_id == "vehicle"
         ]
+        charging_control = _charging_control_diagnostics(manager, controller)
         for asset_id in sorted(manager.assets):
             resolutions = resolver.resolve_asset(asset_id)
             readiness.append(evaluate_asset_readiness(manager, controller, asset_id, resolutions.values()).as_dict())
@@ -128,6 +175,7 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
             "profiles": profiles,
             "profile_count": len(profiles),
         },
+        "charging_control": charging_control,
         "execution": {} if controller is None else controller.executor.snapshot(),
         "publication": {
             "publisher_domain": None if provider is None else provider.publisher_domain,

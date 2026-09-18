@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.9.15 — OCPP nominal-voltage closure
+
+- Keep OCPP measured voltage unavailable when the integration source is unavailable; never manufacture `charger.voltage_v`.
+- Use explicit selected ChargerProfile `nominal_voltage_v` for kW↔A conversion and calculated-power fallback.
+- Preserve `wallbox_ocpp` capability at 230 V, 3 phases, 6..32 A and 1 A step; custom ChargerProfiles remain editable through Mobility semantic configuration.
+- Add resolved charging-control diagnostics including profile, measured/nominal voltage, physical current actuator, effective power descriptor and readback.
+- Add release-blocking regressions for nominal-voltage fallback, positive measured-power precedence and diagnostics completeness.
+- Preserve M0.9.14 prebound runtime, explicit profile selection, frozen V1 compatibility, zero accepted technical debt and zero accepted feature debt.
+
 ## M0.9.14 — Prebound runtime closure
 
 - Replace hot-path source/model lookup with an Active Binding Plan materialized once from Foundation-selected sources and stable domain mappings.
