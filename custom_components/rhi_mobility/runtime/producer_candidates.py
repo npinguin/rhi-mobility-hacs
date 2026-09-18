@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..profile_presentation import effective_profile
-from .normalization import normalize
+from .source_normalization import normalize_source_observation
 
 
 def _source_candidates(manager: Any, asset_id: str) -> dict[str, dict[str, Any]]:
@@ -21,7 +21,7 @@ def _source_candidates(manager: Any, asset_id: str) -> dict[str, dict[str, Any]]
             state = manager.hass.states.get(source.entity_id)
             raw = None if state is None else state.state
             unit = source.native_unit or (state.attributes.get("unit_of_measurement") if state else None)
-            normalized = normalize(rule.get("normalizer"), source.integration_domain, raw, unit)
+            normalized = normalize_source_observation(rule.get("normalizer"), source.integration_domain, source.raw_capability_id, raw, unit, state.attributes if state else {})
             outputs = [str(value) for value in rule.get("outputs") or []]
             if "value" in normalized and len(outputs) == 1:
                 normalized = {outputs[0]: normalized["value"]}

@@ -143,10 +143,43 @@ def apply_vehicle_derivations(values: dict[str, Any], quality: dict[str, str], *
 
 def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str]) -> None:
     """Apply deterministic charger summaries and aggregate readback facts."""
-    if values.get("charger.actual_current_a") is None:
-        phase_currents = [current for current in (_num(values.get("charger.current_l1_a")), _num(values.get("charger.current_l2_a")), _num(values.get("charger.current_l3_a"))) if current is not None]
-        if phase_currents:
-            _set(values, quality, "charger.actual_current_a", round(max(phase_currents), 3), "derived_from_phase_current_readback")
+    phase_currents = [_num(values.get(f"charger.current_l{phase}_a")) for phase in (1, 2, 3)]
+    observed_phase_currents = [current for current in phase_currents if current is not None]
+    if values.get("charger.actual_current_a") is None and observed_phase_currents:
+        _set(values, quality, "charger.actual_current_a", round(max(observed_phase_currents), 3), "derived_from_phase_current_readback")
+
+    # Canonical selected power keeps direct positive measured power authoritative.
+    # When a direct source reports zero while normalized phase current proves active
+    # charging, power may be calculated only from normalized voltage evidence or the
+    # explicit canonical nominal voltage supplied by accepted source/profile truth.
+    # No anonymous 230 V assumption is allowed.
+    measured_power = _num(values.get("charger.power_kw"))
+    active_phases = [
+        (phase, current)
+        for phase, current in zip((1, 2, 3), phase_currents)
+        if current is not None and current > 0.05
+    ]
+    if active_phases and (measured_power is None or measured_power <= 0.0):
+        nominal_voltage = _num(values.get("charger.nominal_voltage_v"))
+        phase_power_w = 0.0
+        used_nominal_voltage = False
+        complete_voltage_evidence = True
+        for phase, current in active_phases:
+            voltage = _num(values.get(f"charger.voltage_l{phase}_v"))
+            if voltage is None:
+                voltage = nominal_voltage
+                used_nominal_voltage = True
+            if voltage is None or voltage <= 0.0:
+                complete_voltage_evidence = False
+                break
+            phase_power_w += current * voltage
+        if complete_voltage_evidence and phase_power_w > 0.0:
+            reason = (
+                "derived_from_normalized_phase_current_canonical_nominal_voltage"
+                if used_nominal_voltage
+                else "derived_from_normalized_phase_current_voltage"
+            )
+            _set(values, quality, "charger.power_kw", round(phase_power_w / 1000.0, 3), reason, overwrite=True)
 
     vendor = values.get("charger.vendor")
     model = values.get("charger.model")

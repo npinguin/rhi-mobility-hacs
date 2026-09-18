@@ -1,5 +1,18 @@
 # Changelog
 
+## M0.9.11 — OCPP source normalization closure
+
+- Add one accepted-source normalization boundary that consumes OCPP state plus structured attributes and emits integration-independent normalized properties.
+- Normalize `Current.Import` scalar state and L1/L2/L3 attributes into canonical current facts without depending on entity, device or friendly names.
+- Keep OCPP-specific extraction below generic derivation and logical-asset aggregation; downstream intelligence consumes normalized properties only.
+- Preserve positive direct measured `charger.power_kw` as authoritative selected power.
+- When direct power is absent or inconsistent zero while normalized phase current proves active charging, calculate selected canonical power only from normalized measured phase voltage or explicit canonical `charger.nominal_voltage_v`; remove the anonymous 230 V fallback.
+- Preserve explicit provenance/quality for calculated selected power and fail closed when sufficient voltage evidence is absent.
+- Add regressions for structured phase telemetry, rename invariance, measured-voltage calculation, canonical-nominal-voltage calculation, direct-measured-power precedence and no-voltage fail-closed behavior.
+- Carry current release state and next-engineer context in the governed package via an updated `docs/ENGINEER_HANDOVER.md`.
+- Preserve Shared Baseline 1.8.1, Foundation F1.8.1+ minimum compatibility, R43.2.65 / `MOBILITY_PUBLIC_RUNTIME_V1`, zero accepted technical debt and zero accepted feature debt.
+- Remain a TEST-CANDIDATE until PR Validate, main Validate, immutable HACS publication and exact target Home Assistant qualification pass.
+
 ## M0.9.10 — UX1 runtime parity closure
 
 - Stop the frozen V1 facade from manufacturing physical vehicle identity from configured assignment plus generic EVSE occupancy; physical occupancy and vehicle identity remain separate canonical truths.
