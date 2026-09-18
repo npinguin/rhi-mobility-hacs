@@ -1,5 +1,16 @@
 # Changelog
 
+## M0.9.14 — Prebound runtime closure
+
+- Replace hot-path source/model lookup with an Active Binding Plan materialized once from Foundation-selected sources and stable domain mappings.
+- Normalize entity state and structured OCPP attributes through one prebound source boundary; L1/L2/L3 current, voltage and power attributes become canonical facts without runtime producer arbitration.
+- Keep controls on the same prebound plan so physical Maximum Current remains the one current-limit readback/write authority.
+- Make canonical runtime truth authoritative for projection/readiness; the PropertyResolver no longer chooses between competing runtime producers.
+- Preserve the R43.2.65 / MOBILITY_PUBLIC_RUNTIME_V1 exterior for the existing UX while allowing all internal runtime machinery below that boundary to change.
+- Keep direct positive measured power authoritative and calculate power from normalized phase current plus measured/canonical voltage only when direct power is absent or inconsistent zero.
+- Make pytest an explicit blocking Validate step in addition to package verification; OCPP prebound-chain, control ownership and hot-path architecture regressions block release.
+- Known accepted technical debt = 0; known accepted feature debt = 0; target-runtime proof remains mandatory.
+
 ## M0.9.13 — OCPP full-chain closure
 
 - Bind the Foundation-discovered OCPP Voltage measurement into the charger build input.

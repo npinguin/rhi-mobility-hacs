@@ -209,7 +209,7 @@ class MobilityPublicRuntimeProvider:
             if desc is not None:
                 source = getattr(desc, "source", None)
                 out = self._source_ref_attributes(source, "charger_current_limit_write") if source is not None else {}
-                out.update({"normalization_status": "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN", "quality": "physical_setpoint_readback"})
+                out.update({"producer_kind": "CONTROL_READBACK", "normalization_status": "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN", "quality": "physical_setpoint_readback"})
                 return out
         if key in {"charger.requested_power_kw", "charger.requested_charge_power_kw", "vehicle.requested_charge_power_kw"} and charger_id:
             descriptor = getattr(self.controller, "requested_power_descriptor", None)
@@ -217,7 +217,7 @@ class MobilityPublicRuntimeProvider:
             if desc is not None:
                 source = getattr(desc, "source", None)
                 out = self._source_ref_attributes(source, "charger_current_limit_write" if desc.mode == "current_limit" else "charger_power_limit_write") if source is not None else {}
-                out.update({"normalization_status": "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN", "quality": "physical_setpoint_readback"})
+                out.update({"producer_kind": "CONTROL_READBACK", "normalization_status": "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN", "quality": "physical_setpoint_readback"})
                 return out
 
         provenance_fn = getattr(self.manager, "property_provenance", None)
@@ -225,6 +225,7 @@ class MobilityPublicRuntimeProvider:
         if not out and canonical != key:
             out = dict(self.manager.property_provenance(asset_id, canonical))
         if key in {"vehicle.selected_charger", "vehicle.effective_charger", "charger.assigned_vehicle_id", "charger.effective_assigned_vehicle_id"}:
+            out["producer_kind"] = "RELATIONSHIP"
             out["derived_from"] = ["mobility.configured_assignment"]
             out["quality"] = "mobility_relationship"
         # All other derived dependency provenance is owned by the canonical semantic catalog

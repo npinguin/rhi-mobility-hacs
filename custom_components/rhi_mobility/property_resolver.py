@@ -216,40 +216,29 @@ class PropertyResolver:
             )
 
         snap = self.manager.snapshots.get(asset_id)
-        candidate_provider = getattr(self.manager, "producer_candidates", None)
-        candidates = candidate_provider(asset_id, property_id) if callable(candidate_provider) else {}
-        try:
-            selected = _select_declared_candidate(definition, dict(candidates or {}))
-        except ValueError as exc:
-            return PropertyResolution(
-                asset_id=asset_id,
-                property_id=property_id,
-                value=None,
-                producer_kind=None,
-                status=PropertyResolutionStatus.RESOLUTION_ERROR,
-                quality=PropertyQuality.INVALID,
-                reason_code="producer_precedence_error",
-                error_kind=PropertyResolutionError.UNRESOLVED_OWNER,
-                source_reference={"producer_policy_error": str(exc)},
-                build_input_revision=0 if snap is None else int(getattr(snap, "build_input_revision", 0) or 0),
-            )
+        value = self.public.property_value(asset_id, property_id)
+        reference = dict(self.public.property_provenance(asset_id, property_id) or {})
+        quality_hint = self.public.property_quality(asset_id, property_id)
 
-        if selected is not None:
-            candidate, producer = selected
-            value = candidate.get("value")
-            reference = dict(candidate.get("source_reference") or {})
-            reference["selected_by_truth_precedence"] = True
-        else:
-            value = self.public.property_value(asset_id, property_id)
-            reference = dict(self.public.property_provenance(asset_id, property_id) or {})
-            producer = _single_declared_producer(definition) if value is not None else None
+        producer = None
+        if value is not None:
+            declared = tuple(declared_producer_types(definition))
+            explicit = str(reference.get("producer_kind") or "")
+            producer = _PRODUCER_KIND.get(explicit)
+            if producer is None and len(declared) == 1:
+                producer = _PRODUCER_KIND.get(declared[0])
+            if producer is None:
+                # Compatibility-only fallback for legacy projection rows that have
+                # already-resolved values but predate explicit producer metadata.
+                # This labels ownership only; it never selects/replaces the value.
+                for name in definition.get("truth_precedence") or ():
+                    kind = _PRODUCER_KIND.get(str(name))
+                    if kind is not None:
+                        producer = kind
+                        break
 
         capability_status = self._capability_status(asset_id, property_id)
-        if value is not None and producer is None:
-            status = PropertyResolutionStatus.RESOLUTION_ERROR
-            error_kind = PropertyResolutionError.UNRESOLVED_OWNER
-            reason = "available_value_without_explicit_producer"
-        elif value is not None:
+        if value is not None:
             status = PropertyResolutionStatus.AVAILABLE
             error_kind = None
             reason = None

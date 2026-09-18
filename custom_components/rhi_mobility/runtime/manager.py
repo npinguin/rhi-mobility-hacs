@@ -9,9 +9,8 @@ from ..builders.selected_input import prepare_selected_build_input
 from ..builders.semantic_input import apply_semantic_input_policy
 from ..eligibility import broad_all_matching_selection
 from ..models.contracts import AssetControlProfile, LogicalAssetBinding, RelationshipSnapshot, RuntimeSnapshot, VehiclePlanningProfile
-from .normalization import normalize
 from .derived import apply_vehicle_derivations, apply_charger_derivations
-from .producer_candidates import collect_producer_candidates
+from .prebound import build_active_binding_plan, materialize_observations
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ class MobilityRuntimeManager:
         self._refresh_flush_scheduled=False
         self.last_build_attempt: dict[str,Any] = {'status':'WAITING_FOR_FOUNDATION','observed_at':None}
         self._health_cache: dict[str,tuple[str,str]] = {}
-        self._producer_candidates_by_asset: dict[str, dict] = {}
+        self._binding_plans: dict[str, Any] = {}
 
     @property
     def bindings(self):
@@ -176,6 +175,7 @@ class MobilityRuntimeManager:
                     if source.candidate_id != candidate_id:
                         continue
                     out.update({
+                        "producer_kind": "SOURCE",
                         "source_integration": source.integration_domain,
                         "source_device_id": source.device_id,
                         "source_config_entry_id": source.config_entry_id,
@@ -187,12 +187,18 @@ class MobilityRuntimeManager:
                     })
                     return {k: v for k, v in out.items() if v is not None}
         if isinstance(quality, str) and quality.startswith("mobility_profile:"):
+            out["producer_kind"] = "PROFILE"
             out["profile_id"] = quality.split(":", 1)[1]
+        elif quality == "mobility_domain_configuration":
+            out["producer_kind"] = "CONFIGURED"
+            out["configuration_revision"] = int(getattr(self.domain_config, "revision", 0) or 0)
         definition = (getattr(self.registry, "semantic_catalog", {}).get("properties") or {}).get(property_key) or {}
         dependencies = definition.get("derived_dependencies") or []
         if dependencies:
+            out["producer_kind"] = "DERIVED"
             out["derived_from"] = list(dependencies)
         elif property_key == "asset.availability_state":
+            out["producer_kind"] = "DERIVED"
             out["derived_from"] = [f"{asset.concept_id}.health", "asset.lifecycle_status"]
         if "source_integration" not in out:
             out.update({
@@ -384,7 +390,7 @@ class MobilityRuntimeManager:
         for unsub in self._unsubs.pop(asset_id,[]): unsub()
 
     def clear_all(self) -> None:
-        self._producer_candidates_by_asset.clear()
+        self._binding_plans.clear()
         for asset_id in list(self._unsubs): self._clear_asset_listener(asset_id)
         self.assets.clear(); self.snapshots.clear(); self.relationships.clear()
         self._selection_asset_roles.clear(); self._selection_asset_ids.clear(); self._selection_diagnostics.clear(); self._capability_diagnostics.clear(); self._selection_relationship_ids.clear(); self._health_cache.clear(); self._pending_refresh_assets.clear(); self._notify_topology()
@@ -545,7 +551,7 @@ class MobilityRuntimeManager:
             raise
 
         old=(self.assets,self.snapshots,self.relationships,self._selection_asset_roles,self._selection_asset_ids,
-             self._selection_relationship_ids,self._selection_diagnostics,self._capability_diagnostics)
+             self._selection_relationship_ids,self._selection_diagnostics,self._capability_diagnostics,self._binding_plans)
         try:
             for asset_id in list(self._unsubs): self._clear_asset_listener(asset_id)
             self.assets=proposed_assets
@@ -557,6 +563,10 @@ class MobilityRuntimeManager:
             self._capability_diagnostics=capability_diagnostics
             self.snapshots={}
             self._health_cache={}
+            self._binding_plans={
+                aid: build_active_binding_plan(asset,self.registry)
+                for aid,asset in self.assets.items()
+            }
             for aid,asset in self.assets.items():
                 self.snapshots[aid]=RuntimeSnapshot(
                     asset_id=asset.asset_id,concept_id=asset.concept_id,display_name=asset.display_name,
@@ -567,7 +577,7 @@ class MobilityRuntimeManager:
         except Exception as exc:
             for asset_id in list(self._unsubs): self._clear_asset_listener(asset_id)
             (self.assets,self.snapshots,self.relationships,self._selection_asset_roles,self._selection_asset_ids,
-             self._selection_relationship_ids,self._selection_diagnostics,self._capability_diagnostics)=old
+             self._selection_relationship_ids,self._selection_diagnostics,self._capability_diagnostics,self._binding_plans)=old
             for aid in list(self.assets): await self._async_bind_asset(aid)
             self.last_build_attempt={
                 'status':'REJECTED','observed_at':observed_at,'error_type':type(exc).__name__,'error':str(exc),
@@ -607,11 +617,8 @@ class MobilityRuntimeManager:
         return await self.async_replace_selected_build_inputs([payload])
 
     async def _async_bind_asset(self, asset_id: str) -> None:
-        asset=self.assets[asset_id]
-        entity_ids=[]
-        for binding in asset.source_bindings.values():
-            entity_ids.extend(s.entity_id for s in binding.inputs.values() if s.entity_id)
-        entity_ids=sorted(set(entity_ids))
+        plan=self._binding_plans.get(asset_id)
+        entity_ids=[] if plan is None else list(plan.entity_ids)
         unsubs=[]
         if entity_ids:
             @callback
@@ -622,51 +629,41 @@ class MobilityRuntimeManager:
 
     def _refresh(self, asset_id: str) -> None:
         self._refresh_core(asset_id)
-        if asset_id in self.assets:
-            self._producer_candidates_by_asset[asset_id]=collect_producer_candidates(self,asset_id)
-        else:
-            self._producer_candidates_by_asset.pop(asset_id,None)
+
+    def control_source(self, asset_id: str, input_id: str):
+        plan=self._binding_plans.get(asset_id)
+        return None if plan is None else plan.preferred_source(input_id)
+
+    def active_binding_plan(self, asset_id: str):
+        return self._binding_plans.get(asset_id)
 
     def producer_candidates(self, asset_id: str, property_id: str | None = None):
-        rows=self._producer_candidates_by_asset.get(asset_id,{})
+        """Compatibility diagnostic view; runtime truth no longer depends on producer arbitration."""
+        snap=self.snapshots.get(asset_id)
+        if snap is None:
+            return {} if property_id is None else {}
+        rows={}
+        for key,value in snap.values.items():
+            quality=snap.quality.get(key)
+            if not isinstance(quality,str) or not quality.startswith("candidate:"):
+                continue
+            rows[key]={"SOURCE":{"producer_kind":"SOURCE","value":value,"quality":quality,"source_reference":self.property_provenance(asset_id,key)}}
         return rows if property_id is None else rows.get(property_id,{})
 
     def _refresh_core(self, asset_id: str) -> None:
         asset=self.assets.get(asset_id); snap=self.snapshots.get(asset_id)
         if not asset or not snap: return
         before=(dict(snap.values),dict(snap.quality),snap.health,snap.health_reason,snap.source_configuration_revision,snap.build_input_revision)
-        candidates: dict[str,tuple[int,Any,str]]={}
-        required_missing=[]
-        required_unknown=[]
+        semantic_properties=(getattr(self.registry,"semantic_catalog",{}).get("properties") or {})
+        plan=self._binding_plans.get(asset_id)
+        if plan is None:
+            plan=build_active_binding_plan(asset,self.registry)
+            self._binding_plans[asset_id]=plan
+        candidates,required_missing,required_unknown=materialize_observations(
+            self.hass,plan,semantic_properties
+        )
         max_cfg=max((b.source_configuration_revision for b in asset.source_bindings.values()),default=0)
         max_build=max((b.build_input_revision for b in asset.source_bindings.values()),default=0)
-
-        ordered=sorted(asset.source_bindings.values(),key=lambda b:b.source_precedence)
-        for binding in ordered:
-            spec=self.registry.build_spec(binding.builder_id)
-            model=self.registry.builder_model(binding.builder_id)
-            spec_inputs={r['input_id']:r for r in spec['candidate_requirements']['normalized_inputs']}
-            for input_id,source in binding.inputs.items():
-                rule=model['input_rules'].get(input_id)
-                if not rule or rule.get('usage','observation')!='observation': continue
-                if not source.entity_id: continue
-                state=self.hass.states.get(source.entity_id)
-                raw=None if state is None else state.state
-                unit=source.native_unit or (state.attributes.get('unit_of_measurement') if state else None)
-                normalized=normalize(rule['normalizer'],source.integration_domain,raw,unit)
-                outputs=rule['outputs']; input_prec=int(rule.get('precedence',0)); total_prec=binding.source_precedence*100+input_prec
-                if 'value' in normalized and len(outputs)==1:
-                    normalized={outputs[0]:normalized['value']}
-                for key in outputs:
-                    value=normalized.get(key)
-                    if value is not None:
-                        old=candidates.get(key)
-                        if old is None or total_prec>=old[0]: candidates[key]=(total_prec,value,source.candidate_id)
-                if spec_inputs[input_id]['required']:
-                    if state is None or raw in (None,'unknown','unavailable',''):
-                        required_missing.append(input_id)
-                    elif not any(normalized.get(k) not in (None,'unknown') for k in outputs):
-                        required_unknown.append(input_id)
 
         snap.values={k:v[1] for k,v in sorted(candidates.items())}
         snap.quality={k:f"candidate:{v[2]}" for k,v in sorted(candidates.items())}
@@ -702,7 +699,6 @@ class MobilityRuntimeManager:
         planning=self.planning_profile(asset_id)
         if planning and asset.concept_id=='vehicle' and planning.enabled and planning.ready_by is not None:
             snap.values['vehicle.ready_by']=planning.ready_by; snap.quality['vehicle.ready_by']='mobility_domain_configuration'
-        semantic_properties=(getattr(self.registry,"semantic_catalog",{}).get("properties") or {})
         for property_key,definition in semantic_properties.items():
             precedence=list(definition.get("truth_precedence") or [])
             if "CONFIGURED" not in precedence:
@@ -800,11 +796,9 @@ class MobilityRuntimeManager:
             keys.update(str(key) for key in row.get("normalized_properties") or [])
         asset = self.assets.get(asset_id)
         if asset is not None:
-            for binding in asset.source_bindings.values():
-                model = self.registry.builder_model(binding.builder_id)
-                for input_id in binding.inputs:
-                    rule = (model.get("input_rules") or {}).get(input_id) or {}
-                    keys.update(str(key) for key in rule.get("outputs") or [])
+            plan=self._binding_plans.get(asset_id)
+            if plan is not None:
+                keys.update(plan.canonical_outputs)
         return keys
 
     def _live_capability_diagnostics(self) -> list[dict[str,Any]]:
@@ -875,6 +869,11 @@ class MobilityRuntimeManager:
                 'profile_id':self.effective_profile_id(aid),
                 'health':None if snap is None else snap.health,'health_reason':None if snap is None else snap.health_reason,
                 'property_count':0 if snap is None else len(snap.values),'source_bindings':sources,
+                'active_binding_plan':{
+                    'observation_count':0 if self._binding_plans.get(aid) is None else len(self._binding_plans[aid].observations),
+                    'entity_count':0 if self._binding_plans.get(aid) is None else len(self._binding_plans[aid].entity_ids),
+                    'canonical_outputs':[] if self._binding_plans.get(aid) is None else sorted(self._binding_plans[aid].canonical_outputs),
+                },
                 'capability_status_counts':status_counts,'capabilities':cap_rows,
             })
         selection_status_counts={}

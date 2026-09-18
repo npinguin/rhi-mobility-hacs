@@ -9,15 +9,23 @@ class MobilityControlCatalog:
     def __init__(self,hass,manager,registry) -> None:
         self.hass=hass; self.manager=manager; self.registry=registry
 
-    def _source_for_rule(self, asset, rule: dict[str,Any]):
-        input_id=rule['input_id']
+    def _bound_source(self, asset, input_id: str):
+        getter=getattr(self.manager,'control_source',None)
+        if callable(getter):
+            source=getter(asset.asset_id,input_id)
+            if source is not None:
+                return source
         candidates=[]
         for binding in asset.source_bindings.values():
             source=binding.inputs.get(input_id)
-            if source is not None: candidates.append((binding.source_precedence,source))
-        if candidates:
-            return max(candidates,key=lambda x:x[0])[1]
-        return self._attributed_global_service_source(asset,input_id)
+            if source is not None:
+                candidates.append((binding.source_precedence,source))
+        return max(candidates,key=lambda x:x[0])[1] if candidates else None
+
+    def _source_for_rule(self, asset, rule: dict[str,Any]):
+        input_id=rule['input_id']
+        source=self._bound_source(asset,input_id)
+        return source if source is not None else self._attributed_global_service_source(asset,input_id)
 
     def _vehicle_resource_id(self,asset) -> str | None:
         """Recover an integration resource id only from an already accepted vehicle source."""
@@ -178,9 +186,7 @@ class MobilityControlCatalog:
     def requested_current_descriptor(self,asset_id: str) -> CurrentLimitDescriptor | None:
         asset=self.manager.assets.get(asset_id)
         if asset is None or asset.concept_id!='charger': return None
-        current=None
-        for binding in sorted(asset.source_bindings.values(),key=lambda b:b.source_precedence,reverse=True):
-            current=current or binding.inputs.get('charger_current_limit_write')
+        current=self._bound_source(asset,'charger_current_limit_write')
         if current is None or not current.entity_id: return None
         source_ready,_=self._live_source_availability(current)
         if not source_ready: return None
@@ -197,10 +203,8 @@ class MobilityControlCatalog:
     def requested_power_descriptor(self,asset_id: str) -> RequestedPowerDescriptor | None:
         asset=self.manager.assets.get(asset_id)
         if asset is None or asset.concept_id!='charger': return None
-        direct=None; current=None
-        for binding in sorted(asset.source_bindings.values(),key=lambda b:b.source_precedence,reverse=True):
-            direct=direct or binding.inputs.get('charger_power_limit_write')
-            current=current or binding.inputs.get('charger_current_limit_write')
+        direct=self._bound_source(asset,'charger_power_limit_write')
+        current=self._bound_source(asset,'charger_current_limit_write')
         if direct and direct.entity_id:
             source_ready,_=self._live_source_availability(direct)
             if not source_ready: return None
