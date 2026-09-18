@@ -134,10 +134,46 @@
           "required": false,
           "cardinality": "zero_or_one_per_group"
         },
+        "charger_voltage": {
+          "normalizer": "voltage_v",
+          "outputs": [
+            "charger.voltage_v"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "voltage_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
         "charger_current_limit": {
           "normalizer": "current_a",
           "outputs": [
             "charger.current_limit_a"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "current_measurement"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "charger_offered_current": {
+          "normalizer": "current_a",
+          "outputs": [
+            "charger.offered_current_a"
           ],
           "precedence": 10,
           "usage": "observation",
@@ -1123,7 +1159,9 @@
         "charger_power",
         "charger_energy_total",
         "charger_actual_current",
+        "charger_voltage",
         "charger_current_limit",
+        "charger_offered_current",
         "charger_power_limit_write",
         "charger_current_limit_write",
         "charger_start_surface",

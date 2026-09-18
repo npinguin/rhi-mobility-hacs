@@ -912,24 +912,24 @@
       "value_type": "number"
     },
     "charger.current_limit_a": {
-      "component_id": "metering",
-      "section_id": "energy",
+      "component_id": "control",
+      "section_id": "controls",
       "visibility": "product",
       "unit": "A",
       "entity_type": "sensor",
-      "derived": false,
+      "derived": true,
       "friendly_name": "Current limit",
-      "render_as": "readonly_value",
+      "render_as": "slider_number",
       "applicable_asset_types": [
         "charger"
       ],
       "placements": {
         "charger": {
           "component_id": "control",
-          "section_id": "details",
+          "section_id": "controls",
           "visibility": "product",
-          "render_as": "readonly_value",
-          "display_order": 10,
+          "render_as": "slider_number",
+          "display_order": 20,
           "friendly_name": "Current limit",
           "unit": "A",
           "empty_state_behavior": "hide_if_unavailable",
@@ -938,8 +938,23 @@
       },
       "v1_drop_in": true,
       "producer_types": [
+        "CONTROL_READBACK",
         "SOURCE"
       ],
+      "truth_precedence": [
+        "CONTROL_READBACK",
+        "SOURCE"
+      ],
+      "value_type": "number",
+      "editable": {
+        "platform": "number",
+        "write_kind": "charger_requested_current",
+        "asset_types": [
+          "charger"
+        ],
+        "dynamic_bounds": "requested_current",
+        "name": "Current Limit"
+      },
       "builder_sources": [
         {
           "builder_id": "mobility.charger.full_evse.v1",
@@ -947,12 +962,7 @@
           "usage": "observation",
           "normalizer": "current_a"
         }
-      ],
-      "truth_precedence": [
-        "SOURCE"
-      ],
-      "value_type": "number",
-      "editable_resolution": "limits.requested_current_limit_a"
+      ]
     },
     "charger.direct_power_kw": {
       "component_id": "engineering",
@@ -1878,7 +1888,7 @@
       "builder_sources": [
         {
           "builder_id": "mobility.charger.full_evse.v1",
-          "input_id": "compat_charger_offered_current_a",
+          "input_id": "charger_offered_current",
           "usage": "observation",
           "normalizer": "current_a"
         }
@@ -2473,7 +2483,7 @@
       "unit": "kW",
       "entity_type": "sensor",
       "derived": true,
-      "friendly_name": "Requested charge power",
+      "friendly_name": "Set charging power",
       "render_as": "slider_number",
       "applicable_asset_types": [
         "charger"
@@ -2485,7 +2495,7 @@
           "visibility": "product",
           "render_as": "slider_number",
           "display_order": 10,
-          "friendly_name": "Requested charge power",
+          "friendly_name": "Set charging power",
           "unit": "kW",
           "empty_state_behavior": "hide_if_unavailable",
           "datatype": "state/value"
@@ -2506,7 +2516,7 @@
           "charger"
         ],
         "dynamic_bounds": "requested_power",
-        "name": "Requested Charge Power"
+        "name": "Set Charging Power"
       },
       "value_type": "number"
     },
@@ -3074,23 +3084,23 @@
     "limits.requested_current_limit_a": {
       "component_id": "control",
       "section_id": "details",
-      "visibility": "product",
+      "visibility": "engineering",
       "unit": "A",
       "entity_type": "sensor",
       "derived": true,
-      "friendly_name": "Requested current",
+      "friendly_name": "Requested current (compatibility)",
       "render_as": "readonly_value",
       "applicable_asset_types": [
         "charger"
       ],
       "placements": {
         "charger": {
-          "component_id": "control",
-          "section_id": "details",
-          "visibility": "product",
+          "component_id": "engineering",
+          "section_id": "compatibility",
+          "visibility": "engineering",
           "render_as": "readonly_value",
-          "display_order": 70,
-          "friendly_name": "Requested current",
+          "display_order": 900,
+          "friendly_name": "Requested current (compatibility)",
           "unit": "A",
           "empty_state_behavior": "hide_if_unavailable",
           "datatype": "state/value"
@@ -3103,15 +3113,6 @@
       "truth_precedence": [
         "CONTROL_READBACK"
       ],
-      "editable": {
-        "platform": "number",
-        "write_kind": "charger_requested_current",
-        "asset_types": [
-          "charger"
-        ],
-        "dynamic_bounds": "requested_current",
-        "name": "Requested Current Limit"
-      },
       "value_type": "number"
     },
     "limits.requested_current_limit_a_from_power_kw": {
@@ -10604,6 +10605,48 @@
         "ALIAS"
       ],
       "value_type": "boolean"
+    },
+    "charger.voltage_v": {
+      "component_id": "engineering",
+      "section_id": "electrical",
+      "visibility": "engineering",
+      "unit": "V",
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Measured voltage",
+      "render_as": "readonly_value",
+      "applicable_asset_types": [
+        "charger"
+      ],
+      "placements": {
+        "charger": {
+          "component_id": "engineering",
+          "section_id": "electrical",
+          "visibility": "engineering",
+          "render_as": "readonly_value",
+          "display_order": 10,
+          "friendly_name": "Measured voltage",
+          "unit": "V",
+          "empty_state_behavior": "hide_if_unavailable",
+          "datatype": "state/value"
+        }
+      },
+      "v1_drop_in": false,
+      "producer_types": [
+        "SOURCE"
+      ],
+      "builder_sources": [
+        {
+          "builder_id": "mobility.charger.full_evse.v1",
+          "input_id": "charger_voltage",
+          "usage": "observation",
+          "normalizer": "voltage_v"
+        }
+      ],
+      "truth_precedence": [
+        "SOURCE"
+      ],
+      "value_type": "number"
     }
   },
   "compatibility": {

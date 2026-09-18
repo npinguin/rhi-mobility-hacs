@@ -1,5 +1,18 @@
 # Changelog
 
+## M0.9.13 — OCPP full-chain closure
+
+- Bind the Foundation-discovered OCPP Voltage measurement into the charger build input.
+- Separate Current.Import, Current.Offered and Maximum Current into actual-current, offered-current and physical-current-limit semantics.
+- Make physical Maximum Current the single normal Current limit product control/readback.
+- Demote Requested current to compatibility/engineering only.
+- Recover selected actual power from normalized phase current plus measured aggregate/phase voltage when direct OCPP Power.Active.Import is inconsistent zero; positive measured power remains authoritative.
+- Restore Set charging power as the higher product abstraction, resolved from the effective vehicle × charger charging envelope.
+- Preserve backend-owned profile choices and physical device/source readback authority.
+- Publish corrected current/offered/current-limit semantics to Energy without exposing raw OCPP targets.
+- Keep Peblar and other source-family redesign out of scope until OCPP target proof.
+- Known accepted technical debt = 0; known accepted feature debt = 0; target-runtime proof remains mandatory.
+
 ## M0.9.12 — OCPP materialization and control closure
 
 - Preserve additional governed canonical properties emitted by the single OCPP source-normalization boundary instead of filtering them back to the primary builder output.

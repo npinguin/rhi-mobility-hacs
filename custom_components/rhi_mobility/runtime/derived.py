@@ -160,25 +160,29 @@ def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str]) -
         if current is not None and current > 0.05
     ]
     if active_phases and (measured_power is None or measured_power <= 0.0):
+        measured_voltage = _num(values.get("charger.voltage_v"))
         nominal_voltage = _num(values.get("charger.nominal_voltage_v"))
         phase_power_w = 0.0
-        used_nominal_voltage = False
+        voltage_mode = "phase"
         complete_voltage_evidence = True
         for phase, current in active_phases:
             voltage = _num(values.get(f"charger.voltage_l{phase}_v"))
-            if voltage is None:
+            if voltage is None and measured_voltage is not None:
+                voltage = measured_voltage
+                voltage_mode = "measured_aggregate"
+            if voltage is None and nominal_voltage is not None:
                 voltage = nominal_voltage
-                used_nominal_voltage = True
+                voltage_mode = "canonical_nominal"
             if voltage is None or voltage <= 0.0:
                 complete_voltage_evidence = False
                 break
             phase_power_w += current * voltage
         if complete_voltage_evidence and phase_power_w > 0.0:
-            reason = (
-                "derived_from_normalized_phase_current_canonical_nominal_voltage"
-                if used_nominal_voltage
-                else "derived_from_normalized_phase_current_voltage"
-            )
+            reason = {
+                "phase": "derived_from_normalized_phase_current_voltage",
+                "measured_aggregate": "derived_from_normalized_phase_current_measured_voltage",
+                "canonical_nominal": "derived_from_normalized_phase_current_canonical_nominal_voltage",
+            }[voltage_mode]
             _set(values, quality, "charger.power_kw", round(phase_power_w / 1000.0, 3), reason, overwrite=True)
 
     vendor = values.get("charger.vendor")

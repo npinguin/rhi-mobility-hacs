@@ -4,7 +4,7 @@
   "publisher": "rhi_mobility",
   "domain_id": "mobility",
   "builder_id": "mobility.charger.full_evse.v1",
-  "builder_version": "1.7.0",
+  "builder_version": "1.8.0",
   "concept": {
     "concept_id": "charger",
     "display_name": "EV Charger",
@@ -286,6 +286,33 @@
         ]
       },
       {
+        "input_id": "charger_voltage",
+        "technical_capabilities": {
+          "any_of": [
+            "voltage_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "ocpp",
+            "raw_capability_id": "voltage_v",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "voltage.sensor"
+              }
+            ]
+          }
+        ]
+      },
+      {
         "input_id": "charger_current_limit",
         "technical_capabilities": {
           "any_of": [
@@ -321,7 +348,22 @@
                 "value": "current"
               }
             ]
-          },
+          }
+        ]
+      },
+      {
+        "input_id": "charger_offered_current",
+        "technical_capabilities": {
+          "any_of": [
+            "current_measurement"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
           {
             "integration_domain": "ocpp",
             "raw_capability_id": "offered_current_a",

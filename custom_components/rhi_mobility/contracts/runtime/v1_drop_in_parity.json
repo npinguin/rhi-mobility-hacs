@@ -518,7 +518,11 @@
       "editable_in_v1": true,
       "canonical_unit": "A",
       "datatype": "number",
-      "status": "IMPLEMENTED"
+      "status": "IMPLEMENTED",
+      "friendly_name": "Current limit",
+      "render_as": "slider_number",
+      "editable": true,
+      "definition": "Physical charger current-limit readback and single product current-limit control. Requested intent is transient; physical readback is authoritative."
     },
     {
       "definition_index": 27,
@@ -534,7 +538,9 @@
       "editable_in_v1": true,
       "canonical_unit": "kW",
       "datatype": "state/value",
-      "status": "IMPLEMENTED"
+      "status": "IMPLEMENTED",
+      "friendly_name": "Set charging power",
+      "definition": "Editable product charging-power control resolved by Mobility against the effective vehicle and charger charging envelope, then executed through the physical current/power actuator with authoritative readback."
     },
     {
       "definition_index": 28,
@@ -661,11 +667,16 @@
       "builder_sources": [],
       "component_id": "control",
       "section_id": "details",
-      "ux_visibility": "product",
+      "ux_visibility": "engineering",
       "editable_in_v1": false,
       "canonical_unit": "A",
       "datatype": "state/value",
-      "status": "IMPLEMENTED"
+      "status": "IMPLEMENTED",
+      "friendly_name": "Requested current (compatibility)",
+      "visibility": "compatibility_only",
+      "editable": false,
+      "definition_status": "COMPATIBILITY_ONLY",
+      "definition": "Compatibility-only alias/readback retained for legacy contract stability; not a separate product control."
     },
     {
       "definition_index": 34,
@@ -5581,12 +5592,14 @@
       "persistence": "helper intent + physical readback authority",
       "public_index": "sensor.mobility_charger_property_index",
       "source_owner": "Properties own intent and write metadata; internal automation performs bounded physical write/readback; Command Index is forbidden",
-      "ownership_rule": "Sole charger requested-kW editor. Existing editable-property/setpoint owner publishes requested_intent_value_kw, actual_readback_value_kw, write_state, write_pending, write_closed and write_blocked_reason. WRITE_PENDING is backend-owned; UX timers/tolerances/kW→A conversion are forbidden."
+      "ownership_rule": "Sole charger requested-kW editor. Existing editable-property/setpoint owner publishes requested_intent_value_kw, actual_readback_value_kw, write_state, write_pending, write_closed and write_blocked_reason. WRITE_PENDING is backend-owned; UX timers/tolerances/kW→A conversion are forbidden.",
+      "friendly_name": "Set charging power",
+      "definition": "Editable product charging-power control resolved by Mobility against the effective vehicle and charger charging envelope, then executed through the physical current/power actuator with authoritative readback."
     },
     {
       "property_key": "limits.requested_current_limit_a",
       "asset_type": "charger",
-      "editable": true,
+      "editable": false,
       "write_binding": "source number/select from selected charger binding",
       "write_service_action": "set_value/select_option",
       "target/source": "charger-owned physical current-limit target from adapter binding",
@@ -5598,7 +5611,12 @@
       "persistence": "device/source-owned persistence",
       "public_index": "sensor.mobility_charger_property_index",
       "source_owner": "selected charger binding adapter",
-      "ownership_rule": "the only requested-A editor. Readback is accepted only inside charger profile range; Wallbox/Peblar minimum is 6 A."
+      "ownership_rule": "the only requested-A editor. Readback is accepted only inside charger profile range; Wallbox/Peblar minimum is 6 A.",
+      "friendly_name": "Requested current (compatibility)",
+      "ux_visibility": "engineering",
+      "visibility": "compatibility_only",
+      "definition_status": "COMPATIBILITY_ONLY",
+      "definition": "Compatibility-only alias/readback retained for legacy contract stability; not a separate product control."
     },
     {
       "property_key": "Energy limits.min_power_kw / max_power_kw",
@@ -5695,7 +5713,7 @@
       "vehicle_kind": "ev",
       "battery_capacity_kwh": 77,
       "nominal_range_km": 509,
-      "max_ac_power_kw": 11.0,
+      "max_ac_power_kw": 11,
       "phase_capability": 3,
       "image_key": "vw_id4_business_pro_silver_grey",
       "default_target_soc_pct": 80
@@ -5740,7 +5758,7 @@
       "vehicle_kind": "ev",
       "battery_capacity_kwh": 87,
       "nominal_range_km": 620,
-      "max_ac_power_kw": 22.0,
+      "max_ac_power_kw": 22,
       "phase_capability": 3,
       "image_key": "renault_scenic_techno_ev",
       "default_target_soc_pct": 80
@@ -5770,7 +5788,7 @@
       "vehicle_kind": "ev",
       "battery_capacity_kwh": null,
       "nominal_range_km": null,
-      "max_ac_power_kw": 11.0,
+      "max_ac_power_kw": 11,
       "phase_capability": 3,
       "image_key": "guest_ev",
       "default_target_soc_pct": 80
@@ -5784,15 +5802,15 @@
       "model": "OCPP 22 kW",
       "max_current_a": 32,
       "min_current_a": 6,
-      "max_power_kw": 22.0,
+      "max_power_kw": 22,
       "physical_min_power_kw": 1.4,
-      "physical_max_power_kw": 22.0,
+      "physical_max_power_kw": 22,
       "phase_capability": 3,
       "nominal_voltage_v": 230,
       "image_key": "wallbox_ocpp",
       "supports_current_control": true,
       "supports_remote_start_stop": true,
-      "current_step_a": 1.0
+      "current_step_a": 1
     },
     {
       "profile_type": "charger",
@@ -5803,15 +5821,15 @@
       "model": "22 kW",
       "max_current_a": 32,
       "min_current_a": 6,
-      "max_power_kw": 22.0,
+      "max_power_kw": 22,
       "physical_min_power_kw": 1.4,
-      "physical_max_power_kw": 22.0,
+      "physical_max_power_kw": 22,
       "phase_capability": 3,
       "nominal_voltage_v": 230,
       "image_key": "peblar_22kw",
       "supports_current_control": true,
       "supports_remote_start_stop": true,
-      "current_step_a": 1.0
+      "current_step_a": 1
     },
     {
       "profile_type": "charger",
@@ -5823,14 +5841,14 @@
       "max_current_a": 10,
       "min_current_a": 0,
       "max_power_kw": 2.3,
-      "physical_min_power_kw": 0.0,
+      "physical_min_power_kw": 0,
       "physical_max_power_kw": 2.3,
       "phase_capability": 1,
       "nominal_voltage_v": 230,
       "image_key": "fibaro_utility_plug",
       "supports_current_control": false,
       "supports_remote_start_stop": true,
-      "current_step_a": 1.0
+      "current_step_a": 1
     }
   ],
   "scripts": {

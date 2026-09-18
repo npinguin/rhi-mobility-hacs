@@ -107,9 +107,16 @@ class MobilityPublicRuntimeProvider:
         if key == "vehicle.requested_charge_power_kw" and asset.concept_id == "vehicle":
             cid = self._effective_charger(asset_id)
             return self.controller.requested_power_readback(cid) if cid else None
-        if key == "limits.requested_current_limit_a" and asset.concept_id == "charger":
+        if key in {"charger.current_limit_a", "limits.requested_current_limit_a"} and asset.concept_id == "charger":
             readback = getattr(self.controller, "requested_current_readback", None)
-            return readback(asset_id) if callable(readback) else None
+            value = readback(asset_id) if callable(readback) else None
+            if value is not None:
+                return value
+            # Non-OCPP bindings may expose a read-only source current limit without
+            # a writable actuator. Preserve that source truth as a fallback.
+            if snap is not None and "charger.current_limit_a" in snap.values:
+                return snap.values.get("charger.current_limit_a")
+            return None
         if key == "charger.available_for_control" and asset.concept_id == "charger":
             descriptors = getattr(self.controller, "command_descriptors", None)
             if not callable(descriptors):
@@ -149,7 +156,7 @@ class MobilityPublicRuntimeProvider:
         if key != canonical:
             underlying = self.property_quality(asset_id, canonical)
             return underlying or f"compatibility_alias:{canonical}"
-        if key in {"charger.requested_power_kw", "charger.requested_charge_power_kw", "vehicle.requested_charge_power_kw", "limits.requested_current_limit_a"}:
+        if key in {"charger.requested_power_kw", "charger.requested_charge_power_kw", "vehicle.requested_charge_power_kw", "charger.current_limit_a", "limits.requested_current_limit_a"}:
             return "physical_setpoint_readback" if self.property_value(asset_id, key) is not None else None
         if key in {"vehicle.selected_charger", "vehicle.effective_charger", "charger.assigned_vehicle_id", "charger.effective_assigned_vehicle_id"}:
             return "mobility_relationship" if self.property_value(asset_id, key) is not None else None
@@ -196,7 +203,15 @@ class MobilityPublicRuntimeProvider:
         charger_id = asset_id
         if key == "vehicle.requested_charge_power_kw":
             charger_id = self._effective_charger(asset_id) or ""
-        if key in {"charger.requested_power_kw", "charger.requested_charge_power_kw", "vehicle.requested_charge_power_kw", "limits.requested_current_limit_a"} and charger_id:
+        if key in {"charger.current_limit_a", "limits.requested_current_limit_a"} and charger_id:
+            descriptor = getattr(self.controller, "requested_current_descriptor", None)
+            desc = descriptor(charger_id) if callable(descriptor) else None
+            if desc is not None:
+                source = getattr(desc, "source", None)
+                out = self._source_ref_attributes(source, "charger_current_limit_write") if source is not None else {}
+                out.update({"normalization_status": "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN", "quality": "physical_setpoint_readback"})
+                return out
+        if key in {"charger.requested_power_kw", "charger.requested_charge_power_kw", "vehicle.requested_charge_power_kw"} and charger_id:
             descriptor = getattr(self.controller, "requested_power_descriptor", None)
             desc = descriptor(charger_id) if callable(descriptor) else None
             if desc is not None:
