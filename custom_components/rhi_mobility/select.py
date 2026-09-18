@@ -35,6 +35,13 @@ class MobilitySelect(SelectEntity):
         self._attr_device_info=logical_device_info(manager.hass,entry_id,manager,asset_id)
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
+        # Product/V1 write metadata resolves the real HA editor entity from the entity
+        # registry. The first publication can occur before this SelectEntity is registered,
+        # so explicitly republish topology once registration is complete. This keeps the
+        # canonical editor owner in Mobility while preventing a permanent read-only
+        # "Profile: Unknown" projection caused solely by setup ordering.
+        notify=getattr(self.manager,'_notify_topology',None)
+        if callable(notify): notify()
     @callback
     def _changed(self): self.async_write_ha_state()
     @property

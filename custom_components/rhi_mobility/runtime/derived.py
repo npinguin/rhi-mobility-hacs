@@ -21,66 +21,60 @@ def _set(values: dict[str, Any], quality: dict[str, str], key: str, value: Any, 
 
 
 def _engine_family(value: Any) -> str | None:
-    """Normalize an explicit engine-type fact into an energy family.
-
-    This is value normalization only. It never uses integration identity, vehicle model,
-    source label or positional assumptions to decide which range is electric/fuel.
-    """
+    """Normalize an explicit engine-type fact into an energy family."""
     if value is None:
         return None
     token = str(value).strip().lower().replace("-", "_").replace(" ", "_")
     if token in {"electric", "electricity", "electric_motor", "ev", "bev"}:
         return "electric"
-    if token in {
-        "combustion",
-        "internal_combustion",
-        "ice",
-        "gasoline",
-        "petrol",
-        "diesel",
-        "cng",
-        "lng",
-        "lpg",
-    }:
+    if token in {"combustion", "internal_combustion", "ice", "gasoline", "petrol", "diesel", "cng", "lng", "lpg"}:
         return "combustion"
     return None
 
 
-def _derive_engine_ranges(values: dict[str, Any], quality: dict[str, str]) -> None:
-    """Project primary/secondary engine ranges into explicit EV/fuel semantics.
+def _vehicle_kind(value: Any) -> str | None:
+    if value is None:
+        return None
+    token=str(value).strip().lower().replace("-","_").replace(" ","_")
+    if token in {"ev","bev","electric","battery_electric"}: return "ev"
+    if token in {"phev","plug_in_hybrid","plugin_hybrid"}: return "phev"
+    return None
 
-    Audi and similar PHEV sources expose engine slots plus a type for each slot. Slot order
-    is not semantic: primary can be electric or combustion. Direct EV/fuel source facts win.
-    Total range is intentionally not synthesized here.
-    """
+
+def _derive_engine_ranges(values: dict[str, Any], quality: dict[str, str]) -> None:
+    """Project primary/secondary engine ranges into explicit EV/fuel semantics."""
     for slot in ("primary", "secondary"):
         family = _engine_family(values.get(f"vehicle.{slot}_engine_type"))
         distance = _num(values.get(f"vehicle.{slot}_range_km"))
         if distance is None:
             continue
         if family == "electric":
-            _set(
-                values,
-                quality,
-                "vehicle.ev_range_km",
-                distance,
-                f"derived_from_{slot}_electric_engine_range",
-            )
+            _set(values, quality, "vehicle.ev_range_km", distance, f"derived_from_{slot}_electric_engine_range")
         elif family == "combustion":
-            _set(
-                values,
-                quality,
-                "vehicle.fuel_range_km",
-                distance,
-                f"derived_from_{slot}_combustion_engine_range",
-            )
+            _set(values, quality, "vehicle.fuel_range_km", distance, f"derived_from_{slot}_combustion_engine_range")
+
+
+def _derive_total_range(values: dict[str, Any], quality: dict[str, str]) -> None:
+    """Derive total range only from semantically complete canonical range facts.
+
+    A direct total-range source always wins. For an explicitly typed BEV, EV range is
+    the complete propulsion range and therefore also total range. For an explicitly
+    typed PHEV, total range may be computed only when both EV and combustion ranges are
+    present. Missing components remain unavailable rather than being coerced to zero.
+    """
+    if _num(values.get("vehicle.range_total_km")) is not None:
+        return
+    kind=_vehicle_kind(values.get("vehicle.kind"))
+    ev_range=_num(values.get("vehicle.ev_range_km"))
+    fuel_range=_num(values.get("vehicle.fuel_range_km"))
+    if kind=="ev" and ev_range is not None:
+        _set(values,quality,"vehicle.range_total_km",round(ev_range,3),"derived_total_from_explicit_bev_ev_range")
+    elif kind=="phev" and ev_range is not None and fuel_range is not None:
+        _set(values,quality,"vehicle.range_total_km",round(ev_range+fuel_range,3),"derived_total_from_explicit_phev_ev_fuel_ranges")
 
 
 def apply_vehicle_derivations(values: dict[str, Any], quality: dict[str, str], *, charging_profile: dict[str, Any] | None = None) -> None:
-    """Apply Mobility-owned pure derivations once, after source/profile/config facts exist.
-
-    Source facts always win. Missing input never becomes a fabricated zero/state.
-    """
+    """Apply Mobility-owned pure derivations once, after source/profile/config facts exist."""
     soc = _num(values.get("vehicle.soc_pct"))
     target = _num(values.get("vehicle.target_soc_pct"))
     capacity = _num(values.get("vehicle.battery_capacity_kwh"))
@@ -126,6 +120,7 @@ def apply_vehicle_derivations(values: dict[str, Any], quality: dict[str, str], *
     _set(values, quality, "vehicle.battery_state", battery_state, "derived_vehicle_battery_summary", overwrite=True)
 
     _derive_engine_ranges(values, quality)
+    _derive_total_range(values, quality)
 
     ev_range = _num(values.get("vehicle.ev_range_km"))
     fuel_range = _num(values.get("vehicle.fuel_range_km"))
@@ -147,28 +142,11 @@ def apply_vehicle_derivations(values: dict[str, Any], quality: dict[str, str], *
 
 
 def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str]) -> None:
-    """Apply deterministic charger summaries and aggregate readback facts.
-
-    Aggregate current is derived only when the source integration exposes phase-current
-    readback but no separate aggregate actual-current fact. A direct source value always
-    wins and no requested/current-limit value is ever substituted for actual current.
-    """
+    """Apply deterministic charger summaries and aggregate readback facts."""
     if values.get("charger.actual_current_a") is None:
-        phase_currents = [
-            current for current in (
-                _num(values.get("charger.current_l1_a")),
-                _num(values.get("charger.current_l2_a")),
-                _num(values.get("charger.current_l3_a")),
-            ) if current is not None
-        ]
+        phase_currents = [current for current in (_num(values.get("charger.current_l1_a")), _num(values.get("charger.current_l2_a")), _num(values.get("charger.current_l3_a"))) if current is not None]
         if phase_currents:
-            _set(
-                values,
-                quality,
-                "charger.actual_current_a",
-                round(max(phase_currents), 3),
-                "derived_from_phase_current_readback",
-            )
+            _set(values, quality, "charger.actual_current_a", round(max(phase_currents), 3), "derived_from_phase_current_readback")
 
     vendor = values.get("charger.vendor")
     model = values.get("charger.model")

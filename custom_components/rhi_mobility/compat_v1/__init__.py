@@ -68,25 +68,6 @@ class MobilityV1Facade(_ParityFacade):
                 return str(target), target_key
         return None, target_key
 
-    def relationship_rows(self):
-        rows = [dict(row) for row in super().relationship_rows()]
-        seen = {(str(row.get("relationship_type") or ""), str(row.get("from_asset_id") or row.get("source_asset_id") or ""), str(row.get("to_asset_id") or row.get("target_asset_id") or "")) for row in rows}
-        for relation in [r for r in rows if str(r.get("relationship_type") or "") == "configured_assignment"]:
-            vehicle_id = str(relation.get("from_asset_id") or relation.get("source_asset_id") or "")
-            charger_id = str(relation.get("to_asset_id") or relation.get("target_asset_id") or "")
-            if not vehicle_id or not charger_id:
-                continue
-            connection = self.projection.row(charger_id, "charger.connection_state")
-            if not isinstance(connection, dict) or not connection.get("available") or str(connection.get("value") or "") != "asset_connected":
-                continue
-            for rel_type, source, target in (("vehicle_physical_charger", vehicle_id, charger_id), ("charger_connected_vehicle", charger_id, vehicle_id)):
-                key = (rel_type, source, target)
-                if key in seen:
-                    continue
-                seen.add(key)
-                rows.append(self._relationship_row(relationship_id=f"v1:{rel_type}:{source}:{target}", relationship_type=rel_type, source_asset_id=source, target_asset_id=target, resolution_source="v1_configured_assignment_plus_canonical_evse_occupancy", confidence="compatibility_correlated"))
-        return rows
-
     @staticmethod
     def _ordered_existing(values: list[str], preferred: list[str]) -> list[str]:
         out = [key for key in preferred if key in values]
