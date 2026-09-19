@@ -637,19 +637,6 @@ class MobilityRuntimeManager:
     def active_binding_plan(self, asset_id: str):
         return self._binding_plans.get(asset_id)
 
-    def producer_candidates(self, asset_id: str, property_id: str | None = None):
-        """Compatibility diagnostic view; runtime truth no longer depends on producer arbitration."""
-        snap=self.snapshots.get(asset_id)
-        if snap is None:
-            return {} if property_id is None else {}
-        rows={}
-        for key,value in snap.values.items():
-            quality=snap.quality.get(key)
-            if not isinstance(quality,str) or not quality.startswith("candidate:"):
-                continue
-            rows[key]={"SOURCE":{"producer_kind":"SOURCE","value":value,"quality":quality,"source_reference":self.property_provenance(asset_id,key)}}
-        return rows if property_id is None else rows.get(property_id,{})
-
     def _refresh_core(self, asset_id: str) -> None:
         asset=self.assets.get(asset_id); snap=self.snapshots.get(asset_id)
         if not asset or not snap: return

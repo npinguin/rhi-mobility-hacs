@@ -1,5 +1,13 @@
 # Changelog
 
+## M0.9.16 — zero-debt governance cleanup
+
+- Remove obsolete producer-arbitration diagnostic runtime shim; canonical prebound runtime behavior is unchanged.
+- Make legacy runtime arbitration residue release-blocking in the zero-debt audit.
+- Codify deletion-before-abstraction and no-framework-drift cleanup governance.
+- Preserve M0.9.15 features, OCPP behavior, command/readback semantics and frozen V1 compatibility exterior.
+- Known accepted technical debt = 0; known accepted feature debt = 0; target-runtime proof remains mandatory.
+
 ## M0.9.15 — OCPP nominal-voltage closure
 
 - Keep OCPP measured voltage unavailable when the integration source is unavailable; never manufacture `charger.voltage_v`.
