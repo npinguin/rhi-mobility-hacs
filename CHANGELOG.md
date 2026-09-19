@@ -1,5 +1,13 @@
 # Changelog
 
+## M0.9.18 — existing contract runtime closure
+
+- Restore materialization of existing Mobility-owned profile and selected-charger configuration controls when their configured value is unset.
+- Keep explicit ChargerProfile selection as the prerequisite for the existing requested charging-power kW to physical-current mapping; never infer product identity, voltage or phase count.
+- Keep physical execution controls fail-closed until their existing actuator/readback prerequisites are available.
+- Preserve R43.2.65 / MOBILITY_PUBLIC_RUNTIME_V1, canonical V2 ownership, Foundation boundaries and Mobility→Energy contracts without adding public fields or consumer changes.
+- Known accepted technical debt = 0; known accepted feature debt = 0; exact target-runtime qualification remains mandatory.
+
 ## M0.9.17 — runtime health closure
 
 - Stop optional unavailable observations from degrading whole-asset observation health; required source health remains owned by the canonical runtime snapshot.

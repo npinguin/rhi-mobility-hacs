@@ -94,6 +94,12 @@ class MobilityPropertyProjection:
         key=str(editable["_write_property_key"]); platform=str(editable.get("platform") or ""); available=self.editable(asset_id,property_key)
         action={"number":"set_value","text":"set_value","select":"select_option","switch":"turn_on_off_by_value"}.get(platform,"")
         out={**base,"editable":available,"write_supported":available,"write_binding_type":platform,"write_service_domain":platform,"write_service_action":action,"write_target_entity":self.editor_entity_id(asset_id,property_key),"write_property_key":key}
+        # Existing R43.2.65 configuration controls (profile/assignment) remain usable even
+        # when their current value is unset. Runtime execution controls still fail closed
+        # through editable_is_available above.
+        if editable.get("write_kind") in {"profile","selected_charger"} and platform=="select":
+            out["editable"]=True
+            out["write_supported"]=bool(out["write_target_entity"])
         if platform=="number":
             minimum,maximum,step=editable_bounds(self.manager,self.controller,asset_id,key,editable); out.update({"min":minimum,"max":maximum,"step":step})
         if platform=="select":
