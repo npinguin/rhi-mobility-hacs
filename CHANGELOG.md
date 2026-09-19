@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.9.17 — runtime health closure
+
+- Stop optional unavailable observations from degrading whole-asset observation health; required source health remains owned by the canonical runtime snapshot.
+- Keep optional feature configuration visible as diagnostics without turning unrelated product readiness into a limitation; command limitations remain owned by control health.
+- Distinguish build-time initial degraded count from current runtime health so diagnostics cannot present stale build health as live state.
+- Preserve explicit ChargerProfile selection: OCPP never implies a Wallbox product profile; nominal voltage remains configured/profile truth, not fabricated measurement.
+- No new framework, fallback engine or duplicate runtime path; frozen V1 exterior preserved.
+
+
 ## M0.9.16 — zero-debt governance cleanup
 
 - Remove obsolete producer-arbitration diagnostic runtime shim; canonical prebound runtime behavior is unchanged.

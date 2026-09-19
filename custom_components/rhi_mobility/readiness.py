@@ -97,15 +97,17 @@ def _resolution_health(resolutions: Iterable[PropertyResolution]) -> tuple[Healt
             if row.producer_kind == PropertyProducerKind.SOURCE:
                 observation = HealthState.DEGRADED
         elif row.status == PropertyResolutionStatus.UNAVAILABLE_TEMPORARY:
-            if row.producer_kind in (None, PropertyProducerKind.SOURCE):
-                observation = HealthState.LIMITED if observation == HealthState.OK else observation
-            reasons.append(f"observation:{row.property_id}:temporary")
+            # Required source availability is already owned by RuntimeSnapshot.health.
+            # An optional observation being absent must not degrade the whole asset.
+            reasons.append(f"observation_optional:{row.property_id}:temporary")
         elif row.status == PropertyResolutionStatus.CONFIGURATION_REQUIRED:
-            properties = HealthState.LIMITED if properties == HealthState.OK else properties
             if row.property_id in _ASSET_CONFIGURATION_REQUIREMENTS:
+                properties = HealthState.LIMITED if properties == HealthState.OK else properties
                 configuration_required = True
                 reasons.append(f"configuration:{row.property_id}:required")
             else:
+                # Optional feature configuration is reported as evidence only. If it
+                # limits a command, control health reports that limitation directly.
                 reasons.append(f"configuration_feature:{row.property_id}:not_configured")
     return observation, properties, configuration_required, reasons
 

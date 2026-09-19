@@ -597,19 +597,20 @@ class MobilityRuntimeManager:
             status='REMOVED'
         max_cfg=max([row.source_configuration_revision for row in prepared_rows],default=0)
         max_build=max([row.build_input_revision for row in prepared_rows],default=0)
+        initial_degraded_asset_count=sum(1 for snap in self.snapshots.values() if snap.health!='OK')
         self.last_build_attempt={
             'status':status,'observed_at':observed_at,'configuration_revision':max_cfg,'build_input_revision':max_build,
             'selected_input_count':len(payloads),'prepared_input_count':len(prepared_rows),'selection_error_count':len(selection_errors),
             'accepted_binding_count':len(self.bindings),'asset_count':len(self.assets),'relationship_count':len(self.effective_relationships),
-            'degraded_asset_count':sum(1 for snap in self.snapshots.values() if snap.health!='OK'),
+            'initial_degraded_asset_count':initial_degraded_asset_count,
             'selection_errors':selection_errors,
         }
-        _LOGGER.info('Mobility handoff reconciled status=%s inputs=%s assets=%s bindings=%s degraded=%s',status,len(payloads),len(self.assets),len(self.bindings),self.last_build_attempt['degraded_asset_count'])
+        _LOGGER.info('Mobility handoff reconciled status=%s inputs=%s assets=%s bindings=%s initially_degraded=%s',status,len(payloads),len(self.assets),len(self.bindings),initial_degraded_asset_count)
         self._notify_topology()
         return {
             'selected_input_count':len(payloads),'prepared_input_count':len(prepared_rows),'asset_count':len(self.assets),
             'accepted_binding_count':len(self.bindings),'relationship_count':len(self.effective_relationships),
-            'degraded_asset_count':self.last_build_attempt['degraded_asset_count'],'status':status,
+            'degraded_asset_count':initial_degraded_asset_count,'status':status,
             'selection_error_count':len(selection_errors),'atomic_domain_replace':True,'capability_isolation':True,
         }
 
