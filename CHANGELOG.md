@@ -1,3 +1,11 @@
+## M0.9.24 — HA source device link closure
+
+- move Binding Status helper entities to the Home Assistant 2026.8+ `device_entry` linking contract;
+- attach diagnostics to the exact existing physical source DeviceEntry without copying identifiers/connections;
+- keep logical Mobility devices independent and preserve zero `via_device`/proxy topology;
+- preserve M0.9.23 canonical runtime, Shared Baseline 1.8.1 and R43.2.65 / MOBILITY_PUBLIC_RUNTIME_V1 compatibility unchanged;
+- exact target-HA runtime qualification remains mandatory.
+
 # Changelog
 
 ## M0.9.23 — runtime diagnostics and device-projection closure

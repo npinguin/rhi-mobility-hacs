@@ -6,7 +6,6 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
 
 from .device_surfaces import logical_surface_device_info
 from .profile_presentation import profile_image_url, profile_metadata
@@ -461,43 +460,15 @@ class SourceBindingStatusSensor(SensorEntity):
         integration = initial_row.get("integration")
         self._attr_unique_id = f"{DOMAIN}:{asset_id}:source_binding:{source_key}:status"
         self._attr_suggested_object_id = f"{DOMAIN}_{asset_id}_{integration or 'source'}_binding_status"
-        # Do not emit DeviceInfo here. Copying source identifiers/connections creates
-        # a Mobility-owned proxy that Home Assistant links to the real source device.
-        # This diagnostic entity is reassigned to the exact source device_registry_id
-        # after entity registration instead.
+        # HA 2026.8+ helper-integration rule: attach the diagnostic entity
+        # directly to the existing source DeviceEntry. Do not copy identifiers or
+        # connections and do not create a Mobility proxy device.
         self._attr_device_info = None
+        self.device_entry = dr.async_get(hass).async_get(self.source_device_id)
 
     async def async_added_to_hass(self):
+        await super().async_added_to_hass()
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id, self._changed))
-        if not self.source_device_id or not self.entity_id:
-            return
-        device_registry = dr.async_get(self.hass)
-        if device_registry.async_get(self.source_device_id) is None:
-            return
-        entity_registry = er.async_get(self.hass)
-        entry = entity_registry.async_get(self.entity_id)
-        if entry is None:
-            return
-        previous_device_id = entry.device_id
-        if previous_device_id != self.source_device_id:
-            entity_registry.async_update_entity(self.entity_id, device_id=self.source_device_id)
-
-        # M0.9.21 could have created a Mobility-owned proxy source device. Once its
-        # only binding diagnostic has moved to the real source device, remove that
-        # now-orphaned proxy so HA no longer shows a false Connected devices hop.
-        if previous_device_id and previous_device_id != self.source_device_id:
-            previous = device_registry.async_get(previous_device_id)
-            remaining = er.async_entries_for_device(
-                entity_registry,
-                previous_device_id,
-                include_disabled_entities=True,
-            )
-            if (
-                previous is not None
-                and self.entry_id in set(getattr(previous, "config_entries", set()) or set())
-                and not remaining
-            ):
-                device_registry.async_remove_device(previous_device_id)
 
     @callback
     def _changed(self):
