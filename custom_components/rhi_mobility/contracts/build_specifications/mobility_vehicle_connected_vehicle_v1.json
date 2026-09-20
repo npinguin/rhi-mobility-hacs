@@ -4,7 +4,7 @@
   "publisher": "rhi_mobility",
   "domain_id": "mobility",
   "builder_id": "mobility.vehicle.connected_vehicle.v1",
-  "builder_version": "1.8.0",
+  "builder_version": "1.9.0",
   "concept": {
     "concept_id": "vehicle",
     "display_name": "Vehicle",
@@ -20,6 +20,9 @@
     },
     {
       "integration_domain": "cupra_eu_data_act"
+    },
+    {
+      "integration_domain": "cardata"
     }
   ],
   "candidate_requirements": {
@@ -34,7 +37,8 @@
         "input_id": "vehicle_soc",
         "technical_capabilities": {
           "any_of": [
-            "percentage_measurement"
+            "percentage_measurement",
+            "state_observation"
           ]
         },
         "allowed_source_kinds": [
@@ -100,6 +104,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "_state_of_charge"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "battery_soc_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.drivetrain.batteryManagement.header"
               }
             ]
           }
@@ -192,6 +208,18 @@
                 "value": "value_of_the_primary_range"
               }
             ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "ev_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.drivetrain.electricEngine.remainingElectricRange"
+              }
+            ]
           }
         ]
       },
@@ -265,6 +293,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "_charging_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "charge_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.drivetrain.electricEngine.charging.hvStatus"
               }
             ]
           }
@@ -367,6 +407,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "_mileage"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "odometer_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.vehicle.travelledDistance"
               }
             ]
           }
@@ -532,6 +584,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "battery_state_report.charge_power"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "charge_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.powertrain.electric.battery.charging.power"
               }
             ]
           }
@@ -828,6 +892,18 @@
                 "value": "charge_current_a"
               }
             ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "charge_current_a",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.drivetrain.electricEngine.charging.acAmpere"
+              }
+            ]
           }
         ]
       },
@@ -877,6 +953,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "plug_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "plug_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.powertrain.tractionBattery.charging.port.anyPosition.isPlugged"
               }
             ]
           }
@@ -2407,7 +2495,8 @@
         "input_id": "vehicle_fuel_level",
         "technical_capabilities": {
           "any_of": [
-            "percentage_measurement"
+            "percentage_measurement",
+            "state_observation"
           ]
         },
         "allowed_source_kinds": [
@@ -2485,6 +2574,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "_fuel_level_current_level"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "fuel_level_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.drivetrain.fuelSystem.level"
               }
             ]
           }
@@ -2958,6 +3059,18 @@
                 "value": "phase_capability"
               }
             ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "phase_count",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.drivetrain.electricEngine.charging.phaseNumber"
+              }
+            ]
           }
         ]
       },
@@ -3325,6 +3438,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "charge_type"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "charge_type",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.drivetrain.electricEngine.charging.method"
               }
             ]
           }
@@ -4473,6 +4598,18 @@
                 "value": "battery_state"
               }
             ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "battery_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.drivetrain.electricEngine.charging.hvStatus"
+              }
+            ]
           }
         ]
       },
@@ -4522,6 +4659,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "source_target_soc_pct"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "target_soc_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.powertrain.electric.battery.stateOfCharge.target"
               }
             ]
           }
@@ -5881,6 +6030,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "plug_lock_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cardata",
+            "raw_capability_id": "plug_lock_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "vehicle.body.chargingPort.lockedStatus"
               }
             ]
           }

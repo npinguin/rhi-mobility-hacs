@@ -1392,7 +1392,8 @@
           "usage": "observation",
           "technical_capabilities": {
             "any_of": [
-              "percentage_measurement"
+              "percentage_measurement",
+              "state_observation"
             ]
           },
           "allowed_source_kinds": [
@@ -2133,7 +2134,8 @@
           "usage": "observation",
           "technical_capabilities": {
             "any_of": [
-              "percentage_measurement"
+              "percentage_measurement",
+              "state_observation"
             ]
           },
           "allowed_source_kinds": [

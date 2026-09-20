@@ -1,6 +1,15 @@
 # Changelog
 
-## M0.9.25 — structural audit closure
+## M0.9.26 — BMW CarData vehicle support
+
+- Add `cardata` as a first-class connected-vehicle source.
+- Match stable BMW CarData descriptor-backed unique IDs through the existing DBS/adapter model.
+- Normalize observed BMW vehicle telemetry into existing canonical Mobility properties.
+- Keep Cardata fetch, developer and maintenance services out of the physical command surface.
+- Preserve Foundation ownership, exact HA source DeviceEntry binding, Energy compatibility and frozen V1 exterior.
+
+
+## M0.9.26 — structural audit closure
 
 - Exclude lifecycle-disabled configured assets from operational Health/Build and snapshot-completeness degradation.
 - Render required build PARTIAL as DEGRADED instead of READY.

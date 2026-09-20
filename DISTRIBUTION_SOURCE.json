@@ -1,14 +1,14 @@
 {
-  "distribution_release": "M0.9.25",
-  "distribution_version": "0.9.25",
-  "manifest_version": "0.9.25",
+  "distribution_release": "M0.9.26",
+  "distribution_version": "0.9.26",
+  "manifest_version": "0.9.26",
   "source_repository": "npinguin/rhi-mobility",
-  "source_commit": "d867b7ceba8f7f85d7ef8c380169aced72189c31",
+  "source_commit": "7091b91d40ab80aca18c4d13b1c56ee4f32ae70d",
   "channel": "candidate",
   "approved_release": false,
   "required_foundation_release": "F1.8.1+",
   "required_shared_baseline": "1.8.1",
   "distribution_license": "GPL-3.0-only",
   "runtime_file_count": 97,
-  "runtime_aggregate_sha256": "1d8caf46eec872e985ff0a30327c34be52f27f76c8765c63e1a8f57f61528456"
+  "runtime_aggregate_sha256": "becf127ee0d33263d7ad9afac4c55fd0348b1d6e2b8c52f7df1535d3d485ebf2"
 }
