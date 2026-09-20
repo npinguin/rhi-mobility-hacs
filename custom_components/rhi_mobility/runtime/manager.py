@@ -520,19 +520,33 @@ class MobilityRuntimeManager:
                 selection_relationship_ids[sid]=rel_ids
 
                 capability_diagnostics.extend(dict(row) for row in prepared.capability_diagnostics)
-                problem_statuses={'MISSING','AMBIGUOUS','INVALID_EVIDENCE','BLOCKED_BY_REVIEW','BLOCKED_BY_TARGET_SCOPE'}
+                problem_statuses={'MISSING','AMBIGUOUS','INVALID_EVIDENCE','INVALID_VALUE','BLOCKED_BY_REVIEW','BLOCKED_BY_TARGET_SCOPE'}
                 problems=[row for row in prepared.capability_diagnostics if row.get('status') in problem_statuses]
+                required_problems=[row for row in problems if bool(row.get('required'))]
+                optional_problems=[row for row in problems if not bool(row.get('required'))]
                 filtered=[row for row in prepared.capability_diagnostics if row.get('status') in {'REJECTED_UNSUPPORTED_DEVICE_TYPE','REJECTED_LEGACY_MANUAL_PROFILE'}]
                 if filtered and not problems:
                     status='READY_WITH_FILTERED_DEVICES' if ids else 'FILTERED'
-                elif problems or prepared.discovery_assessment.get('review_required'):
+                elif required_problems or prepared.discovery_assessment.get('review_required'):
                     status='PARTIAL'
+                elif optional_problems:
+                    status='READY_WITH_LIMITATIONS'
                 else:
                     status='EMPTY' if not prepared.asset_seeds else 'READY'
+                problem_status_counts={}
+                for row in problems:
+                    key=str(row.get('status') or 'UNKNOWN')
+                    problem_status_counts[key]=problem_status_counts.get(key,0)+1
                 selection_diagnostics[sid]={
                     'selection_id':sid,'builder_id':prepared.builder_id,'integration_domain':prepared.integration_domain,
                     'status':status,'asset_ids':sorted(ids),'binding_count':len(prepared.source_bindings),
                     'assessment':dict(prepared.discovery_assessment),'problem_count':len(problems),
+                    'required_problem_count':len(required_problems),'optional_problem_count':len(optional_problems),
+                    'problem_status_counts':problem_status_counts,
+                    'problem_examples':[{
+                        'asset_id':row.get('asset_id'),'input_id':row.get('input_id'),'required':bool(row.get('required')),
+                        'status':row.get('status'),'reason':row.get('reason')
+                    } for row in problems[:20]],
                     'filtered_device_count':len(filtered),
                 }
 

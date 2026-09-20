@@ -82,6 +82,43 @@ async def async_reconcile_projection(hass: Any, entry_id: str, current_asset_ids
                 continue
             device_registry.async_remove_device(device_id)
             removed_devices += 1
+
+        # Historical source-projection builds could leave an entityless Mobility-owned
+        # device behind that only carries copied source identifiers. Home Assistant then
+        # renders it as a separate device with a Linked devices card pointing at the real
+        # source device. This is neither a logical Mobility asset nor a real source device.
+        #
+        # Reconcile the complete device set owned by this config entry, not only devices
+        # reached through stale entities. The exact accepted source device is managed by
+        # its source integration and receives the Mobility Binding Status entity directly;
+        # Mobility must never retain an empty identifier-copy proxy.
+        allowed_mobility_ids = set(current_asset_ids) | {
+            entry_id,
+            "mobility_intelligence",
+            "vehicle_intelligence",
+            "charger_intelligence",
+        }
+        for device in list(dr.async_entries_for_config_entry(device_registry, entry_id)):
+            device_id = str(getattr(device, "id", "") or "")
+            if not device_id:
+                continue
+            identifiers = set(getattr(device, "identifiers", set()) or set())
+            mobility_ids = {
+                str(identifier)
+                for domain, identifier in identifiers
+                if domain == DOMAIN
+            }
+            if mobility_ids & allowed_mobility_ids:
+                continue
+            attached = er.async_entries_for_device(
+                entity_registry,
+                device_id,
+                include_disabled_entities=True,
+            )
+            if attached:
+                continue
+            device_registry.async_remove_device(device_id)
+            removed_devices += 1
     except Exception as exc:
         _LOGGER.warning("Mobility projection reconciliation could not complete: %s", exc)
     if removed_entities or removed_devices:

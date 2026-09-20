@@ -45,6 +45,92 @@ def _bounded_handoff(hass: Any) -> dict[str, Any]:
     }
 
 
+
+def _asset_lifecycle(manager: Any, asset_id: str) -> str:
+    try:
+        return str(manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active")
+    except Exception:
+        return "active"
+
+
+def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[str, Any]:
+    try:
+        from homeassistant.helpers import device_registry as dr
+        from homeassistant.helpers import entity_registry as er
+        device_registry = dr.async_get(hass)
+        entity_registry = er.async_get(hass)
+    except Exception as exc:
+        return {"status": "UNAVAILABLE", "error": type(exc).__name__}
+
+    config_entries = er.async_entries_for_config_entry(entity_registry, entry_id)
+    rows = []
+    for asset_id, asset in sorted(manager.assets.items()):
+        logical = device_registry.async_get_device(identifiers={(DOMAIN, asset_id)})
+        source_device_id = str(getattr(asset, "source_device_id", "") or "")
+        source = device_registry.async_get(source_device_id) if source_device_id else None
+        binding_unique_prefix = f"{DOMAIN}:{asset_id}:source_binding:"
+        binding_entries = [
+            row for row in config_entries
+            if str(getattr(row, "unique_id", "") or "").startswith(binding_unique_prefix)
+        ]
+        rows.append({
+            "asset_id": asset_id,
+            "lifecycle_status": _asset_lifecycle(manager, asset_id),
+            "logical_device_id": None if logical is None else logical.id,
+            "source_device_id": source_device_id or None,
+            "source_device_present": source is not None if source_device_id else None,
+            "binding_diagnostic_entity_ids": [row.entity_id for row in binding_entries],
+            "binding_diagnostic_device_ids": sorted({str(row.device_id) for row in binding_entries if row.device_id}),
+            "binding_on_exact_source_device": (
+                True if not binding_entries or not source_device_id
+                else all(str(row.device_id or "") == source_device_id for row in binding_entries)
+            ),
+        })
+
+    allowed_ids = set(manager.assets) | {
+        entry_id,
+        "mobility_intelligence",
+        "vehicle_intelligence",
+        "charger_intelligence",
+    }
+    orphan_ids = []
+    for device in dr.async_entries_for_config_entry(device_registry, entry_id):
+        identifiers = set(getattr(device, "identifiers", set()) or set())
+        mobility_ids = {str(value) for domain, value in identifiers if domain == DOMAIN}
+        if mobility_ids & allowed_ids:
+            continue
+        attached = er.async_entries_for_device(entity_registry, device.id, include_disabled_entities=True)
+        if not attached:
+            orphan_ids.append(str(device.id))
+    return {
+        "status": "OK" if not orphan_ids and all(row["binding_on_exact_source_device"] for row in rows) else "DEGRADED",
+        "asset_rows": rows,
+        "orphan_proxy_device_count": len(orphan_ids),
+        "orphan_proxy_device_ids": orphan_ids[:20],
+    }
+
+
+def _publication_diagnostics(hass: Any) -> dict[str, Any]:
+    entity_ids = (
+        "sensor.mobility_energy_asset_publication",
+        "sensor.mobility_energy_contract_registry",
+        "sensor.mobility_energy_publication_health",
+    )
+    rows = []
+    for entity_id in entity_ids:
+        state = hass.states.get(entity_id)
+        rows.append({
+            "entity_id": entity_id,
+            "live_state_present": state is not None,
+            "state": None if state is None else state.state,
+            "publication_revision": None if state is None else state.attributes.get("publication_revision"),
+            "consumer_asset_count": None if state is None else len(state.attributes.get("consumer_assets") or []),
+        })
+    return {
+        "status": "OK" if all(row["live_state_present"] for row in rows) else "DEGRADED",
+        "entities": rows,
+    }
+
 def _charging_control_diagnostics(manager: Any, controller: Any) -> list[dict[str, Any]]:
     """Expose the resolved Mobility charging-control chain without source reinterpretation."""
     rows: list[dict[str, Any]] = []
@@ -104,6 +190,7 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
     profiles: list[dict[str, Any]] = []
     readiness: list[dict[str, Any]] = []
     relationships: list[dict[str, Any]] = []
+    lifecycle_counts = {"configured": 0, "active": 0, "disabled": 0}
     resolution_evidence: list[dict[str, Any]] = []
     charging_control: list[dict[str, Any]] = []
     if manager is not None and public is not None and controller is not None:
@@ -127,8 +214,14 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
         ]
         charging_control = _charging_control_diagnostics(manager, controller)
         for asset_id in sorted(manager.assets):
+            lifecycle = _asset_lifecycle(manager, asset_id)
+            lifecycle_counts["configured"] += 1
+            lifecycle_counts["disabled" if lifecycle == "disabled" else "active"] += 1
             resolutions = resolver.resolve_asset(asset_id)
-            readiness.append(evaluate_asset_readiness(manager, controller, asset_id, resolutions.values()).as_dict())
+            row = evaluate_asset_readiness(manager, controller, asset_id, resolutions.values()).as_dict()
+            row["lifecycle_status"] = lifecycle
+            row["operationally_active"] = lifecycle != "disabled"
+            readiness.append(row)
             for property_id, resolution in resolutions.items():
                 if len(resolution_evidence) >= 200:
                     break
@@ -143,8 +236,14 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
         },
         "health": {
             "last_build_attempt": {} if manager is None else dict(manager.last_build_attempt),
+            "configured_asset_count": lifecycle_counts["configured"],
+            "active_runtime_asset_count": lifecycle_counts["active"],
+            "disabled_configured_asset_count": lifecycle_counts["disabled"],
             "runtime_asset_count": 0 if manager is None else len(manager.assets),
-            "legacy_snapshot_degraded_asset_count": 0 if manager is None else sum(1 for s in manager.snapshots.values() if s.health != "OK"),
+            "legacy_snapshot_degraded_asset_count": 0 if manager is None else sum(
+                1 for asset_id, s in manager.snapshots.items()
+                if _asset_lifecycle(manager, asset_id) != "disabled" and s.health != "OK"
+            ),
             "asset_readiness": readiness,
         },
         "configuration": {
@@ -177,9 +276,11 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
         },
         "charging_control": charging_control,
         "execution": {} if controller is None else controller.executor.snapshot(),
+        "ha_projection": {} if manager is None else _ha_projection_diagnostics(hass, entry.entry_id, manager),
         "publication": {
             "publisher_domain": None if provider is None else provider.publisher_domain,
             "publication_revision": None if provider is None else provider.publication_revision,
             "specification_count": 0 if provider is None else len(provider.get_build_specifications()),
+            "runtime_proof": _publication_diagnostics(hass),
         },
     }

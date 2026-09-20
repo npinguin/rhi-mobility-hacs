@@ -139,10 +139,19 @@ class MobilityDomainSupervisoryStatusProvider:
             ))
             return "BLOCKED", issues
 
+        configuration_value = getattr(self.manager, "configuration_value", None)
+        active_asset_ids = {
+            asset_id for asset_id in assets
+            if str(
+                configuration_value(asset_id, "asset.lifecycle_status", "active")
+                if callable(configuration_value)
+                else "active"
+            ).lower() != "disabled"
+        }
         health = {
             str(getattr(snapshot, "health", "UNKNOWN") or "UNKNOWN").upper()
             for snapshot in snapshots.values()
-            if getattr(snapshot, "asset_id", None) in assets
+            if getattr(snapshot, "asset_id", None) in active_asset_ids
         }
         if health & {"BLOCKED", "INVALID", "ERROR", "FAILED"}:
             status = "BLOCKED"
@@ -265,14 +274,16 @@ class MobilityDomainSupervisoryStatusProvider:
         )
         readiness = []
         for asset_id in sorted(getattr(self.manager, "assets", {}) or {}):
+            lifecycle = str(self.manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active")
             resolutions = list(
                 PropertyResolver(self.manager, self.public).resolve_asset(asset_id).values()
             )
-            readiness.append(
-                evaluate_asset_readiness(
-                    self.manager, self.controller, asset_id, resolutions
-                ).as_dict()
-            )
+            row = evaluate_asset_readiness(
+                self.manager, self.controller, asset_id, resolutions
+            ).as_dict()
+            row["lifecycle_status"] = lifecycle
+            row["operationally_active"] = lifecycle != "disabled"
+            readiness.append(row)
         return {
             "supervision": self.snapshot(),
             "runtime_evidence": {

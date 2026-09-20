@@ -1,5 +1,20 @@
 # Changelog
 
+## M0.9.23 — runtime diagnostics and device-projection closure
+
+- Remove historical entityless source-proxy devices that caused duplicate Linked devices surfaces.
+- Keep disabled guest vehicles as configured inventory while excluding them from operational supervision degradation.
+- Split required build defects from optional limitations and publish bounded problem evidence.
+- Add HA projection proof for logical/source devices, Binding Status placement and orphan proxy count.
+- Add runtime proof for Mobility-to-Energy publication entities, revision and consumer count.
+
+## M0.9.23 — orphan linked device cleanup
+
+- Remove entityless Mobility-owned source proxy devices left by historical projection.
+- Reconcile the complete Mobility-owned HA device set, not only devices reached through stale entities.
+- Preserve canonical Mobility logical/root/intelligence devices and the real source integration device.
+- Eliminate the residual empty Linked devices hop seen after M0.9.22.
+
 ## M0.9.22 — exact source device identity
 
 - Attach each Mobility Binding Status diagnostic directly to the accepted Home Assistant source device registry id.
