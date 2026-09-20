@@ -1,5 +1,12 @@
 # Changelog
 
+## M0.9.22 — exact source device identity
+
+- Attach each Mobility Binding Status diagnostic directly to the accepted Home Assistant source device registry id.
+- Remove proxy DeviceInfo and via_device source topology so one physical device is not shown as separate Connected and Linked hops.
+- Migrate existing binding diagnostics to the physical source device and remove an orphaned M0.9.21 proxy when safe.
+- Preserve logical Mobility asset ownership and AcceptedSourceBinding provenance; no public runtime contract change.
+
 ## M0.9.21 — product source normalization
 
 - Bind current observed Mercedes, AudiConnect and Cupra Data Act product facts at the normalization boundary.
