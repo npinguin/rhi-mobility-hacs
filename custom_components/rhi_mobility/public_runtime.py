@@ -249,6 +249,33 @@ class MobilityPublicRuntimeProvider:
         return keys
 
     def available_property_keys(self, asset_id: str) -> list[str]:
+        """Return the complete applicable canonical/public vocabulary for an asset.
+
+        The canonical per-asset catalog is itself a public product contract. Support
+        and current observation availability must not shrink that contract; consumers
+        use value/quality/provenance to distinguish available, unknown and unsupported
+        truth.
+        """
+        asset = self._asset(asset_id)
+        if asset is None:
+            return []
+        typ = asset.concept_id
+        keys: set[str] = set()
+        for key, definition in self.properties.items():
+            types = set(definition.get("applicable_asset_types") or [])
+            if not types or typ in types:
+                keys.add(key)
+        return sorted(keys)
+
+    def materialized_property_keys(self, asset_id: str) -> list[str]:
+        """Return only properties that deserve a concrete Home Assistant entity.
+
+        A source-backed property materialises when the accepted binding declares the
+        capability, even while its current source state is unknown/unavailable. Values
+        produced by Mobility configuration or derivation materialise from the canonical
+        snapshot. Unsupported catalog vocabulary stays in the public contract but does
+        not create permanent Unknown entities on the logical HA device.
+        """
         asset = self._asset(asset_id)
         if asset is None:
             return []
@@ -257,18 +284,13 @@ class MobilityPublicRuntimeProvider:
         supported = set(self._capability_supported_keys(asset_id))
         supported.update((snap.values if snap else {}).keys())
 
-        # The canonical per-asset catalog is itself a public product contract. Every
-        # applicable property therefore remains placed even when its current observation
-        # is unknown. Capability diagnostics still distinguish unsupported/missing source
-        # evidence; removing the row here makes profiles, editable configuration and the
-        # layout contract disappear from consumers.
-        for key, definition in self.properties.items():
-            types = set(definition.get("applicable_asset_types") or [])
-            if types and typ not in types:
-                continue
-            supported.add(key)
+        # Mobility-owned configured values may exist before the next runtime refresh.
+        config_values = getattr(self.manager, "domain_config", None)
+        asset_values = getattr(config_values, "asset_values", None)
+        if callable(asset_values):
+            supported.update(asset_values(asset_id).keys())
 
-        # Aliases follow their canonical supported key instead of becoming a second fact engine.
+        # Compatibility aliases materialise only when their canonical fact does.
         for alias, canonical in self.aliases.items():
             definition = self.properties.get(alias) or {}
             types = set(definition.get("applicable_asset_types") or [])
@@ -276,12 +298,32 @@ class MobilityPublicRuntimeProvider:
                 supported.add(alias)
 
         supported.update({"asset.lifecycle_status", "asset.availability_state", f"{typ}.health", f"{typ}.health_reason"})
-        return sorted(k for k in supported if k in self.properties and (not self.properties[k].get("applicable_asset_types") or typ in self.properties[k].get("applicable_asset_types")))
+        return sorted(
+            key
+            for key in supported
+            if key in self.properties
+            and (
+                not self.properties[key].get("applicable_asset_types")
+                or typ in self.properties[key].get("applicable_asset_types")
+            )
+        )
 
     def available_scalar_properties(self) -> list[dict[str, Any]]:
+        """Canonical/public scalar contract rows; not the HA entity materialisation set."""
         rows = []
         for asset_id, asset in sorted(self.manager.assets.items()):
             for key in self.available_property_keys(asset_id):
+                definition = self.property_definition(key, asset.concept_id) or {}
+                if definition.get("entity_type", "sensor") != "sensor":
+                    continue
+                rows.append({"asset_id": asset_id, "property_key": key, **definition})
+        return rows
+
+    def materialized_scalar_properties(self) -> list[dict[str, Any]]:
+        """Concrete HA sensor rows without unsupported-catalog Unknown pollution."""
+        rows = []
+        for asset_id, asset in sorted(self.manager.assets.items()):
+            for key in self.materialized_property_keys(asset_id):
                 definition = self.property_definition(key, asset.concept_id) or {}
                 if definition.get("entity_type", "sensor") != "sensor":
                     continue
@@ -404,10 +446,38 @@ class MobilityExperienceProvider:
         access = {k: self._v(asset_id, k) for k in self._ACCESS_KEYS}
         access = {k: v for k, v in access.items() if v is not None}
         unsafe = sorted(k for k, v in access.items() if str(v).lower() in self.unsafe)
+
+        lock_keys = ("vehicle.security_state", "vehicle.lock_state", "vehicle.doors_locked")
+        door_keys = (
+            "vehicle.door_front_left_state", "vehicle.door_front_right_state",
+            "vehicle.door_rear_left_state", "vehicle.door_rear_right_state",
+            "vehicle.trunk_state", "vehicle.hood_state",
+        )
+        window_keys = ("vehicle.window_fl_state", "vehicle.window_fr_state", "vehicle.window_rl_state", "vehicle.window_rr_state")
+        lock_proven = any(k in access and str(access[k]).lower() not in self.unsafe for k in lock_keys)
+        doors_closed = (
+            ("vehicle.opening_state" in access and str(access["vehicle.opening_state"]).lower() not in self.unsafe)
+            or all(k in access and str(access[k]).lower() not in self.unsafe for k in door_keys)
+        )
+        windows_closed = (
+            ("vehicle.windows_locked" in access and str(access["vehicle.windows_locked"]).lower() not in self.unsafe)
+            or all(k in access and str(access[k]).lower() not in self.unsafe for k in window_keys)
+        )
+        secure_proven = lock_proven and doors_closed and windows_closed
+
         if unsafe:
             security_i = self._intel("attention", "warning", "Check vehicle", "Unsafe/open state: " + ", ".join(unsafe), "property_backed_security", "measured", list(self._ACCESS_KEYS))
+        elif secure_proven:
+            security_i = self._intel("ok", "normal", "Secure", "Lock and opening coverage confirm the vehicle is secured", "property_backed_security", "derived", list(self._ACCESS_KEYS))
         elif access:
-            security_i = self._intel("ok", "normal", "Secure", "No open/unlocked condition detected", "property_backed_security", "derived", list(self._ACCESS_KEYS))
+            missing_coverage = []
+            if not lock_proven:
+                missing_coverage.append("lock")
+            if not doors_closed:
+                missing_coverage.append("doors")
+            if not windows_closed:
+                missing_coverage.append("windows")
+            security_i = self._intel("unknown", "unknown", "Security partially known", "Missing authoritative coverage: " + ", ".join(missing_coverage), "partial_security_coverage", "partial", list(self._ACCESS_KEYS))
         else:
             security_i = self._intel("unknown", "unknown", "No security data", "No security data", "no_security_data", "missing", list(self._ACCESS_KEYS))
 
@@ -424,6 +494,9 @@ class MobilityExperienceProvider:
             "vehicle.oil_level_state", "vehicle.oil_dipstick_state",
             "vehicle.inspection_due_days", "vehicle.inspection_due_km", "vehicle.inspection_interval_days", "vehicle.inspection_interval_km",
             "vehicle.tire_health_state", "vehicle.maintenance_state",
+            "vehicle.engine_warning_state", "vehicle.coolant_level_warning_state",
+            "vehicle.brake_fluid_warning_state", "vehicle.wash_water_warning_state",
+            "vehicle.starter_battery_state",
             "vehicle.tire_pressure_delta_fl_bar", "vehicle.tire_pressure_delta_fr_bar", "vehicle.tire_pressure_delta_rl_bar", "vehicle.tire_pressure_delta_rr_bar",
             "vehicle.tire_pressure_fl_bar", "vehicle.tire_pressure_fr_bar", "vehicle.tire_pressure_rl_bar", "vehicle.tire_pressure_rr_bar",
             "vehicle.tire_pressure_delta_spare_bar", "vehicle.tire_pressure_spare_bar",
@@ -446,7 +519,7 @@ class MobilityExperienceProvider:
         elif oil_km is not None: summaries.append(f"Oil in {int(oil_km)} km")
         if insp_days is not None: summaries.append(f"Inspection in {int(insp_days)} d")
         elif insp_km is not None: summaries.append(f"Inspection in {int(insp_km)} km")
-        summary = "; ".join(summaries) if summaries else ("No maintenance data" if not present else "Maintenance data available")
+        summary = "; ".join(summaries) if summaries else ("No maintenance data" if not present else ("Vehicle needs attention" if attention else "Maintenance data available"))
         pressure_values={k:v for k,v in due_fields.items() if "tire_pressure_" in k and v is not None}
         tire_attention=[k for k in attention if "tire_" in k]
         tire_state=due_fields.get("vehicle.tire_health_state") or ("attention" if tire_attention else ("ok" if pressure_values else "unknown"))

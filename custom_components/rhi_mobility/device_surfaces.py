@@ -274,14 +274,23 @@ def logical_surface_device_info(surface_id: str, name: str, model: str, *, devic
     }
 
 
-def source_binding_device_info(asset_id: str, source_key: str, integration: str | None) -> dict[str, Any]:
-    """Project one accepted physical source as a diagnostic child of a logical asset."""
-    label = integration or "source"
-    return {
-        "identifiers": {(DOMAIN, f"source:{asset_id}:{source_key}")},
-        "name": f"{label} source",
-        "manufacturer": "Robotix",
-        "model": "Accepted Source Binding",
-        "sw_version": RELEASE,
+def source_binding_device_info(asset_id: str, source_device: Any) -> dict[str, Any] | None:
+    """Attach diagnostics to the actual accepted HA source device."""
+    if source_device is None:
+        return None
+    identifiers = set(getattr(source_device, "identifiers", set()) or set())
+    connections = set(getattr(source_device, "connections", set()) or set())
+    if not identifiers and not connections:
+        return None
+    info: dict[str, Any] = {
         "via_device": (DOMAIN, asset_id),
     }
+    if identifiers:
+        info["identifiers"] = identifiers
+    if connections:
+        info["connections"] = connections
+    for key in ("name", "manufacturer", "model", "sw_version", "hw_version"):
+        value = getattr(source_device, key, None)
+        if value not in (None, ""):
+            info[key] = value
+    return info

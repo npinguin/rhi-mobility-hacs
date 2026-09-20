@@ -4267,6 +4267,96 @@
           ],
           "required": false,
           "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_engine_warning_state": {
+          "normalizer": "maintenance_state",
+          "outputs": [
+            "vehicle.engine_warning_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_coolant_level_warning_state": {
+          "normalizer": "maintenance_state",
+          "outputs": [
+            "vehicle.coolant_level_warning_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_brake_fluid_warning_state": {
+          "normalizer": "maintenance_state",
+          "outputs": [
+            "vehicle.brake_fluid_warning_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_wash_water_warning_state": {
+          "normalizer": "maintenance_state",
+          "outputs": [
+            "vehicle.wash_water_warning_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
+        },
+        "vehicle_starter_battery_state": {
+          "normalizer": "maintenance_state",
+          "outputs": [
+            "vehicle.starter_battery_state"
+          ],
+          "precedence": 10,
+          "usage": "observation",
+          "technical_capabilities": {
+            "any_of": [
+              "state_observation"
+            ]
+          },
+          "allowed_source_kinds": [
+            "entity"
+          ],
+          "required": false,
+          "cardinality": "zero_or_one_per_group"
         }
       },
       "command_rules": {
@@ -4487,7 +4577,12 @@
         "compat_vehicle_bcam_activation_state",
         "compat_vehicle_only_own_current_state",
         "compat_vehicle_source_model",
-        "vehicle_charge_mode_write"
+        "vehicle_charge_mode_write",
+        "vehicle_engine_warning_state",
+        "vehicle_coolant_level_warning_state",
+        "vehicle_brake_fluid_warning_state",
+        "vehicle_wash_water_warning_state",
+        "vehicle_starter_battery_state"
       ],
       "topology": {
         "candidate_scope": "config_entry",

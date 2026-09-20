@@ -362,10 +362,10 @@ def tire_health_state(integration_domain: str, value: Any) -> dict[str,str | Non
 def maintenance_state(integration_domain: str, value: Any) -> dict[str,str | None]:
     key=_canon_token(value)
     if key is None:return {'value':None}
-    if key in {'ok','normal','not_due','good'}:return {'value':'ok'}
+    if key in {'ok','normal','not_due','good','green','false','off','inactive'}:return {'value':'ok'}
     if key in {'due','service_due','service_required','inspection_due'}:return {'value':'due'}
-    if key in {'warning','warn'}:return {'value':'warning'}
-    if key in {'critical','fault','error'}:return {'value':'critical'}
+    if key in {'warning','warn','yellow','true','on','active'}:return {'value':'warning'}
+    if key in {'critical','fault','error','red'}:return {'value':'critical'}
     return {'value':'unknown'}
 
 

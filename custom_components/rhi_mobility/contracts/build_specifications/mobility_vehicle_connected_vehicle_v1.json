@@ -153,18 +153,6 @@
                 "value": "cruising_range_combined"
               }
             ]
-          },
-          {
-            "integration_domain": "cupra_eu_data_act",
-            "raw_capability_id": "range_total_km",
-            "source_kind": "entity",
-            "all_of": [
-              {
-                "field": "source_identity.unique_id",
-                "operator": "ends_with",
-                "value": "value_of_the_primary_range"
-              }
-            ]
           }
         ]
       },
@@ -1107,6 +1095,18 @@
                 "value": "windows_locked"
               }
             ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "windows_locked",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_windowstatusoverall"
+              }
+            ]
           }
         ]
       },
@@ -1770,6 +1770,18 @@
                 "value": "tire_health_state"
               }
             ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "tire_health_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tirewarningsrdk"
+              }
+            ]
           }
         ]
       },
@@ -1819,6 +1831,30 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "tire_pressure_fl_bar"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "tire_pressure_fl_bar",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tirepressurefrontleft"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "tire_pressure_fl_bar",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tyre_pressure_actual_front_left"
               }
             ]
           }
@@ -1872,6 +1908,30 @@
                 "value": "tire_pressure_fr_bar"
               }
             ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "tire_pressure_fr_bar",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tirepressurefrontright"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "tire_pressure_fr_bar",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tyre_pressure_actual_front_right"
+              }
+            ]
           }
         ]
       },
@@ -1923,6 +1983,30 @@
                 "value": "tire_pressure_rl_bar"
               }
             ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "tire_pressure_rl_bar",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tirepressurerearleft"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "tire_pressure_rl_bar",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tyre_pressure_actual_rear_left"
+              }
+            ]
           }
         ]
       },
@@ -1972,6 +2056,30 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "tire_pressure_rr_bar"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "tire_pressure_rr_bar",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tirepressurerearright"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "tire_pressure_rr_bar",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tyre_pressure_actual_rear_right"
               }
             ]
           }
@@ -2229,6 +2337,18 @@
                 "value": "oil_level_pct"
               }
             ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "oil_level_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_oil_level_actual_level"
+              }
+            ]
           }
         ]
       },
@@ -2309,6 +2429,18 @@
             ]
           },
           {
+            "integration_domain": "audiconnect",
+            "raw_capability_id": "fuel_level_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_sensor_tank_level"
+              }
+            ]
+          },
+          {
             "integration_domain": "mbapi2020",
             "raw_capability_id": "fuel_level_pct",
             "source_kind": "entity",
@@ -2329,6 +2461,30 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "fuel_level_pct"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "fuel_level_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_tanklevelpercent"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "fuel_level_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_fuel_level_current_level"
               }
             ]
           }
@@ -2380,6 +2536,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "fuel_range_km"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "fuel_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_rangeliquid"
               }
             ]
           }
@@ -4385,6 +4553,18 @@
             ]
           },
           {
+            "integration_domain": "audiconnect",
+            "raw_capability_id": "range_total_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_sensor_hybrid_range"
+              }
+            ]
+          },
+          {
             "integration_domain": "mbapi2020",
             "raw_capability_id": "range_total_km",
             "source_kind": "entity",
@@ -4458,6 +4638,18 @@
                 "value": "primary_range_km"
               }
             ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "primary_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_cruising_range_primary_engine"
+              }
+            ]
           }
         ]
       },
@@ -4507,6 +4699,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "secondary_range_km"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "secondary_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_cruising_range_secondary_engine"
               }
             ]
           }
@@ -5303,18 +5507,6 @@
             ]
           },
           {
-            "integration_domain": "mbapi2020",
-            "raw_capability_id": "lock_state",
-            "source_kind": "entity",
-            "all_of": [
-              {
-                "field": "source_identity.unique_id",
-                "operator": "ends_with",
-                "value": "_lock"
-              }
-            ]
-          },
-          {
             "integration_domain": "cupra_eu_data_act",
             "raw_capability_id": "lock_state",
             "source_kind": "entity",
@@ -5323,6 +5515,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "lock_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "lock_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_lock"
               }
             ]
           }
@@ -5427,6 +5631,18 @@
                 "value": "window_fl_position_pct"
               }
             ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "window_fl_position_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_position_front_left_door_window_lifter"
+              }
+            ]
           }
         ]
       },
@@ -5476,6 +5692,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "window_fr_position_pct"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "window_fr_position_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_position_front_right_door_window_lifter"
               }
             ]
           }
@@ -5529,6 +5757,18 @@
                 "value": "window_rl_position_pct"
               }
             ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "window_rl_position_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_position_rear_left_door_window_lifter"
+              }
+            ]
           }
         ]
       },
@@ -5578,6 +5818,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "window_rr_position_pct"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "window_rr_position_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_position_rear_right_door_window_lifter"
               }
             ]
           }
@@ -5731,6 +5983,30 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "sunroof_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "sunroof_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_sunroofstatus"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "sunroof_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_state_sunroof_motor_hood_1"
               }
             ]
           }
@@ -5988,6 +6264,18 @@
                 "value": "door_front_left_lock_state"
               }
             ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "door_front_left_lock_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_locked_state_front_left_door"
+              }
+            ]
           }
         ]
       },
@@ -6037,6 +6325,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "door_front_right_lock_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "door_front_right_lock_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_locked_state_front_right_door"
               }
             ]
           }
@@ -6090,6 +6390,18 @@
                 "value": "door_rear_left_lock_state"
               }
             ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "door_rear_left_lock_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_locked_state__rear_left_door"
+              }
+            ]
           }
         ]
       },
@@ -6139,6 +6451,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "door_rear_right_lock_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "door_rear_right_lock_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_locked_state_rear_right_door"
               }
             ]
           }
@@ -6241,6 +6565,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "hood_lock_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "hood_lock_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_locked_state_front_engine_bonnet"
               }
             ]
           }
@@ -6394,6 +6730,30 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "trunk_lock_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "trunk_lock_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_doorlockstatusdecklid"
+              }
+            ]
+          },
+          {
+            "integration_domain": "cupra_eu_data_act",
+            "raw_capability_id": "trunk_lock_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_locked_state_tailgate"
               }
             ]
           }
@@ -6676,6 +7036,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "oil_level_state"
+              }
+            ]
+          },
+          {
+            "integration_domain": "audiconnect",
+            "raw_capability_id": "oil_level_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_binary_sensor_oil_level_binary"
               }
             ]
           },
@@ -8038,6 +8410,141 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "charge_mode_selection"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "vehicle_engine_warning_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "engine_warning_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_warningenginelight"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "vehicle_coolant_level_warning_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "coolant_level_warning_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_warningcoolantlevellow"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "vehicle_brake_fluid_warning_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "brake_fluid_warning_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_warningbrakefluid"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "vehicle_wash_water_warning_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "wash_water_warning_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_warningwashwater"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "input_id": "vehicle_starter_battery_state",
+        "technical_capabilities": {
+          "any_of": [
+            "state_observation"
+          ]
+        },
+        "allowed_source_kinds": [
+          "entity"
+        ],
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
+        "integration_matches": [
+          {
+            "integration_domain": "mbapi2020",
+            "raw_capability_id": "starter_battery_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_starterbatterystate"
               }
             ]
           }

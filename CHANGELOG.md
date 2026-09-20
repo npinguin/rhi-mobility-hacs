@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.9.21 — product source normalization
+
+- Bind current observed Mercedes, AudiConnect and Cupra Data Act product facts at the normalization boundary.
+- Project authoritative combined range to canonical total range and close Mercedes liquid/fuel range input.
+- Prevent false Secure conclusions when door/window coverage is partial.
+- Keep intelligence canonical-fact-only and behind the public runtime facade.
+- Reuse each accepted source's actual Home Assistant device identity in Connected devices; integration-named proxy devices are no longer created.
+- Materialize product properties only when backed by an accepted capability, a configured/derived value, or an explicit editor; unsupported catalog attributes no longer appear permanently as Unknown.
+
 ## M0.9.20 — handoff ownership boundary
 
 - Restrict Foundation handoff reconstruction to Foundation-linked technical assets.

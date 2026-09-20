@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import device_registry as dr
 
 from .device_surfaces import logical_surface_device_info, source_binding_device_info
 from .profile_presentation import profile_image_url, profile_metadata
@@ -54,7 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     @callback
     def sync_properties() -> None:
-        rows = public.available_scalar_properties()
+        rows = public.materialized_scalar_properties()
         wanted = {(row["asset_id"], row["property_key"]) for row in rows}
         for key in list(created):
             if key in wanted:
@@ -86,6 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             (asset_id, str(row["source_key"])): row
             for asset_id in manager.assets
             for row in source_diagnostics.sources(asset_id)
+            if row.get("device_registry_id")
         }
         for key in list(created_source_children):
             if key in binding_rows:
@@ -96,7 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             if key in created_source_children:
                 continue
             asset_id, source_key = key
-            entity = SourceBindingStatusSensor(entry.entry_id, asset_id, source_key, row, source_diagnostics, manager)
+            entity = SourceBindingStatusSensor(hass, entry.entry_id, asset_id, source_key, row, source_diagnostics, manager)
             created_source_children[key] = entity
             new.append(entity)
         if new:
@@ -440,18 +442,14 @@ class SourceDiagnosticSensor(SensorEntity):
 
 
 class SourceBindingStatusSensor(SensorEntity):
-    """One compact diagnostic entity on a source child device.
-
-    The child device exists only to make accepted source provenance navigable from
-    the logical Mobility device. It never becomes a second topology/source authority.
-    """
+    """One compact diagnostic entity attached to the accepted HA source device."""
     _attr_has_entity_name = True
     _attr_should_poll = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_icon = "mdi:connection"
     _attr_name = "Binding Status"
 
-    def __init__(self, entry_id, asset_id, source_key, initial_row, provider, manager):
+    def __init__(self, hass, entry_id, asset_id, source_key, initial_row, provider, manager):
         self.asset_id = asset_id
         self.source_key = source_key
         self.provider = provider
@@ -459,7 +457,8 @@ class SourceBindingStatusSensor(SensorEntity):
         integration = initial_row.get("integration")
         self._attr_unique_id = f"{DOMAIN}:{asset_id}:source_binding:{source_key}:status"
         self._attr_suggested_object_id = f"{DOMAIN}_{asset_id}_{integration or 'source'}_binding_status"
-        self._attr_device_info = source_binding_device_info(asset_id, source_key, integration)
+        source_device = dr.async_get(hass).async_get(str(initial_row.get("device_registry_id") or ""))
+        self._attr_device_info = source_binding_device_info(asset_id, source_device)
 
     async def async_added_to_hass(self):
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id, self._changed))

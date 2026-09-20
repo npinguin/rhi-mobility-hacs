@@ -19,7 +19,7 @@
     "applicability_explicit": true,
     "value_semantics_explicit": true
   },
-  "property_count": 262,
+  "property_count": 268,
   "properties": {
     "asset.availability_state": {
       "component_id": "identity",
@@ -10647,6 +10647,221 @@
         "SOURCE"
       ],
       "value_type": "number"
+    },
+    "vehicle.engine_warning_state": {
+      "component_id": "maintenance",
+      "section_id": "overview",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Engine warning",
+      "render_as": "status",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "placements": {
+        "vehicle": {
+          "component_id": "maintenance",
+          "section_id": "overview",
+          "visibility": "product",
+          "render_as": "status",
+          "display_order": 40,
+          "friendly_name": "Engine warning",
+          "unit": null,
+          "empty_state_behavior": "hide_if_unavailable",
+          "datatype": "derived_state"
+        }
+      },
+      "v1_drop_in": false,
+      "producer_types": [
+        "SOURCE"
+      ],
+      "builder_sources": [
+        {
+          "builder_id": "mobility.vehicle.connected_vehicle.v1",
+          "input_id": "vehicle_engine_warning_state",
+          "usage": "observation",
+          "normalizer": "maintenance_state"
+        }
+      ],
+      "truth_precedence": [
+        "SOURCE"
+      ],
+      "value_type": "enum",
+      "state_family": "maintenance_state"
+    },
+    "vehicle.coolant_level_warning_state": {
+      "component_id": "maintenance",
+      "section_id": "overview",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Coolant level warning",
+      "render_as": "status",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "placements": {
+        "vehicle": {
+          "component_id": "maintenance",
+          "section_id": "overview",
+          "visibility": "product",
+          "render_as": "status",
+          "display_order": 41,
+          "friendly_name": "Coolant level warning",
+          "unit": null,
+          "empty_state_behavior": "hide_if_unavailable",
+          "datatype": "derived_state"
+        }
+      },
+      "v1_drop_in": false,
+      "producer_types": [
+        "SOURCE"
+      ],
+      "builder_sources": [
+        {
+          "builder_id": "mobility.vehicle.connected_vehicle.v1",
+          "input_id": "vehicle_coolant_level_warning_state",
+          "usage": "observation",
+          "normalizer": "maintenance_state"
+        }
+      ],
+      "truth_precedence": [
+        "SOURCE"
+      ],
+      "value_type": "enum",
+      "state_family": "maintenance_state"
+    },
+    "vehicle.brake_fluid_warning_state": {
+      "component_id": "maintenance",
+      "section_id": "overview",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Brake fluid warning",
+      "render_as": "status",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "placements": {
+        "vehicle": {
+          "component_id": "maintenance",
+          "section_id": "overview",
+          "visibility": "product",
+          "render_as": "status",
+          "display_order": 42,
+          "friendly_name": "Brake fluid warning",
+          "unit": null,
+          "empty_state_behavior": "hide_if_unavailable",
+          "datatype": "derived_state"
+        }
+      },
+      "v1_drop_in": false,
+      "producer_types": [
+        "SOURCE"
+      ],
+      "builder_sources": [
+        {
+          "builder_id": "mobility.vehicle.connected_vehicle.v1",
+          "input_id": "vehicle_brake_fluid_warning_state",
+          "usage": "observation",
+          "normalizer": "maintenance_state"
+        }
+      ],
+      "truth_precedence": [
+        "SOURCE"
+      ],
+      "value_type": "enum",
+      "state_family": "maintenance_state"
+    },
+    "vehicle.wash_water_warning_state": {
+      "component_id": "maintenance",
+      "section_id": "overview",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Wash water warning",
+      "render_as": "status",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "placements": {
+        "vehicle": {
+          "component_id": "maintenance",
+          "section_id": "overview",
+          "visibility": "product",
+          "render_as": "status",
+          "display_order": 43,
+          "friendly_name": "Wash water warning",
+          "unit": null,
+          "empty_state_behavior": "hide_if_unavailable",
+          "datatype": "derived_state"
+        }
+      },
+      "v1_drop_in": false,
+      "producer_types": [
+        "SOURCE"
+      ],
+      "builder_sources": [
+        {
+          "builder_id": "mobility.vehicle.connected_vehicle.v1",
+          "input_id": "vehicle_wash_water_warning_state",
+          "usage": "observation",
+          "normalizer": "maintenance_state"
+        }
+      ],
+      "truth_precedence": [
+        "SOURCE"
+      ],
+      "value_type": "enum",
+      "state_family": "maintenance_state"
+    },
+    "vehicle.starter_battery_state": {
+      "component_id": "maintenance",
+      "section_id": "overview",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Starter battery state",
+      "render_as": "status",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "placements": {
+        "vehicle": {
+          "component_id": "maintenance",
+          "section_id": "overview",
+          "visibility": "product",
+          "render_as": "status",
+          "display_order": 44,
+          "friendly_name": "Starter battery state",
+          "unit": null,
+          "empty_state_behavior": "hide_if_unavailable",
+          "datatype": "derived_state"
+        }
+      },
+      "v1_drop_in": false,
+      "producer_types": [
+        "SOURCE"
+      ],
+      "builder_sources": [
+        {
+          "builder_id": "mobility.vehicle.connected_vehicle.v1",
+          "input_id": "vehicle_starter_battery_state",
+          "usage": "observation",
+          "normalizer": "maintenance_state"
+        }
+      ],
+      "truth_precedence": [
+        "SOURCE"
+      ],
+      "value_type": "enum",
+      "state_family": "maintenance_state"
     }
   },
   "compatibility": {

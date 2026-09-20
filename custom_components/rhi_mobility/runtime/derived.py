@@ -64,6 +64,15 @@ def _derive_total_range(values: dict[str, Any], quality: dict[str, str]) -> None
     """
     if _num(values.get("vehicle.range_total_km")) is not None:
         return
+
+    # Some OEMs expose one authoritative combined/total range through the older
+    # canonical vehicle.range_km input. Preserve that direct source truth before
+    # attempting typed propulsion derivation; this is projection, not estimation.
+    direct_range = _num(values.get("vehicle.range_km"))
+    if direct_range is not None:
+        _set(values, quality, "vehicle.range_total_km", round(direct_range, 3), "canonical_direct_range_projection")
+        return
+
     kind=_vehicle_kind(values.get("vehicle.kind"))
     ev_range=_num(values.get("vehicle.ev_range_km"))
     fuel_range=_num(values.get("vehicle.fuel_range_km"))
