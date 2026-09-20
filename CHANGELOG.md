@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.9.20 — handoff ownership boundary
+
+- Restrict Foundation handoff reconstruction to Foundation-linked technical assets.
+- Preserve Mobility-owned configured guest vehicles and their logical runtime identity across Foundation handoffs.
+- Keep Mobility-authored profiles and semantic configuration independent of Foundation handoff contents.
+- Remove local guest assets only through explicit Mobility configuration changes, never because Foundation omits them.
+- Preserve M0.9.19 diagnostic Connected devices projection and R43.2.65 / MOBILITY_PUBLIC_RUNTIME_V1 unchanged.
+- Known accepted technical debt = 0; known accepted feature debt = 0; exact target-runtime qualification remains mandatory.
+
 ## M0.9.19 — logical device debug surfaces
 
 - Keep each canonical Vehicle/Charger as one stable Home Assistant logical device and add deduplicated AcceptedSourceBinding diagnostic child devices so source provenance appears under Connected devices.

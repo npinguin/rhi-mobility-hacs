@@ -424,7 +424,15 @@ class MobilityRuntimeManager:
                 })
                 _LOGGER.warning('Mobility selected input isolated as invalid builder=%s integration=%s: %s',builder_id,selection.get('integration_domain'),exc)
 
-        proposed_assets: dict[str,LogicalAssetBinding]={}
+        # Foundation handoff owns only technically sourced runtime objects. Mobility-owned
+        # local objects (guest vehicles) are configuration state and must survive a handoff
+        # with object identity intact. They are reconciled only by Mobility configuration.
+        local_assets={
+            asset_id: asset
+            for asset_id, asset in self.assets.items()
+            if asset.source_integration_domain == "rhi_mobility"
+        }
+        proposed_assets: dict[str,LogicalAssetBinding]=dict(local_assets)
         proposed_relationships: dict[str,RelationshipSnapshot]={}
         selection_asset_roles: dict[str,set[tuple[str,str]]]={}
         selection_asset_ids: dict[str,set[str]]={}
@@ -529,17 +537,30 @@ class MobilityRuntimeManager:
                 }
 
             guest_rows = self.domain_config.guest_vehicles() if self.domain_config is not None and hasattr(self.domain_config, 'guest_vehicles') else {}
-            for asset_id, row in sorted(guest_rows.items()):
-                if not isinstance(row, dict) or not str(asset_id).startswith('vehicle_guest_'):
+            configured_guest_ids={
+                str(asset_id) for asset_id,row in guest_rows.items()
+                if isinstance(row,dict) and str(asset_id).startswith('vehicle_guest_')
+            }
+            # Remove a local guest only because Mobility configuration removed it, never
+            # because Foundation omitted it from a technical handoff.
+            for asset_id in set(local_assets)-configured_guest_ids:
+                proposed_assets.pop(asset_id,None)
+            for asset_id,row in sorted(guest_rows.items()):
+                if not isinstance(row,dict) or not str(asset_id).startswith('vehicle_guest_'):
                     continue
-                if asset_id in proposed_assets:
+                existing=proposed_assets.get(asset_id)
+                if existing is not None and existing.source_integration_domain != 'rhi_mobility':
                     raise ValueError(f'configured guest vehicle conflicts with technical asset {asset_id}')
-                proposed_assets[asset_id] = LogicalAssetBinding(
-                    asset_id, 'vehicle', str(row.get('name') or 'Guest vehicle').strip(), {},
-                    source_integration_domain='rhi_mobility',
-                )
-                max_cfg_by_asset[asset_id] = int(getattr(self.domain_config, 'revision', 0) or 0)
-                max_build_by_asset[asset_id] = 0
+                if existing is None:
+                    proposed_assets[asset_id]=LogicalAssetBinding(
+                        asset_id,'vehicle',str(row.get('name') or 'Guest vehicle').strip(),{},
+                        source_integration_domain='rhi_mobility',
+                    )
+                else:
+                    # Display configuration may change, but the logical guest object remains.
+                    existing.display_name=str(row.get('name') or 'Guest vehicle').strip()
+                max_cfg_by_asset[asset_id]=int(getattr(self.domain_config,'revision',0) or 0)
+                max_build_by_asset[asset_id]=0
 
         except Exception as exc:
             self.last_build_attempt={
@@ -553,7 +574,15 @@ class MobilityRuntimeManager:
         old=(self.assets,self.snapshots,self.relationships,self._selection_asset_roles,self._selection_asset_ids,
              self._selection_relationship_ids,self._selection_diagnostics,self._capability_diagnostics,self._binding_plans)
         try:
-            for asset_id in list(self._unsubs): self._clear_asset_listener(asset_id)
+            # Rebind only Foundation-owned technical assets. Local Mobility-owned guests
+            # keep their subscriptions/snapshots across Foundation handoffs.
+            for asset_id in list(self._unsubs):
+                if asset_id not in local_assets or asset_id not in proposed_assets:
+                    self._clear_asset_listener(asset_id)
+            previous_local_snapshots={
+                asset_id:snapshot for asset_id,snapshot in self.snapshots.items()
+                if asset_id in local_assets and asset_id in proposed_assets
+            }
             self.assets=proposed_assets
             self.relationships=proposed_relationships
             self._selection_asset_roles=selection_asset_roles
@@ -561,13 +590,21 @@ class MobilityRuntimeManager:
             self._selection_relationship_ids=selection_relationship_ids
             self._selection_diagnostics=selection_diagnostics
             self._capability_diagnostics=capability_diagnostics
-            self.snapshots={}
-            self._health_cache={}
+            self.snapshots=dict(previous_local_snapshots)
+            self._health_cache={
+                asset_id:value for asset_id,value in self._health_cache.items()
+                if asset_id in previous_local_snapshots
+            }
             self._binding_plans={
                 aid: build_active_binding_plan(asset,self.registry)
                 for aid,asset in self.assets.items()
             }
             for aid,asset in self.assets.items():
+                if aid in previous_local_snapshots:
+                    snapshot=self.snapshots[aid]
+                    snapshot.display_name=asset.display_name
+                    snapshot.source_configuration_revision=max_cfg_by_asset.get(aid,snapshot.source_configuration_revision)
+                    continue
                 self.snapshots[aid]=RuntimeSnapshot(
                     asset_id=asset.asset_id,concept_id=asset.concept_id,display_name=asset.display_name,
                     source_configuration_revision=max_cfg_by_asset.get(aid,0),build_input_revision=max_build_by_asset.get(aid,0),
