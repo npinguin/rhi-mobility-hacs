@@ -127,7 +127,17 @@ class MobilityDomainSupervisoryStatusProvider:
         if not assets:
             return "CONFIGURATION_REQUIRED", issues
 
-        missing = sorted(set(assets) - set(snapshots))
+        configuration_value = getattr(self.manager, "configuration_value", None)
+        active_asset_ids = {
+            asset_id for asset_id in assets
+            if str(
+                configuration_value(asset_id, "asset.lifecycle_status", "active")
+                if callable(configuration_value)
+                else "active"
+            ).lower() != "disabled"
+        }
+
+        missing = sorted(active_asset_ids - set(snapshots))
         if missing:
             issues.append(self._issue(
                 "mobility:runtime:snapshot_missing",
@@ -138,16 +148,6 @@ class MobilityDomainSupervisoryStatusProvider:
                 scope=missing[:20],
             ))
             return "BLOCKED", issues
-
-        configuration_value = getattr(self.manager, "configuration_value", None)
-        active_asset_ids = {
-            asset_id for asset_id in assets
-            if str(
-                configuration_value(asset_id, "asset.lifecycle_status", "active")
-                if callable(configuration_value)
-                else "active"
-            ).lower() != "disabled"
-        }
         health = {
             str(getattr(snapshot, "health", "UNKNOWN") or "UNKNOWN").upper()
             for snapshot in snapshots.values()

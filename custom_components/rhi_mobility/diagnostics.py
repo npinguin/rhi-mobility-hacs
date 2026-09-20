@@ -66,25 +66,38 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
     rows = []
     for asset_id, asset in sorted(manager.assets.items()):
         logical = device_registry.async_get_device(identifiers={(DOMAIN, asset_id)})
-        source_device_id = str(getattr(asset, "source_device_id", "") or "")
-        source = device_registry.async_get(source_device_id) if source_device_id else None
+        primary_source_device_id = str(getattr(asset, "source_device_id", "") or "")
+        expected_source_device_ids = sorted({
+            str(ref.device_id)
+            for binding in (getattr(asset, "source_bindings", {}) or {}).values()
+            for ref in (getattr(binding, "inputs", {}) or {}).values()
+            if getattr(ref, "device_id", None)
+        })
         binding_unique_prefix = f"{DOMAIN}:{asset_id}:source_binding:"
         binding_entries = [
             row for row in config_entries
             if str(getattr(row, "unique_id", "") or "").startswith(binding_unique_prefix)
         ]
+        actual_binding_device_ids = sorted({
+            str(row.device_id) for row in binding_entries if row.device_id
+        })
+        expected_set = set(expected_source_device_ids)
+        actual_set = set(actual_binding_device_ids)
         rows.append({
             "asset_id": asset_id,
             "lifecycle_status": _asset_lifecycle(manager, asset_id),
             "logical_device_id": None if logical is None else logical.id,
-            "source_device_id": source_device_id or None,
-            "source_device_present": source is not None if source_device_id else None,
+            "primary_source_device_id": primary_source_device_id or None,
+            "expected_source_device_ids": expected_source_device_ids,
+            "source_devices_present": {
+                device_id: device_registry.async_get(device_id) is not None
+                for device_id in expected_source_device_ids
+            },
             "binding_diagnostic_entity_ids": [row.entity_id for row in binding_entries],
-            "binding_diagnostic_device_ids": sorted({str(row.device_id) for row in binding_entries if row.device_id}),
-            "binding_on_exact_source_device": (
-                True if not binding_entries or not source_device_id
-                else all(str(row.device_id or "") == source_device_id for row in binding_entries)
-            ),
+            "binding_diagnostic_device_ids": actual_binding_device_ids,
+            "missing_binding_source_device_ids": sorted(expected_set - actual_set),
+            "unexpected_binding_device_ids": sorted(actual_set - expected_set),
+            "binding_on_exact_source_device": expected_set == actual_set,
         })
 
     allowed_ids = set(manager.assets) | {

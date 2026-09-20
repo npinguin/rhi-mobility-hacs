@@ -171,6 +171,11 @@ class HealthSensor(RuntimeMonitoringSensor):
     def _asset_readiness(self):
         rows = []
         for asset_id in sorted(self.manager.assets):
+            lifecycle = str(
+                self.manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active"
+            ).lower()
+            if lifecycle == "disabled":
+                continue
             resolutions = self.resolver.resolve_asset(asset_id)
             rows.append(evaluate_asset_readiness(self.manager, self.controller, asset_id, resolutions.values()))
         return rows
@@ -255,8 +260,10 @@ class BuildSensor(RuntimeMonitoringSensor):
         status = self.manager.last_build_attempt.get("status")
         if status == "REJECTED":
             return "INVALID"
-        if status in {"ACCEPTED", "PARTIAL"}:
+        if status == "ACCEPTED":
             return "READY"
+        if status == "PARTIAL":
+            return "DEGRADED"
         if status == "REMOVED":
             return "EMPTY"
         return "WAITING"
@@ -264,14 +271,27 @@ class BuildSensor(RuntimeMonitoringSensor):
     @property
     def extra_state_attributes(self):
         attempt = self.manager.last_build_attempt
+        active_asset_ids = {
+            asset_id
+            for asset_id in self.manager.assets
+            if str(
+                self.manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active"
+            ).lower() != "disabled"
+        }
         return {
             "publication_revision": self.provider.publication_revision,
             "specification_count": len(self.provider.get_build_specifications()),
             "build_input_revision": int(attempt.get("build_input_revision", 0) or 0),
             "accepted_binding_count": len(self.manager.bindings),
-            "asset_count": len(self.manager.assets),
+            "configured_asset_count": len(self.manager.assets),
+            "active_runtime_asset_count": len(active_asset_ids),
+            "disabled_configured_asset_count": len(self.manager.assets) - len(active_asset_ids),
             "reason": attempt.get("error") if attempt.get("status") == "REJECTED" else attempt.get("status", "WAITING_FOR_FOUNDATION").lower(),
-            "legacy_snapshot_degraded_asset_count": sum(1 for s in self.manager.snapshots.values() if s.health != "OK"),
+            "legacy_snapshot_degraded_asset_count": sum(
+                1
+                for asset_id, snapshot in self.manager.snapshots.items()
+                if asset_id in active_asset_ids and snapshot.health != "OK"
+            ),
             "selection_error_count": int(attempt.get("selection_error_count", 0) or 0),
         }
 

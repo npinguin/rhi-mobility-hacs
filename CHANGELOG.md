@@ -1,12 +1,23 @@
+# Changelog
+
+## M0.9.25 — structural audit closure
+
+- Exclude lifecycle-disabled configured assets from operational Health/Build and snapshot-completeness degradation.
+- Render required build PARTIAL as DEGRADED instead of READY.
+- Count INVALID_VALUE source capability defects consistently.
+- Prove HA Binding Status placement against the complete expected physical source-device set for single- and multi-source assets.
+- Refresh active handover, pilot, upgrade/rollback and release evidence to the current release.
+- Harden release-integrity validation against stale active release authorities and release-name drift.
+- Serialize HACS publication behind successful exact-main Validate and publish the exact validated SHA.
+- Add behavioral regression coverage for lifecycle, registry projection and governance invariants.
+
+
 ## M0.9.24 — HA source device link closure
 
-- move Binding Status helper entities to the Home Assistant 2026.8+ `device_entry` linking contract;
-- attach diagnostics to the exact existing physical source DeviceEntry without copying identifiers/connections;
-- keep logical Mobility devices independent and preserve zero `via_device`/proxy topology;
-- preserve M0.9.23 canonical runtime, Shared Baseline 1.8.1 and R43.2.65 / MOBILITY_PUBLIC_RUNTIME_V1 compatibility unchanged;
-- exact target-HA runtime qualification remains mandatory.
-
-# Changelog
+- Attach Binding Status helper entities through the Home Assistant 2026.8+ entity `device_entry` contract to the exact existing physical source DeviceEntry.
+- Copy no source identifiers/connections and create no Mobility proxy or `via_device` provenance topology.
+- Keep logical Mobility Vehicle/Charger devices independent from physical source devices.
+- Preserve the frozen R43.2.65 / MOBILITY_PUBLIC_RUNTIME_V1 exterior.
 
 ## M0.9.23 — runtime diagnostics and device-projection closure
 
