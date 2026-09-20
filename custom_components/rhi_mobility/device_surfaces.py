@@ -77,6 +77,45 @@ class MobilitySourceDiagnosticsProvider:
         self.manager = manager
         self.public = public_provider
 
+    def sources(self, asset_id: str) -> list[dict[str, Any]]:
+        """Return deduplicated accepted physical sources for one logical asset.
+
+        This is a HA/debug projection only: AcceptedSourceBinding remains authority.
+        Sources are deduplicated by physical device when possible so one OCPP device
+        does not appear once per semantic source role.
+        """
+        asset = self.manager.assets.get(asset_id)
+        if asset is None:
+            return []
+        rows: dict[str, dict[str, Any]] = {}
+        for role, binding in sorted((getattr(asset, "source_bindings", {}) or {}).items()):
+            refs = list((getattr(binding, "inputs", {}) or {}).values())
+            device_id = next((ref.device_id for ref in refs if ref.device_id), None)
+            config_entry_id = next((ref.config_entry_id for ref in refs if ref.config_entry_id), None)
+            integration = str(getattr(binding, "integration_domain", "") or "") or None
+            key = device_id or f"{integration or 'unknown'}:{config_entry_id or getattr(binding, 'binding_id', role)}"
+            row = rows.setdefault(key, {
+                "source_key": key,
+                "integration": integration,
+                "device_registry_id": device_id,
+                "config_entry_id": config_entry_id,
+                "binding_ids": [],
+                "source_roles": [],
+                "input_count": 0,
+            })
+            row["binding_ids"].append(str(getattr(binding, "binding_id", "")))
+            row["source_roles"].append(str(role))
+            row["input_count"] += len(refs)
+        for row in rows.values():
+            row["binding_ids"] = sorted(set(row["binding_ids"]))
+            row["source_roles"] = sorted(set(row["source_roles"]))
+            row["source_device_url"] = _device_url(row["device_registry_id"])
+            row["source_integration_url"] = _integration_url(row["integration"])
+            row["source_integration_documentation_url"] = _integration_docs_url(row["integration"])
+            row["owner"] = DOMAIN
+            row["authority"] = "AcceptedSourceBinding"
+        return [rows[key] for key in sorted(rows)]
+
     def asset(self, asset_id: str) -> SourceDiagnosticSummary | None:
         asset = self.manager.assets.get(asset_id)
         if asset is None:
@@ -232,4 +271,17 @@ def logical_surface_device_info(surface_id: str, name: str, model: str, *, devic
         "manufacturer": "Robotix",
         "model": model,
         "sw_version": RELEASE,
+    }
+
+
+def source_binding_device_info(asset_id: str, source_key: str, integration: str | None) -> dict[str, Any]:
+    """Project one accepted physical source as a diagnostic child of a logical asset."""
+    label = integration or "source"
+    return {
+        "identifiers": {(DOMAIN, f"source:{asset_id}:{source_key}")},
+        "name": f"{label} source",
+        "manufacturer": "Robotix",
+        "model": "Accepted Source Binding",
+        "sw_version": RELEASE,
+        "via_device": (DOMAIN, asset_id),
     }

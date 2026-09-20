@@ -1,5 +1,14 @@
 # Changelog
 
+## M0.9.19 — logical device debug surfaces
+
+- Keep each canonical Vehicle/Charger as one stable Home Assistant logical device and add deduplicated AcceptedSourceBinding diagnostic child devices so source provenance appears under Connected devices.
+- Expose source integration/device navigation, config-entry identity, binding IDs, source roles and input count for operational verification without duplicating discovery or normalization authority.
+- Reconcile stale source-binding diagnostics with logical asset lifecycle.
+- Preserve M0.9.18 control behavior, R43.2.65 / MOBILITY_PUBLIC_RUNTIME_V1, canonical V2 ownership and Mobility→Energy contracts unchanged.
+- Keep Foundation lifecycle/revision convergence outside Mobility ownership.
+- Known accepted technical debt = 0; known accepted feature debt = 0; exact target-runtime qualification remains mandatory.
+
 ## M0.9.18 — existing contract runtime closure
 
 - Restore materialization of existing Mobility-owned profile and selected-charger configuration controls when their configured value is unset.

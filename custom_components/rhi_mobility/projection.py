@@ -8,7 +8,7 @@ from .profile_presentation import profile_metadata
 
 _LOGGER = logging.getLogger(__name__)
 
-_ASSET_MARKERS = {"property", "number", "select", "text", "switch", "command", "source_diag"}
+_ASSET_MARKERS = {"property", "number", "select", "text", "switch", "command", "source_diag", "source_binding"}
 
 
 def logical_device_info(hass: Any, entry_id: str, manager: Any, asset_id: str, *, model: str = "Mobility logical asset") -> dict[str, Any]:

@@ -6,7 +6,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .device_surfaces import logical_surface_device_info
+from .device_surfaces import logical_surface_device_info, source_binding_device_info
 from .profile_presentation import profile_image_url, profile_metadata
 from .projection import logical_device_info
 from .property_projection import MobilityPropertyProjection
@@ -50,6 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     created: dict[tuple[str, str], MobilityPropertySensor] = {}
     created_source_diagnostics: dict[tuple[str, str], SourceDiagnosticSensor] = {}
+    created_source_children: dict[tuple[str, str], SourceBindingStatusSensor] = {}
 
     @callback
     def sync_properties() -> None:
@@ -80,6 +81,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 continue
             entity = SourceDiagnosticSensor(entry.entry_id, asset_id, role, source_diagnostics, manager)
             created_source_diagnostics[key] = entity
+            new.append(entity)
+        binding_rows = {
+            (asset_id, str(row["source_key"])): row
+            for asset_id in manager.assets
+            for row in source_diagnostics.sources(asset_id)
+        }
+        for key in list(created_source_children):
+            if key in binding_rows:
+                continue
+            entity = created_source_children.pop(key)
+            hass.async_create_task(entity.async_remove(force_remove=True))
+        for key, row in sorted(binding_rows.items()):
+            if key in created_source_children:
+                continue
+            asset_id, source_key = key
+            entity = SourceBindingStatusSensor(entry.entry_id, asset_id, source_key, row, source_diagnostics, manager)
+            created_source_children[key] = entity
             new.append(entity)
         if new:
             async_add_entities(new, True)
@@ -419,3 +437,61 @@ class SourceDiagnosticSensor(SensorEntity):
         elif self.role=="device":
             common.update({"device_registry_id":row.get("device_registry_id"),"config_entry_id":row.get("config_entry_id")})
         return {k:v for k,v in common.items() if v is not None}
+
+
+class SourceBindingStatusSensor(SensorEntity):
+    """One compact diagnostic entity on a source child device.
+
+    The child device exists only to make accepted source provenance navigable from
+    the logical Mobility device. It never becomes a second topology/source authority.
+    """
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:connection"
+    _attr_name = "Binding Status"
+
+    def __init__(self, entry_id, asset_id, source_key, initial_row, provider, manager):
+        self.asset_id = asset_id
+        self.source_key = source_key
+        self.provider = provider
+        self.manager = manager
+        integration = initial_row.get("integration")
+        self._attr_unique_id = f"{DOMAIN}:{asset_id}:source_binding:{source_key}:status"
+        self._attr_suggested_object_id = f"{DOMAIN}_{asset_id}_{integration or 'source'}_binding_status"
+        self._attr_device_info = source_binding_device_info(asset_id, source_key, integration)
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(self.manager.add_asset_listener(self.asset_id, self._changed))
+
+    @callback
+    def _changed(self):
+        self.async_write_ha_state()
+
+    def _row(self):
+        return next((row for row in self.provider.sources(self.asset_id) if str(row.get("source_key")) == self.source_key), {})
+
+    @property
+    def available(self):
+        return bool(self._row())
+
+    @property
+    def native_value(self):
+        return "ACTIVE" if self._row() else "UNBOUND"
+
+    @property
+    def extra_state_attributes(self):
+        row = self._row()
+        return {k: v for k, v in {
+            "integration": row.get("integration"),
+            "source_device_url": row.get("source_device_url"),
+            "source_integration_url": row.get("source_integration_url"),
+            "source_integration_documentation_url": row.get("source_integration_documentation_url"),
+            "device_registry_id": row.get("device_registry_id"),
+            "config_entry_id": row.get("config_entry_id"),
+            "binding_ids": row.get("binding_ids"),
+            "source_roles": row.get("source_roles"),
+            "input_count": row.get("input_count"),
+            "owner": row.get("owner"),
+            "authority": row.get("authority"),
+        }.items() if v is not None}
