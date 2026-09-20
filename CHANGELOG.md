@@ -1,5 +1,13 @@
 # Changelog
 
+## M0.9.27 — publication convergence closure
+
+- Deterministically republish frozen public surfaces after structural Mobility rebuilds.
+- Keep active vehicles visible at the Mobility→Energy boundary even when Energy planning inputs are incomplete.
+- Diagnose exact direct-provider versus live-publication consumer/connection drift.
+- Preserve M0.9.26 BMW CarData support and existing source DeviceEntry topology.
+
+
 ## M0.9.26 — BMW CarData vehicle support
 
 - Add `cardata` as a first-class connected-vehicle source.

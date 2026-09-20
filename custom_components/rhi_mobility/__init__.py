@@ -155,7 +155,7 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_re
     return _idempotent_unload(entry,hass.bus.async_listen(SELECTED_BUILD_INPUTS_CHANGED_EVENT,changed))
 
 
-def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any):
+def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any, on_rebuilt=None):
     """Rebuild only Mobility-owned semantic state when Mobility config changes."""
     from copy import deepcopy
     from .domain_config import GUEST_VEHICLES_KEY
@@ -172,6 +172,7 @@ def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any)
         await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
         from .projection import async_reconcile_projection
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
+        if callable(on_rebuilt): on_rebuilt()
     add=getattr(entry,"add_update_listener",None)
     if not callable(add): return None
     return _idempotent_unload(entry,add(updated))
@@ -281,6 +282,17 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         if setup_data is not None:
             setup_data["supervision_registration_unsub"]=supervision_registration_unsub
 
+    def sync_publication_after_structural_build() -> None:
+        """Converge public projections immediately after a structural runtime rebuild.
+
+        Runtime telemetry remains coalesced/event-driven. Structural asset-set changes are
+        different: consumers must not retain a pre-rebuild Mobility->Energy snapshot until
+        some unrelated telemetry event happens to arrive.
+        """
+        sync_supervision_after_structural_build()
+        if getattr(legacy_state, "_started", False):
+            legacy_state.publish_runtime()
+
     async def execute_command(call: Any): return await command_provider.async_execute({"asset_id":call.data["asset_id"],"command_key":call.data["command_key"],"request_id":call.data.get("request_id")})
     async def set_requested_power(call: Any): return await command_provider.async_set_requested_power({"asset_id":call.data["asset_id"],"power_kw":call.data["power_kw"],"request_id":call.data.get("request_id")})
     async def rearm_execution(call: Any): return await controller.async_rearm(call.data["asset_id"],call.data["conflict_family"])
@@ -288,7 +300,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     try:
         setup_data={"registry":registry,"provider":provider,"runtime":manager,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"energy_compat_provider":energy_compat_provider,"command_provider":command_provider,"public_provider":public_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"compatibility_provider":legacy_facade,"legacy_facade":legacy_facade,"legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"build_registration_unsub":None,"supervision_registration_unsub":None}
         hass.data.setdefault(DOMAIN,{})[entry.entry_id]=setup_data
-        selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_supervision_after_structural_build); setup_data["selected_unsub"]=selected_unsub
+        selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["selected_unsub"]=selected_unsub
         build_registration_attempted=True
         handle=foundation_api["register_build"](hass,publisher_domain=DOMAIN,provider=provider,publication_revision=provider.publication_revision)
         build_registration_unsub=handle if callable(handle) else None
@@ -298,7 +310,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
         if imported:
             sync_supervision_after_structural_build()
-        config_unsub=_install_domain_configuration_lifecycle(hass,manager,entry); setup_data["config_unsub"]=config_unsub
+        config_unsub=_install_domain_configuration_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["config_unsub"]=config_unsub
         interop.update({ENERGY_PROVIDER_ID:energy_provider,ENERGY_COMPAT_PROVIDER_ID:energy_compat_provider,COMMAND_PROVIDER_ID:command_provider,PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID:legacy_facade,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider})
         hass.services.async_register(DOMAIN,SERVICE_EXECUTE_COMMAND,execute_command,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("command_key"):str,vol.Optional("request_id"):str}))
         hass.services.async_register(DOMAIN,SERVICE_SET_REQUESTED_POWER,set_requested_power,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("power_kw"):vol.Coerce(float),vol.Optional("request_id"):str}))

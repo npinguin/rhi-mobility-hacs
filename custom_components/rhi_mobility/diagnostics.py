@@ -123,24 +123,74 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
     }
 
 
-def _publication_diagnostics(hass: Any) -> dict[str, Any]:
+def _publication_diagnostics(hass: Any, energy_provider: Any = None) -> dict[str, Any]:
     entity_ids = (
         "sensor.mobility_energy_asset_publication",
         "sensor.mobility_energy_contract_registry",
         "sensor.mobility_energy_publication_health",
     )
+    direct_snapshot = (
+        dict(energy_provider.snapshot() or {})
+        if energy_provider is not None and callable(getattr(energy_provider, "snapshot", None))
+        else {}
+    )
+    expected_consumers = list(direct_snapshot.get("consumer_assets") or [])
+    expected_connections = list(direct_snapshot.get("connection_assets") or [])
+    expected_consumer_ids = sorted(
+        str(row.get("asset_id"))
+        for row in expected_consumers
+        if isinstance(row, dict) and row.get("asset_id")
+    )
+    expected_connection_ids = sorted(
+        str(row.get("asset_id"))
+        for row in expected_connections
+        if isinstance(row, dict) and row.get("asset_id")
+    )
+
     rows = []
+    publication_match = True
     for entity_id in entity_ids:
         state = hass.states.get(entity_id)
-        rows.append({
+        attrs = {} if state is None else dict(state.attributes or {})
+        row = {
             "entity_id": entity_id,
             "live_state_present": state is not None,
             "state": None if state is None else state.state,
-            "publication_revision": None if state is None else state.attributes.get("publication_revision"),
-            "consumer_asset_count": None if state is None else len(state.attributes.get("consumer_assets") or []),
-        })
+            "publication_revision": None if state is None else attrs.get("publication_revision"),
+            "consumer_asset_count": None if state is None else len(attrs.get("consumer_assets") or []),
+        }
+        if entity_id == "sensor.mobility_energy_asset_publication":
+            live_consumers = list(attrs.get("consumer_assets") or [])
+            live_connections = list(attrs.get("connection_assets") or [])
+            live_consumer_ids = sorted(
+                str(item.get("asset_id"))
+                for item in live_consumers
+                if isinstance(item, dict) and item.get("asset_id")
+            )
+            live_connection_ids = sorted(
+                str(item.get("asset_id"))
+                for item in live_connections
+                if isinstance(item, dict) and item.get("asset_id")
+            )
+            match = (
+                live_consumer_ids == expected_consumer_ids
+                and live_connection_ids == expected_connection_ids
+            )
+            publication_match = publication_match and match
+            row.update({
+                "direct_consumer_asset_count": len(expected_consumers),
+                "direct_connection_asset_count": len(expected_connections),
+                "live_consumer_asset_ids": live_consumer_ids,
+                "direct_consumer_asset_ids": expected_consumer_ids,
+                "missing_consumer_asset_ids": sorted(set(expected_consumer_ids) - set(live_consumer_ids)),
+                "unexpected_consumer_asset_ids": sorted(set(live_consumer_ids) - set(expected_consumer_ids)),
+                "live_connection_asset_ids": live_connection_ids,
+                "direct_connection_asset_ids": expected_connection_ids,
+                "publication_matches_direct_provider": match,
+            })
+        rows.append(row)
     return {
-        "status": "OK" if all(row["live_state_present"] for row in rows) else "DEGRADED",
+        "status": "OK" if all(row["live_state_present"] for row in rows) and publication_match else "DEGRADED",
         "entities": rows,
     }
 
@@ -294,6 +344,6 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
             "publisher_domain": None if provider is None else provider.publisher_domain,
             "publication_revision": None if provider is None else provider.publication_revision,
             "specification_count": 0 if provider is None else len(provider.get_build_specifications()),
-            "runtime_proof": _publication_diagnostics(hass),
+            "runtime_proof": _publication_diagnostics(hass, data.get("energy_provider")),
         },
     }
