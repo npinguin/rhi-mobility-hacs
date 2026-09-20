@@ -3,7 +3,7 @@
   "distribution_version": "0.9.27",
   "manifest_version": "0.9.27",
   "source_repository": "npinguin/rhi-mobility",
-  "source_commit": "fd3dc80d8c9d54af429a4a8e30f4e8e7b670c480",
+  "source_commit": "d1de0b82e05e065dad9b5ae91bca2509ae284d99",
   "channel": "candidate",
   "approved_release": false,
   "required_foundation_release": "F1.8.1+",
