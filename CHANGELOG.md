@@ -1,3 +1,10 @@
+## M0.9.28 — 2026-09-21
+
+- Structural engineering lifecycle cleanup; runtime semantics remain aligned with M0.9.27.
+- Added machine-readable ownership, test ownership and package authority.
+- Publish/release promote the exact validated candidate instead of repeating the complete validation surface.
+- Pinned external GitHub Actions to immutable revisions and documented the transferable engineering lifecycle.
+
 # Changelog
 
 ## M0.9.27 — publication convergence closure

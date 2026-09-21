@@ -42,7 +42,7 @@
     "creates_public_contract": false,
     "executes_commands": false
   },
-  "release": "M0.9.27",
+  "release": "M0.9.28",
   "closure": {
     "step": 3,
     "full_feature_migration": true,
