@@ -40,23 +40,13 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
 
     _PRODUCT_WRITE_KINDS = {"configuration", "profile", "selected_charger"}
 
-    def __init__(self, config_entry=None) -> None:
-        self._provided_config_entry = config_entry
-        self._target_guest: str | None = None
-        self._target_product_asset: str | None = None
-        self._target_profile: str | None = None
-        self._pending_guest: dict = {}
+    _target_guest: str | None = None
+    _target_product_asset: str | None = None
+    _target_profile: str | None = None
+    _pending_guest: dict | None = None
 
     def _entry(self):
-        try:
-            entry = self.config_entry
-        except (AttributeError, ValueError):
-            entry = None
-        if entry is not None:
-            return entry
-        if self._provided_config_entry is not None:
-            return self._provided_config_entry
-        raise RuntimeError("Mobility options flow has no config entry")
+        return self.config_entry
 
     def _options(self) -> dict:
         return deepcopy(dict(getattr(self._entry(), "options", {}) or {}))
@@ -471,7 +461,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                     vol.Required("lifecycle_status", default="active"): vol.In({"active": "Active", "disabled": "Disabled"}),
                 }),
             )
-        values = {**getattr(self, "_pending_guest", {}), **dict(user_input)}
+        values = {**(self._pending_guest or {}), **dict(user_input)}
         values["selected_charger"] = values.get("selected_charger") or None
         guests = self._guests()
         asset_id = _guest_asset_id(values["name"], set(guests))
@@ -493,7 +483,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                     vol.Required("lifecycle_status", default="active"): vol.In({"active": "Active", "disabled": "Disabled"}),
                 }),
             )
-        values = {**getattr(self, "_pending_guest", {}), **dict(user_input), "profile_id": None}
+        values = {**(self._pending_guest or {}), **dict(user_input), "profile_id": None}
         values["selected_charger"] = values.get("selected_charger") or None
         guests = self._guests()
         asset_id = _guest_asset_id(values["name"], set(guests))
@@ -543,7 +533,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     async def async_step_edit_guest_product(self, user_input=None):
         guests = self._guests()
         target = str(self._target_guest or "")
-        current = dict(getattr(self, "_pending_guest", {}).get("_current") or guests.get(target) or {})
+        current = dict((self._pending_guest or {}).get("_current") or guests.get(target) or {})
         profiles = self._guest_profiles()
         current_profile = str(current.get("profile_id") or "")
         if current_profile not in profiles:
@@ -562,7 +552,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         values = {
             **current,
             **dict(user_input),
-            "name": getattr(self, "_pending_guest", {}).get("name") or current.get("name"),
+            "name": (self._pending_guest or {}).get("name") or current.get("name"),
             "brand": None,
             "model": None,
             "variant": None,
@@ -577,7 +567,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     async def async_step_edit_guest_custom(self, user_input=None):
         guests = self._guests()
         target = str(self._target_guest or "")
-        current = dict(getattr(self, "_pending_guest", {}).get("_current") or guests.get(target) or {})
+        current = dict((self._pending_guest or {}).get("_current") or guests.get(target) or {})
         if user_input is None:
             return self.async_show_form(
                 step_id="edit_guest_custom",
@@ -595,7 +585,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         values = {
             **current,
             **dict(user_input),
-            "name": getattr(self, "_pending_guest", {}).get("name") or current.get("name"),
+            "name": (self._pending_guest or {}).get("name") or current.get("name"),
             "profile_id": None,
         }
         values["selected_charger"] = values.get("selected_charger") or None

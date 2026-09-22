@@ -9,6 +9,8 @@ LEGACY_CONFIG_KEY = "domain_config_overrides"
 GUEST_VEHICLES_KEY = "guest_vehicles"
 PROFILES_KEY = "mobility_profiles"
 DISABLED_PROFILES_KEY = "disabled_mobility_profiles"
+CONFIG_SCHEMA_KEY = "mobility_configuration_schema_version"
+CURRENT_CONFIG_SCHEMA_VERSION = 2
 PROFILE_TYPES = {"vehicle", "charger"}
 
 
@@ -56,6 +58,10 @@ class MobilityDomainConfiguration:
         except (TypeError, ValueError):
             self._revision = 0
         self._legacy_migration_required = LEGACY_CONFIG_KEY in options and CONFIG_KEY not in options
+        try:
+            self._stored_schema_version = int(options.get(CONFIG_SCHEMA_KEY, 0) or 0)
+        except (TypeError, ValueError):
+            self._stored_schema_version = 0
         self._listeners: list[Callable[[str, str], None]] = []
         # Normal package loading binds the registry overlay. Direct module unit tests do
         # not have a package context and therefore intentionally skip this convenience.
@@ -373,17 +379,63 @@ class MobilityDomainConfiguration:
     def revision(self) -> int:
         return self._revision
 
-    async def async_initialize(self) -> None:
-        """Migrate the M0.3.1/0.3.2 storage key without changing semantic values."""
-        if not self._legacy_migration_required:
-            return
+    async def async_initialize(self) -> bool:
+        """Migrate persisted Mobility configuration in place on package upgrade.
+
+        Returns True when persisted options changed. Setup then rebuilds from the
+        migrated state; no uninstall or manual reconfiguration is required.
+        """
         options = dict(getattr(self.entry, "options", {}) or {})
-        options.pop(LEGACY_CONFIG_KEY, None)
-        options[CONFIG_KEY] = deepcopy(self._data)
-        self._revision = max(1, self._revision)
-        options[REVISION_KEY] = self._revision
-        self.hass.config_entries.async_update_entry(self.entry, options=options)
-        self._legacy_migration_required = False
+        changed = False
+
+        if self._legacy_migration_required:
+            options.pop(LEGACY_CONFIG_KEY, None)
+            options[CONFIG_KEY] = deepcopy(self._data)
+            self._legacy_migration_required = False
+            changed = True
+
+        if self._stored_schema_version < CURRENT_CONFIG_SCHEMA_VERSION:
+            # M0.9.32 ownership cleanup: stale product-policy/presentation overrides
+            # must not survive as profile-owned truth. Concrete device image_key is
+            # intentionally retained because UX owns that instance property.
+            cleaned: dict[str, dict[str, Any]] = {}
+            for asset_id, row in self._data.items():
+                if not isinstance(row, dict):
+                    continue
+                migrated = dict(row)
+                # Profile selection remains valid only if the current registry can
+                # resolve it later; no guessed replacement is written here.
+                migrated.pop("vehicle.default_target_soc_pct", None)
+                migrated.pop("charger.default_target_soc_pct", None)
+                if migrated:
+                    cleaned[str(asset_id)] = migrated
+            self._data = cleaned
+            options[CONFIG_KEY] = deepcopy(cleaned)
+
+            # Old user profile rows may violate the strict M0.9.32 schema. Do not let
+            # invalid legacy overlays shadow the verified packaged catalog.
+            valid_profiles: dict[str, dict[str, Any]] = {}
+            for profile_id, row in self._profiles.items():
+                if not isinstance(row, dict):
+                    continue
+                try:
+                    validated = self._validate_profile(row)
+                except (TypeError, ValueError):
+                    continue
+                validated["profile_id"] = str(profile_id)
+                valid_profiles[str(profile_id)] = validated
+            self._profiles = valid_profiles
+            options[PROFILES_KEY] = deepcopy(valid_profiles)
+
+            options[CONFIG_SCHEMA_KEY] = CURRENT_CONFIG_SCHEMA_VERSION
+            self._stored_schema_version = CURRENT_CONFIG_SCHEMA_VERSION
+            changed = True
+
+        if changed:
+            self._revision = max(1, self._revision + 1)
+            options[REVISION_KEY] = self._revision
+            self.hass.config_entries.async_update_entry(self.entry, options=options)
+        return changed
 
     def get(self, asset_id: str, property_key: str, default: Any = None) -> Any:
         row = self._data.get(asset_id, {})

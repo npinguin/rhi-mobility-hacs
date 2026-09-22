@@ -1,3 +1,12 @@
+## M0.9.33 — 2026-09-22
+
+- Close Home Assistant OptionsFlow lifecycle compatibility after immutable M0.9.32 publication.
+- Migrate persisted Mobility semantic configuration in place before runtime rebuild.
+- Preserve UX-owned instance image keys during migration.
+- Remove obsolete persisted profile/user-policy residue and stale incomplete profile overlays.
+- Add regression proof that upgrades require no uninstall or manual reconfigure.
+- Preserve M0.9.32 canonical product, command, V1 and ownership semantics unchanged.
+
 ## M0.9.32 — 2026-09-22
 
 - Replace broad/incomplete catalog rows with complete evidence-backed VehicleProfile and ChargerProfile knowledge only.

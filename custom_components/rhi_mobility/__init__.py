@@ -233,7 +233,9 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
 
     foundation_api=_load_foundation_registry_api(hass)
     registry=MobilityModelRegistry(); provider=MobilityBuildSpecificationProvider(registry)
-    domain_config=MobilityDomainConfiguration(hass,entry); manager=MobilityRuntimeManager(hass,registry,domain_config)
+    domain_config=MobilityDomainConfiguration(hass,entry)
+    configuration_migrated=await domain_config.async_initialize()
+    manager=MobilityRuntimeManager(hass,registry,domain_config)
     controller=MobilityControlController(hass,manager,registry); public_provider=MobilityPublicRuntimeProvider(manager,controller,registry)
     profile_catalog_provider=MobilityProfileCatalogProvider(registry)
     property_projection=MobilityPropertyProjection(hass,manager,controller,public_provider); energy_provider=MobilityEnergyV2Provider(manager,controller,registry,public_provider)
@@ -253,7 +255,6 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         controller.shutdown(); manager.clear_all()
         raise RuntimeError("R43.2.65 must be disabled before exact V2 facade takeover; "+"; ".join(details))
 
-    await domain_config.async_initialize()
     interop=hass.data.setdefault(INTEROP_PROVIDER_REGISTRY_KEY,{})
     interop_ids=(ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID)
     service_names=(SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION)
@@ -300,7 +301,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     async def rearm_execution(call: Any): return await controller.async_rearm(call.data["asset_id"],call.data["conflict_family"])
 
     try:
-        setup_data={"registry":registry,"provider":provider,"runtime":manager,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"energy_compat_provider":energy_compat_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"compatibility_provider":legacy_facade,"legacy_facade":legacy_facade,"legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"build_registration_unsub":None,"supervision_registration_unsub":None}
+        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"energy_compat_provider":energy_compat_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"compatibility_provider":legacy_facade,"legacy_facade":legacy_facade,"legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"build_registration_unsub":None,"supervision_registration_unsub":None}
         hass.data.setdefault(DOMAIN,{})[entry.entry_id]=setup_data
         selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["selected_unsub"]=selected_unsub
         build_registration_attempted=True
