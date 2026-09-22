@@ -74,6 +74,33 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         rows = self._options().get(PROFILES_KEY, {})
         return deepcopy(rows) if isinstance(rows, dict) else {}
 
+    def _disabled_profiles(self) -> set[str]:
+        """Return persisted disabled profile ids, including packaged profiles."""
+        rows = self._options().get(DISABLED_PROFILES_KEY, [])
+        return {str(value) for value in rows or [] if str(value).strip()}
+
+    def _manageable_profiles(self) -> dict[str, dict]:
+        """Return every profile the options UI may edit/remove/restore.
+
+        The effective registry deliberately hides disabled packaged profiles, but the
+        management UI still needs them so they can be labelled and restored. Local
+        authored/override rows win over packaged defaults with the same stable id.
+        """
+        rows: dict[str, dict] = {}
+        registry = self._registry()
+        if registry is not None:
+            for row in getattr(registry, "profiles", ()) or ():
+                if not isinstance(row, dict) or not row.get("profile_id"):
+                    continue
+                rows[str(row["profile_id"])] = dict(row)
+        for profile_id, row in self._authored_profiles().items():
+            if not isinstance(row, dict):
+                continue
+            value = dict(row)
+            value.setdefault("profile_id", str(profile_id))
+            rows[str(profile_id)] = value
+        return rows
+
     def _charger_options(self) -> dict[str, str]:
         runtime = self._runtime()
         rows = {"": "No charger assigned"}

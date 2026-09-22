@@ -1,3 +1,11 @@
+## M0.9.34 — 2026-09-22
+
+- Restore missing OptionsFlow profile-management helpers required by the Configure menu.
+- Keep packaged and authored/override profiles manageable by stable profile id.
+- Preserve disabled packaged profiles for management/restore while effective runtime resolution continues to hide them.
+- Add regression coverage for the exact HTTP 500 failure path seen on Home Assistant 2026.9.3.
+- No public entity, command, product-model, V1 or Foundation ownership changes.
+
 ## M0.9.33 — 2026-09-22
 
 - Close Home Assistant OptionsFlow lifecycle compatibility after immutable M0.9.32 publication.
