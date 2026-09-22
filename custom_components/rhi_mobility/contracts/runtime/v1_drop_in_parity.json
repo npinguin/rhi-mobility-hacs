@@ -23,7 +23,7 @@
     "charger_property_definitions": 64,
     "commands": 11,
     "command_placements": 11,
-    "editables": 21,
+    "editables": 22,
     "profiles": 10,
     "scripts": 2,
     "required_entity_ids": 41
@@ -1497,7 +1497,7 @@
       "property_key": "vehicle.image_key",
       "producer_type": "SOURCE",
       "producer_key": "vehicle.image_key",
-      "implementation": "Canonical V2 builder normalization from accepted technical evidence",
+      "implementation": "Canonical V2 builder normalization with Mobility configured override resolved before publication",
       "builder_sources": [
         {
           "builder_id": "mobility.vehicle.connected_vehicle.v1",
@@ -1507,9 +1507,9 @@
         }
       ],
       "component_id": "identity",
-      "section_id": "details",
+      "section_id": "controls",
       "ux_visibility": "product",
-      "editable_in_v1": false,
+      "editable_in_v1": true,
       "canonical_unit": null,
       "datatype": "state/value",
       "status": "IMPLEMENTED"
@@ -5423,6 +5423,23 @@
       "public_index": "sensor.mobility_vehicle_identity_property_index",
       "source_owner": "configuration",
       "ownership_rule": "Identity component owns vehicle editable identity/asset metadata; charger/person equivalents remain their domain indexes."
+    },
+    {
+      "property_key": "vehicle.image_key",
+      "asset_type": "vehicle",
+      "editable": true,
+      "write_binding": "text editable property binding",
+      "write_service_action": "set_value",
+      "target/source": "Mobility configuration property vehicle.image_key",
+      "datatype": "text",
+      "min": null,
+      "max": null,
+      "step": null,
+      "enum_values": null,
+      "persistence": "mobility_domain_configuration",
+      "public_index": "sensor.mobility_vehicle_identity_property_index",
+      "source_owner": "configuration/profile/source",
+      "ownership_rule": "UX selects one catalog-owned visual key; Mobility persists configured intent and resolves CONFIGURED > PROFILE > SOURCE."
     },
     {
       "property_key": "vehicle.selected_charger",

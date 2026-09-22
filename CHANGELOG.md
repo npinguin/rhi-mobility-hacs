@@ -1,3 +1,11 @@
+## M0.9.29 — 2026-09-22
+
+- Add a persistent vehicle visual selection through the existing `vehicle.image_key` semantic property.
+- Resolve visual identity as `CONFIGURED > PROFILE > SOURCE`, preserving current profiles and source-provided keys as fallbacks.
+- Expose `vehicle.image_key` as a writable Mobility configuration surface for the UX vehicle picker.
+- Keep the visual catalog, asset paths, model/color options and rendering entirely UX-owned.
+- Preserve all public entity IDs, command IDs, Foundation ownership and Mobility→Energy behavior.
+
 ## M0.9.28 — 2026-09-21
 
 - Structural engineering lifecycle cleanup; runtime semantics remain aligned with M0.9.27.

@@ -5736,7 +5736,7 @@
     },
     "vehicle.image_key": {
       "component_id": "identity",
-      "section_id": "details",
+      "section_id": "controls",
       "visibility": "product",
       "unit": null,
       "entity_type": "sensor",
@@ -5749,11 +5749,11 @@
       "placements": {
         "vehicle": {
           "component_id": "identity",
-          "section_id": "details",
+          "section_id": "controls",
           "visibility": "product",
           "render_as": "readonly_value",
           "display_order": 160,
-          "friendly_name": "Image Key",
+          "friendly_name": "Vehicle visual",
           "unit": null,
           "empty_state_behavior": "hide_if_unavailable",
           "datatype": "state/value"
@@ -5761,6 +5761,7 @@
       },
       "v1_drop_in": true,
       "producer_types": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
@@ -5773,11 +5774,20 @@
         }
       ],
       "truth_precedence": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
       "profile_field": "image_key",
-      "value_type": "text"
+      "value_type": "text",
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "vehicle"
+        ],
+        "name": "Vehicle visual key"
+      }
     },
     "vehicle.immediate_charging_state": {
       "component_id": "charging",
