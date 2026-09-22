@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.9.30",
+  "release": "M0.9.31",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -1591,7 +1591,7 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "PROFILE",
+        "CONFIGURED",
         "SOURCE"
       ],
       "builder_sources": [
@@ -1603,11 +1603,18 @@
         }
       ],
       "truth_precedence": [
-        "PROFILE",
+        "CONFIGURED",
         "SOURCE"
       ],
-      "profile_field": "image_key",
-      "value_type": "text"
+      "value_type": "text",
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Charger visual key"
+      }
     },
     "charger.lifetime_energy_kwh": {
       "component_id": "metering",
@@ -5774,7 +5781,6 @@
       "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
-        "PROFILE",
         "SOURCE"
       ],
       "builder_sources": [
@@ -5787,10 +5793,8 @@
       ],
       "truth_precedence": [
         "CONFIGURED",
-        "PROFILE",
         "SOURCE"
       ],
-      "profile_field": "image_key",
       "value_type": "text",
       "editable": {
         "platform": "text",

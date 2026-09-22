@@ -1,3 +1,13 @@
+## M0.9.31 — 2026-09-22
+
+- Expand the local/offline canonical catalog to current/common Belgian Vehicle and Charger products.
+- Allow packaged profiles to be overridden, disabled and restored through integration options; user profiles remain add/edit/remove capable.
+- Keep exact deterministic local profile resolution and unknown technical facts unknown.
+- Simplify Guest Vehicle setup to profile-or-custom identity plus instance context; battery capacity and SoC are no longer creation questions.
+- Use the same canonical product/profile configuration surface for connected Charger assets.
+- Keep `image_key` as a per-device persisted property managed by UX; new profiles do not own artwork.
+- Preserve the frozen 10-profile V1 compatibility set as a subset while V2 catalog coverage grows.
+
 ## M0.9.30 — 2026-09-22
 
 - Add canonical Vehicle/Charger product identity: brand, model, variant and model year.

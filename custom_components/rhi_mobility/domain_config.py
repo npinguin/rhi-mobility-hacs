@@ -8,6 +8,7 @@ REVISION_KEY = "domain_semantic_configuration_revision"
 LEGACY_CONFIG_KEY = "domain_config_overrides"
 GUEST_VEHICLES_KEY = "guest_vehicles"
 PROFILES_KEY = "mobility_profiles"
+DISABLED_PROFILES_KEY = "disabled_mobility_profiles"
 PROFILE_TYPES = {"vehicle", "charger"}
 
 
@@ -73,17 +74,28 @@ class MobilityDomainConfiguration:
         return asset_id in self.guest_vehicles()
 
     def profiles(self) -> dict[str, dict[str, Any]]:
-        """Return Mobility-authored profiles; packaged catalog profiles remain immutable."""
+        """Return user-authored/overridden profile rows keyed by stable profile_id."""
         return deepcopy(self._profiles)
 
+    def disabled_profile_ids(self) -> set[str]:
+        raw = (getattr(self.entry, "options", {}) or {}).get(DISABLED_PROFILES_KEY, [])
+        return {str(value) for value in raw or [] if str(value).strip()}
+
+    def is_profile_disabled(self, profile_id: str | None) -> bool:
+        return bool(profile_id) and str(profile_id) in self.disabled_profile_ids()
+
     def profile(self, profile_id: str | None) -> dict[str, Any] | None:
-        if not profile_id:
+        if not profile_id or self.is_profile_disabled(profile_id):
             return None
         row = self._profiles.get(str(profile_id))
         return dict(row) if isinstance(row, dict) else None
 
     def profiles_for_type(self, profile_type: str) -> list[dict[str, Any]]:
-        return [dict(row) for row in self._profiles.values() if row.get("profile_type") == profile_type]
+        disabled = self.disabled_profile_ids()
+        return [
+            dict(row) for profile_id, row in self._profiles.items()
+            if profile_id not in disabled and row.get("profile_type") == profile_type
+        ]
 
     async def async_add_profile(self, values: dict[str, Any]) -> str:
         profiles = self.profiles()
@@ -94,22 +106,21 @@ class MobilityDomainConfiguration:
         await self._async_store_profiles(profiles, profile_id, "profile_added")
         return profile_id
 
-    async def async_update_profile(self, profile_id: str, values: dict[str, Any]) -> None:
+    async def async_update_profile(self, profile_id: str, values: dict[str, Any], *, expected_type: str | None = None) -> None:
+        """Create/update a same-id local overlay for an authored or packaged profile."""
         profiles = self.profiles()
-        current = profiles.get(profile_id)
-        if not isinstance(current, dict):
-            raise ValueError(f"unknown Mobility-authored profile: {profile_id}")
         validated = self._validate_profile(values)
-        if validated["profile_type"] != current.get("profile_type"):
+        current = profiles.get(profile_id)
+        profile_type = str((current or {}).get("profile_type") or expected_type or validated["profile_type"])
+        if validated["profile_type"] != profile_type:
             raise ValueError("profile type cannot be changed")
         validated["profile_id"] = profile_id
         profiles[profile_id] = validated
-        await self._async_store_profiles(profiles, profile_id, "profile_updated")
+        disabled = self.disabled_profile_ids()
+        disabled.discard(profile_id)
+        await self._async_store_profiles(profiles, profile_id, "profile_updated", disabled_profile_ids=disabled)
 
-    async def async_remove_profile(self, profile_id: str) -> None:
-        profiles = self.profiles()
-        if profile_id not in profiles:
-            raise ValueError(f"unknown Mobility-authored profile: {profile_id}")
+    def _assigned_profile_assets(self, profile_id: str) -> list[str]:
         assigned = [
             asset_id for asset_id, row in self._data.items()
             if isinstance(row, dict) and row.get("asset.profile_id") == profile_id
@@ -118,10 +129,38 @@ class MobilityDomainConfiguration:
             asset_id for asset_id, row in self.guest_vehicles().items()
             if isinstance(row, dict) and row.get("profile_id") == profile_id
         )
+        return sorted(set(assigned))
+
+    async def async_remove_profile(self, profile_id: str) -> None:
+        """Remove a user-created profile or local overlay.
+
+        Packaged rows are never physically deleted here; use async_disable_profile to
+        remove them from the effective local catalog.
+        """
+        profiles = self.profiles()
+        if profile_id not in profiles:
+            raise ValueError(f"unknown Mobility-authored profile: {profile_id}")
+        assigned = self._assigned_profile_assets(profile_id)
         if assigned:
-            raise ValueError(f"profile is assigned to Mobility assets: {', '.join(sorted(set(assigned)))}")
+            raise ValueError(f"profile is assigned to Mobility assets: {', '.join(assigned)}")
         profiles.pop(profile_id)
         await self._async_store_profiles(profiles, profile_id, "profile_removed")
+
+    async def async_disable_profile(self, profile_id: str) -> None:
+        assigned = self._assigned_profile_assets(profile_id)
+        if assigned:
+            raise ValueError(f"profile is assigned to Mobility assets: {', '.join(assigned)}")
+        disabled = self.disabled_profile_ids()
+        disabled.add(str(profile_id))
+        await self._async_store_profiles(self.profiles(), str(profile_id), "profile_disabled", disabled_profile_ids=disabled)
+
+    async def async_restore_profile(self, profile_id: str) -> None:
+        disabled = self.disabled_profile_ids()
+        disabled.discard(str(profile_id))
+        profiles = self.profiles()
+        # Restore packaged truth by also dropping a same-id local override.
+        profiles.pop(str(profile_id), None)
+        await self._async_store_profiles(profiles, str(profile_id), "profile_restored", disabled_profile_ids=disabled)
 
     @staticmethod
     def _validate_profile(values: dict[str, Any]) -> dict[str, Any]:
@@ -132,7 +171,6 @@ class MobilityDomainConfiguration:
         if not display_name:
             raise ValueError("profile display_name is required")
         short_name = str(values.get("short_name") or display_name).strip()
-        image_key = str(values.get("image_key") or "").strip() or None
         brand = str(values.get("brand") or values.get("manufacturer") or values.get("vendor") or "").strip() or None
         model = str(values.get("model") or "").strip() or None
         variant = str(values.get("variant") or "").strip() or None
@@ -150,7 +188,6 @@ class MobilityDomainConfiguration:
             "model_year": model_year,
             "auto_resolve": bool(brand and model and variant and model_year),
             "catalog_role": "user_product",
-            "image_key": image_key,
         }
         if profile_type == "vehicle":
             row.update({
@@ -180,9 +217,18 @@ class MobilityDomainConfiguration:
             })
         return {key: value for key, value in row.items() if value is not None}
 
-    async def _async_store_profiles(self, profiles: dict[str, dict[str, Any]], profile_id: str, change: str) -> None:
+    async def _async_store_profiles(
+        self,
+        profiles: dict[str, dict[str, Any]],
+        profile_id: str,
+        change: str,
+        *,
+        disabled_profile_ids: set[str] | None = None,
+    ) -> None:
         options = dict(getattr(self.entry, "options", {}) or {})
         options[PROFILES_KEY] = deepcopy(profiles)
+        if disabled_profile_ids is not None:
+            options[DISABLED_PROFILES_KEY] = sorted(disabled_profile_ids)
         options.pop(LEGACY_CONFIG_KEY, None)
         self._revision += 1
         options[REVISION_KEY] = self._revision
@@ -255,7 +301,6 @@ class MobilityDomainConfiguration:
             "variant": variant,
             "model_year": model_year,
             "color": str(values.get("color") or "").strip() or None,
-            "image_key": str(values.get("image_key") or "").strip() or None,
             "battery_capacity_kwh": None if capacity is None else round(capacity, 3),
             "soc_pct": None if soc is None else round(soc, 3),
             "battery_energy_kwh": None if energy is None else round(energy, 3),

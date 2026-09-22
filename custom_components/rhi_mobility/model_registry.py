@@ -73,6 +73,9 @@ class MobilityModelRegistry:
         if not profile_id:
             return None
         provider = _profile_overlay_provider()
+        disabled = getattr(provider, "is_profile_disabled", None)
+        if callable(disabled) and disabled(str(profile_id)):
+            return None
         getter = getattr(provider, "profile", None)
         overlay = getter(str(profile_id)) if callable(getter) else None
         if isinstance(overlay, dict):
@@ -117,8 +120,14 @@ class MobilityModelRegistry:
         return matches[0] if len(matches) == 1 else None
 
     def profiles_for_type(self, profile_type: str) -> list[dict[str, Any]]:
-        rows = {str(row["profile_id"]): dict(row) for row in self.profiles if row.get("profile_type") == profile_type}
         provider = _profile_overlay_provider()
+        disabled_getter = getattr(provider, "disabled_profile_ids", None)
+        disabled = disabled_getter() if callable(disabled_getter) else set()
+        rows = {
+            str(row["profile_id"]): dict(row)
+            for row in self.profiles
+            if row.get("profile_type") == profile_type and str(row["profile_id"]) not in disabled
+        }
         getter = getattr(provider, "profiles_for_type", None)
         for row in getter(profile_type) if callable(getter) else []:
             if isinstance(row, dict) and row.get("profile_id"):

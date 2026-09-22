@@ -29,6 +29,7 @@ class MobilityProfileCatalogProvider:
             "variant", "model_year", "display_name", "short_name", "image_key",
             "auto_resolve", "catalog_role",
         }
+        # artwork is intentionally absent: image_key belongs to the concrete device instance and is UX-owned.
         technical = {key: value for key, value in profile.items() if key not in excluded and value is not None}
         return {
             "profile_id": str(profile["profile_id"]),
