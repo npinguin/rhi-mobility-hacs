@@ -1,3 +1,11 @@
+## M0.9.35 — 2026-09-23
+
+- Replace fragmented profile actions with one searchable profile catalog.
+- Use native Home Assistant dropdown and number selectors with human product labels and field guidance.
+- Keep the profile catalog open after save for efficient repeated maintenance.
+- Make logical vehicle/charger and guest known-product selection searchable.
+- Preserve backend product/profile authority and public runtime semantics.
+
 ## M0.9.34 — 2026-09-22
 
 - Restore missing OptionsFlow profile-management helpers required by the Configure menu.

@@ -17,18 +17,15 @@
         "title": "Manage Mobility products",
         "menu_options": {
           "configure_product_asset": "Configure vehicle or charger",
-          "add_vehicle_profile": "Add vehicle profile",
-          "add_charger_profile": "Add charger profile",
-          "edit_profile": "Edit profile",
-          "remove_profile": "Remove profile",
           "add_guest_vehicle": "Add guest vehicle",
           "edit_guest_vehicle": "Edit guest vehicle",
-          "remove_guest_vehicle": "Remove guest vehicle"
+          "remove_guest_vehicle": "Remove guest vehicle",
+          "manage_profiles": "Profiles"
         }
       },
       "configure_product_asset": {
         "title": "Choose vehicle or charger",
-        "description": "Choose a logical Mobility asset. Technical integration and device selection remain owned by Foundation.",
+        "description": "Choose a logical vehicle or charger. The list is searchable; type its name, model or integration label.",
         "data": {
           "product_asset": "Vehicle or charger"
         }
@@ -51,22 +48,138 @@
         }
       },
       "add_vehicle_profile": {
-        "title": "Add vehicle profile",
-        "description": "Create a Mobility-owned VehicleProfile. Model identity, matching illustration and model characteristics stay inside Mobility."
+        "title": "Add custom vehicle profile",
+        "description": "Add one vehicle model that is not already in the verified catalog. Use exact product identity and real technical specifications.",
+        "data": {
+          "display_name": "Display name",
+          "short_name": "Short name",
+          "brand": "Brand",
+          "model": "Model",
+          "variant": "Variant",
+          "model_year": "Model year",
+          "vehicle_kind": "Vehicle type",
+          "battery_capacity_kwh": "Battery capacity",
+          "max_ac_power_kw": "Maximum AC charging power",
+          "phase_capability": "AC phase capability"
+        },
+        "data_description": {
+          "display_name": "Human-readable product name shown in Home Assistant.",
+          "short_name": "Compact label for cards and constrained views.",
+          "brand": "Manufacturer brand, for example Audi, BMW or Volkswagen.",
+          "model": "Product model, for example Q8 or i4.",
+          "variant": "Exact derivative/trim needed to distinguish the product.",
+          "model_year": "Model year used as part of the exact catalog identity.",
+          "vehicle_kind": "Choose EV or plug-in hybrid.",
+          "battery_capacity_kwh": "Usable/authoritative battery capacity for this product profile.",
+          "max_ac_power_kw": "Maximum supported AC charging power.",
+          "phase_capability": "Number of AC phases supported by the vehicle."
+        }
       },
       "add_charger_profile": {
-        "title": "Add charger profile",
-        "description": "Create a Mobility-owned ChargerProfile. Model identity, matching illustration and electrical characteristics stay inside Mobility."
+        "title": "Add custom charger profile",
+        "description": "Add one charger model that is not already in the verified catalog. Use exact product identity and electrical limits.",
+        "data": {
+          "display_name": "Display name",
+          "short_name": "Short name",
+          "brand": "Brand",
+          "model": "Model",
+          "variant": "Variant",
+          "model_year": "Model year",
+          "min_current_a": "Minimum current",
+          "max_current_a": "Maximum current",
+          "max_power_kw": "Maximum power",
+          "phase_capability": "Phase capability",
+          "nominal_voltage_v": "Nominal voltage",
+          "current_step_a": "Current adjustment step"
+        },
+        "data_description": {
+          "display_name": "Human-readable product name shown in Home Assistant.",
+          "short_name": "Compact label for cards and constrained views.",
+          "brand": "Charger manufacturer.",
+          "model": "Charger model.",
+          "variant": "Exact hardware/product variant.",
+          "model_year": "Optional model year where it materially distinguishes the hardware.",
+          "min_current_a": "Lowest current the charger can reliably request.",
+          "max_current_a": "Highest supported current.",
+          "max_power_kw": "Maximum charger power.",
+          "phase_capability": "Number of AC phases supported.",
+          "nominal_voltage_v": "Nominal AC voltage used for the product profile.",
+          "current_step_a": "Smallest supported current adjustment."
+        }
       },
-      "edit_profile": {"title": "Choose profile", "data": {"profile": "Profile"}},
-      "edit_selected_profile": {"title": "Edit {name}"},
-      "remove_profile": {"title": "Choose profile", "data": {"profile": "Profile"}},
-      "remove_selected_profile": {"title": "Remove {name}", "description": "A profile can only be removed when no Mobility asset or guest vehicle uses it."},
-      "add_guest_vehicle": {"title": "Add guest vehicle", "description": "Create a Mobility-owned vehicle without a technical Foundation device."},
-      "edit_guest_vehicle": {"title": "Choose guest vehicle"},
-      "edit_guest": {"title": "Edit guest vehicle"},
-      "remove_guest_vehicle": {"title": "Choose guest vehicle"},
-      "remove_guest": {"title": "Remove {name}", "description": "Remove this guest vehicle and its Mobility-owned configuration."}
+      "edit_profile": {
+        "title": "Choose profile",
+        "data": {
+          "profile": "Profile"
+        }
+      },
+      "edit_selected_profile": {
+        "title": "Edit {name}",
+        "description": "Edit the selected product directly. Save returns to the searchable profile catalog so you can continue with the next product.",
+        "data": {
+          "display_name": "Display name",
+          "short_name": "Short name",
+          "brand": "Brand",
+          "model": "Model",
+          "variant": "Variant",
+          "model_year": "Model year",
+          "vehicle_kind": "Vehicle type",
+          "battery_capacity_kwh": "Battery capacity",
+          "max_ac_power_kw": "Maximum AC charging power",
+          "phase_capability": "AC phase capability"
+        },
+        "data_description": {
+          "display_name": "Human-readable product name shown in Home Assistant.",
+          "short_name": "Compact label for cards and constrained views.",
+          "brand": "Manufacturer brand, for example Audi, BMW or Volkswagen.",
+          "model": "Product model, for example Q8 or i4.",
+          "variant": "Exact derivative/trim needed to distinguish the product.",
+          "model_year": "Model year used as part of the exact catalog identity.",
+          "vehicle_kind": "Choose EV or plug-in hybrid.",
+          "battery_capacity_kwh": "Usable/authoritative battery capacity for this product profile.",
+          "max_ac_power_kw": "Maximum supported AC charging power.",
+          "phase_capability": "Number of AC phases supported by the vehicle."
+        }
+      },
+      "remove_profile": {
+        "title": "Choose profile",
+        "data": {
+          "profile": "Profile"
+        }
+      },
+      "remove_selected_profile": {
+        "title": "Remove {name}",
+        "description": "A profile can only be removed when no Mobility asset or guest vehicle uses it."
+      },
+      "add_guest_vehicle": {
+        "title": "Add guest vehicle",
+        "description": "Create a Mobility-owned vehicle without a technical Foundation device."
+      },
+      "edit_guest_vehicle": {
+        "title": "Choose guest vehicle"
+      },
+      "edit_guest": {
+        "title": "Edit guest vehicle"
+      },
+      "remove_guest_vehicle": {
+        "title": "Choose guest vehicle"
+      },
+      "remove_guest": {
+        "title": "Remove {name}",
+        "description": "Remove this guest vehicle and its Mobility-owned configuration."
+      },
+      "manage_profiles": {
+        "title": "Profiles",
+        "description": "Search the catalog, edit one profile directly, or add a custom vehicle/charger profile. Saving an edit returns here so multiple profiles can be maintained in one session.",
+        "data": {
+          "action": "Action",
+          "profile": "Profile"
+        },
+        "data_description": {
+          "action": "Choose what you want to do. Editing is the default for fast repeated maintenance.",
+          "profile": "Type a brand, model, variant or year to find the profile. Packaged and local override profiles use the same stable product identity."
+        }
+      }
     },
     "error": {
       "invalid_product_configuration": "The Mobility product configuration is invalid for this vehicle or charger.",
@@ -75,7 +188,9 @@
       "unknown_profile": "The selected Mobility-authored profile no longer exists.",
       "profile_in_use": "This profile is still assigned to a Mobility asset or guest vehicle.",
       "invalid_guest_vehicle": "The guest vehicle values are invalid. Battery energy cannot exceed capacity and SoC must be between 0 and 100%.",
-      "unknown_guest_vehicle": "The selected guest vehicle no longer exists."
+      "unknown_guest_vehicle": "The selected guest vehicle no longer exists.",
+      "profile_required": "Choose a profile for this action.",
+      "profile_not_disabled": "The selected profile is not disabled."
     }
   }
 }

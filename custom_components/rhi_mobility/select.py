@@ -2,6 +2,7 @@ from __future__ import annotations
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .editable_projection import async_write, editable_definitions, is_available, options, value
@@ -30,6 +31,8 @@ class MobilitySelect(SelectEntity):
         suffix=property_key.replace('.','_')
         self._attr_unique_id=f'{DOMAIN}:{asset_id}:select:{property_key}'; self._attr_suggested_object_id=f'{DOMAIN}_{asset_id}_{suffix}'
         self._attr_name=editable.get('name') or property_key.split('.')[-1].replace('_',' ').title()
+        if editable.get('write_kind') in {"configuration", "profile", "selected_charger", "lifecycle_status_alias", "lifecycle_enabled_alias", "manual_vehicle_configuration"}:
+            self._attr_entity_category=EntityCategory.CONFIG
         self._attr_device_info=logical_device_info(manager.hass,entry_id,manager,asset_id)
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))

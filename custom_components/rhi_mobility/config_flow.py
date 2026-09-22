@@ -2,6 +2,14 @@ from __future__ import annotations
 from copy import deepcopy
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 from .const import DOMAIN, NAME
 from .domain_config import (
     GUEST_VEHICLES_KEY,
@@ -44,6 +52,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     _target_product_asset: str | None = None
     _target_profile: str | None = None
     _pending_guest: dict | None = None
+    _pending_profile_type: str | None = None
 
     def _entry(self):
         return self.config_entry
@@ -100,6 +109,48 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             value.setdefault("profile_id", str(profile_id))
             rows[str(profile_id)] = value
         return rows
+
+    @staticmethod
+    def _profile_label(profile: dict, *, disabled: bool = False) -> str:
+        brand = str(profile.get("brand") or profile.get("manufacturer") or profile.get("vendor") or "").strip()
+        model = str(profile.get("model") or "").strip()
+        variant = str(profile.get("variant") or "").strip()
+        year = str(profile.get("model_year") or "").strip()
+        parts = [part for part in (brand, model, variant, year) if part]
+        label = " · ".join(parts) or str(profile.get("display_name") or profile.get("profile_id") or "Profile")
+        return f"{label} · disabled" if disabled else label
+
+    def _profile_selector(self, profiles: dict[str, dict] | None = None, *, include_disabled: bool = True):
+        rows = profiles if profiles is not None else self._manageable_profiles()
+        disabled = self._disabled_profiles()
+        options = [
+            SelectOptionDict(
+                value=profile_id,
+                label=self._profile_label(row, disabled=include_disabled and profile_id in disabled),
+            )
+            for profile_id, row in sorted(
+                rows.items(),
+                key=lambda item: self._profile_label(item[1]).casefold(),
+            )
+        ]
+        return SelectSelector(
+            SelectSelectorConfig(options=options, mode=SelectSelectorMode.DROPDOWN)
+        )
+
+    @staticmethod
+    def _action_selector():
+        return SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    SelectOptionDict(value="edit", label="Edit an existing profile"),
+                    SelectOptionDict(value="add_vehicle", label="Add a custom vehicle profile"),
+                    SelectOptionDict(value="add_charger", label="Add a custom charger profile"),
+                    SelectOptionDict(value="remove", label="Remove or disable a profile"),
+                    SelectOptionDict(value="restore", label="Restore a disabled packaged profile"),
+                ],
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        )
 
     def _charger_options(self) -> dict[str, str]:
         runtime = self._runtime()
@@ -246,13 +297,36 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 fields[marker] = vol.All(*validators)
             elif platform == "select":
                 if write_kind == "profile":
-                    choices = self._profile_options(asset_id)
+                    asset = self._product_assets().get(asset_id)
+                    profile_type = str(getattr(asset, "concept_id", "")) if asset is not None else ""
+                    profiles = {
+                        profile_id: row
+                        for profile_id, row in self._manageable_profiles().items()
+                        if str(row.get("profile_type") or "") == profile_type
+                        and profile_id not in self._disabled_profiles()
+                    }
+                    selector = self._profile_selector(profiles, include_disabled=False)
                 elif write_kind == "selected_charger":
-                    choices = self._charger_options()
+                    selector = SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                SelectOptionDict(value=value, label=label)
+                                for value, label in self._charger_options().items()
+                            ],
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    )
                 else:
-                    choices = {"": "Not configured"}
-                    choices.update({str(value): str(value) for value in editable.get("options") or []})
-                fields[vol.Optional(property_key, default="" if current is None else str(current))] = vol.In(choices)
+                    selector = SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                SelectOptionDict(value=str(value), label=str(value))
+                                for value in editable.get("options") or []
+                            ],
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    )
+                fields[vol.Optional(property_key, default="" if current is None else str(current))] = selector
             elif platform == "switch":
                 fields[vol.Optional(property_key, default=bool(current) if current is not None else False)] = bool
         return vol.Schema(fields)
@@ -275,32 +349,96 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         return value
 
     def _profile_schema(self, profile_type: str, current: dict | None = None):
+        """User-facing profile form using native HA selectors.
+
+        Required product identity and technical facts are explicit. Optional values use
+        suggested values instead of None defaults so the frontend can always serialize
+        and render the form.
+        """
         row = current or {}
-        common = {
-            vol.Required("profile_type", default=profile_type): vol.In({profile_type: profile_type.title()}),
-            vol.Required("display_name", default=row.get("display_name", "")): str,
-            vol.Required("short_name", default=row.get("short_name", "")): str,
-            vol.Optional("brand", default=row.get("brand") or row.get("manufacturer") or row.get("vendor") or ""): str,
-            vol.Optional("model", default=row.get("model", "")): str,
-            vol.Optional("variant", default=row.get("variant", "")): str,
-            vol.Optional("model_year", default=row.get("model_year")): vol.Any(None, "", vol.All(vol.Coerce(int), vol.Range(min=1900, max=2200))),
-            vol.Optional("phase_capability", default=row.get("phase_capability")): vol.Any(None, vol.All(vol.Coerce(int), vol.In([1, 2, 3]))),
+        fields: dict = {
+            vol.Required("display_name", default=str(row.get("display_name") or "")): str,
+            vol.Required("short_name", default=str(row.get("short_name") or row.get("display_name") or "")): str,
+            vol.Required("brand", default=str(row.get("brand") or row.get("manufacturer") or row.get("vendor") or "")): str,
+            vol.Required("model", default=str(row.get("model") or "")): str,
+            vol.Required("variant", default=str(row.get("variant") or "")): str,
         }
         if profile_type == "vehicle":
-            common.update({
-                vol.Optional("vehicle_kind", default=row.get("vehicle_kind", "")): vol.In({"": "Not specified", "ev": "EV", "phev": "PHEV"}),
-                vol.Optional("battery_capacity_kwh", default=row.get("battery_capacity_kwh")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=500))),
-                vol.Optional("max_ac_power_kw", default=row.get("max_ac_power_kw")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=100))),
-            })
+            fields[vol.Required("model_year", default=int(row.get("model_year") or 2026))] = NumberSelector(
+                NumberSelectorConfig(min=1900, max=2200, step=1)
+            )
+            fields[vol.Required("vehicle_kind", default=str(row.get("vehicle_kind") or "ev"))] = SelectSelector(
+                SelectSelectorConfig(
+                    options=[
+                        SelectOptionDict(value="ev", label="Battery electric (EV)"),
+                        SelectOptionDict(value="phev", label="Plug-in hybrid (PHEV)"),
+                    ],
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            )
+            fields[vol.Required("battery_capacity_kwh", default=float(row.get("battery_capacity_kwh") or 1.0))] = NumberSelector(
+                NumberSelectorConfig(min=0.1, max=500, step=0.1, unit_of_measurement="kWh")
+            )
+            fields[vol.Required("max_ac_power_kw", default=float(row.get("max_ac_power_kw") or 1.0))] = NumberSelector(
+                NumberSelectorConfig(min=0.1, max=100, step=0.1, unit_of_measurement="kW")
+            )
+            fields[vol.Required("phase_capability", default=str(row.get("phase_capability") or 1))] = SelectSelector(
+                SelectSelectorConfig(
+                    options=[
+                        SelectOptionDict(value="1", label="1 phase"),
+                        SelectOptionDict(value="2", label="2 phase"),
+                        SelectOptionDict(value="3", label="3 phase"),
+                    ],
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            )
         else:
-            common.update({
-                vol.Optional("min_current_a", default=row.get("min_current_a")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0, max=200))),
-                vol.Optional("max_current_a", default=row.get("max_current_a")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=200))),
-                vol.Optional("max_power_kw", default=row.get("max_power_kw")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=1000))),
-                vol.Optional("nominal_voltage_v", default=row.get("nominal_voltage_v", 230)): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=1, max=1000))),
-                vol.Optional("current_step_a", default=row.get("current_step_a", 1)): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=100))),
-            })
-        return vol.Schema(common)
+            if row.get("model_year") not in (None, ""):
+                fields[vol.Optional("model_year", description={"suggested_value": int(row["model_year"])})] = NumberSelector(
+                    NumberSelectorConfig(min=1900, max=2200, step=1)
+                )
+            else:
+                fields[vol.Optional("model_year")] = NumberSelector(NumberSelectorConfig(min=1900, max=2200, step=1))
+            fields[vol.Required("max_current_a", default=float(row.get("max_current_a") or 16.0))] = NumberSelector(
+                NumberSelectorConfig(min=0.1, max=200, step=0.1, unit_of_measurement="A")
+            )
+            min_current = row.get("min_current_a")
+            min_marker = (
+                vol.Optional("min_current_a", description={"suggested_value": float(min_current)})
+                if min_current not in (None, "")
+                else vol.Optional("min_current_a")
+            )
+            fields[min_marker] = NumberSelector(
+                NumberSelectorConfig(min=0, max=200, step=0.1, unit_of_measurement="A")
+            )
+            fields[vol.Required("max_power_kw", default=float(row.get("max_power_kw") or 3.7))] = NumberSelector(
+                NumberSelectorConfig(min=0.1, max=1000, step=0.1, unit_of_measurement="kW")
+            )
+            fields[vol.Required("phase_capability", default=str(row.get("phase_capability") or 1))] = SelectSelector(
+                SelectSelectorConfig(
+                    options=[
+                        SelectOptionDict(value="1", label="1 phase"),
+                        SelectOptionDict(value="2", label="2 phase"),
+                        SelectOptionDict(value="3", label="3 phase"),
+                    ],
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            )
+            fields[vol.Required("nominal_voltage_v", default=float(row.get("nominal_voltage_v") or 230))] = NumberSelector(
+                NumberSelectorConfig(min=1, max=1000, step=1, unit_of_measurement="V")
+            )
+            fields[vol.Optional("current_step_a", description={"suggested_value": row.get("current_step_a") or 1})] = NumberSelector(
+                NumberSelectorConfig(min=0.1, max=100, step=0.1, unit_of_measurement="A")
+            )
+        return vol.Schema(fields)
+
+    @staticmethod
+    def _normalized_profile_input(profile_type: str, values: dict) -> dict:
+        normalized = dict(values)
+        normalized["profile_type"] = profile_type
+        if normalized.get("phase_capability") not in (None, ""):
+            normalized["phase_capability"] = int(normalized["phase_capability"])
+        return normalized
 
     def _assert_unique_profile_identity(self, values: dict, *, profile_id: str | None = None) -> None:
         identity = tuple(str(values.get(key) or "").strip().casefold() for key in ("brand", "model", "variant", "model_year"))
@@ -334,13 +472,9 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         return self.async_create_entry(title="", data=self._options())
 
     async def async_step_init(self, user_input=None):
-        choices = ["add_guest_vehicle", "add_vehicle_profile", "add_charger_profile"]
+        choices = ["manage_profiles", "add_guest_vehicle"]
         if self._product_assets():
             choices.insert(0, "configure_product_asset")
-        if self._manageable_profiles():
-            choices.extend(["edit_profile", "remove_profile"])
-        if self._disabled_profiles():
-            choices.append("restore_profile")
         if self._guests():
             choices.extend(["edit_guest_vehicle", "remove_guest_vehicle"])
         return self.async_show_menu(step_id="init", menu_options=choices)
@@ -355,7 +489,16 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 return self.async_show_form(step_id="configure_product_asset", data_schema=vol.Schema({vol.Required("product_asset"): vol.In(choices)}), errors={"base": "unknown_product_asset"})
             self._target_product_asset = asset_id
             return await self.async_step_edit_product_asset()
-        return self.async_show_form(step_id="configure_product_asset", data_schema=vol.Schema({vol.Required("product_asset"): vol.In(choices)}))
+        selector = SelectSelector(
+            SelectSelectorConfig(
+                options=[SelectOptionDict(value=value, label=label) for value, label in choices.items()],
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        )
+        return self.async_show_form(
+            step_id="configure_product_asset",
+            data_schema=vol.Schema({vol.Required("product_asset"): selector}),
+        )
 
     async def async_step_edit_product_asset(self, user_input=None):
         asset_id = str(self._target_product_asset or "")
@@ -375,23 +518,75 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 await runtime.async_set_configuration_property(asset_id, property_key, value)
         except (TypeError, ValueError):
             return self._product_form(asset_id, user_input=user_input, error="invalid_product_configuration")
-        return self.async_create_entry(title="", data=self._options())
+        return await self.async_step_configure_product_asset()
+
+    async def async_step_manage_profiles(self, user_input=None):
+        profiles = self._manageable_profiles()
+        schema = {
+            vol.Required("action", default="edit"): self._action_selector(),
+        }
+        if profiles:
+            schema[vol.Optional("profile")] = self._profile_selector(profiles)
+        if user_input is None:
+            return self.async_show_form(step_id="manage_profiles", data_schema=vol.Schema(schema))
+
+        action = str(user_input.get("action") or "edit")
+        target = str(user_input.get("profile") or "")
+        if action == "add_vehicle":
+            self._pending_profile_type = "vehicle"
+            return await self.async_step_add_vehicle_profile()
+        if action == "add_charger":
+            self._pending_profile_type = "charger"
+            return await self.async_step_add_charger_profile()
+        if action in {"edit", "remove", "restore"}:
+            if not target or target not in profiles:
+                return self.async_show_form(
+                    step_id="manage_profiles",
+                    data_schema=vol.Schema(schema),
+                    errors={"profile": "profile_required"},
+                )
+            self._target_profile = target
+            if action == "edit":
+                return await self.async_step_edit_selected_profile()
+            if action == "remove":
+                return await self.async_step_remove_selected_profile()
+            if target not in self._disabled_profiles():
+                return self.async_show_form(
+                    step_id="manage_profiles",
+                    data_schema=vol.Schema(schema),
+                    errors={"profile": "profile_not_disabled"},
+                )
+            await self._domain_config().async_restore_profile(target)
+            return await self.async_step_manage_profiles()
+        return await self.async_step_manage_profiles()
 
     async def async_step_add_vehicle_profile(self, user_input=None):
         if user_input is None:
             return self.async_show_form(step_id="add_vehicle_profile", data_schema=self._profile_schema("vehicle"))
         try:
-            return await self._store_profile(dict(user_input))
+            values = self._normalized_profile_input("vehicle", user_input)
+            await self._store_profile(values)
+            return await self.async_step_manage_profiles()
         except (TypeError, ValueError):
-            return self.async_show_form(step_id="add_vehicle_profile", data_schema=self._profile_schema("vehicle", user_input), errors={"base": "invalid_profile"})
+            return self.async_show_form(
+                step_id="add_vehicle_profile",
+                data_schema=self._profile_schema("vehicle", user_input),
+                errors={"base": "invalid_profile"},
+            )
 
     async def async_step_add_charger_profile(self, user_input=None):
         if user_input is None:
             return self.async_show_form(step_id="add_charger_profile", data_schema=self._profile_schema("charger"))
         try:
-            return await self._store_profile(dict(user_input))
+            values = self._normalized_profile_input("charger", user_input)
+            await self._store_profile(values)
+            return await self.async_step_manage_profiles()
         except (TypeError, ValueError):
-            return self.async_show_form(step_id="add_charger_profile", data_schema=self._profile_schema("charger", user_input), errors={"base": "invalid_profile"})
+            return self.async_show_form(
+                step_id="add_charger_profile",
+                data_schema=self._profile_schema("charger", user_input),
+                errors={"base": "invalid_profile"},
+            )
 
     async def _select_profile(self, step_id: str, next_step: str, user_input=None):
         profiles = self._manageable_profiles()
@@ -425,9 +620,10 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             domain_config = self._domain_config()
             if domain_config is None:
                 raise ValueError("Mobility semantic configuration store unavailable")
-            self._assert_unique_profile_identity(dict(user_input), profile_id=target)
-            await domain_config.async_update_profile(target, dict(user_input), expected_type=profile_type)
-            return self.async_create_entry(title="", data=self._options())
+            values = self._normalized_profile_input(profile_type, user_input)
+            self._assert_unique_profile_identity(values, profile_id=target)
+            await domain_config.async_update_profile(target, values, expected_type=profile_type)
+            return await self.async_step_manage_profiles()
         except (TypeError, ValueError):
             return self.async_show_form(step_id="edit_selected_profile", data_schema=self._profile_schema(profile_type, user_input), errors={"base": "invalid_profile"}, description_placeholders={"name": str(current.get("display_name") or target)})
 
@@ -456,7 +652,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 await domain_config.async_disable_profile(target)
         except (TypeError, ValueError):
             return self.async_show_form(step_id="remove_selected_profile", data_schema=vol.Schema({vol.Required("confirm", default=False): bool}), errors={"base": "profile_in_use"}, description_placeholders={"name": str(current.get("display_name") or target)})
-        return self.async_create_entry(title="", data=self._options())
+        return await self.async_step_manage_profiles()
 
     async def async_step_add_guest_vehicle(self, user_input=None):
         if user_input is None:
@@ -481,7 +677,11 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             return self.async_show_form(
                 step_id="add_guest_product",
                 data_schema=vol.Schema({
-                    vol.Required("profile_id"): vol.In(profiles),
+                    vol.Required("profile_id"): self._profile_selector({
+                        profile_id: row
+                        for profile_id, row in self._manageable_profiles().items()
+                        if profile_id in profiles
+                    }, include_disabled=False),
                     vol.Optional("color", default=""): str,
                     vol.Required("present", default=True): bool,
                     vol.Optional("selected_charger", default=""): vol.In(self._charger_options()),
@@ -569,7 +769,11 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             return self.async_show_form(
                 step_id="edit_guest_product",
                 data_schema=vol.Schema({
-                    vol.Required("profile_id", default=current_profile): vol.In(profiles),
+                    vol.Required("profile_id", default=current_profile): self._profile_selector({
+                        profile_id: row
+                        for profile_id, row in self._manageable_profiles().items()
+                        if profile_id in profiles
+                    }, include_disabled=False),
                     vol.Optional("color", default=current.get("color", "")): str,
                     vol.Required("present", default=current.get("present", True)): bool,
                     vol.Optional("selected_charger", default=current.get("selected_charger") or ""): vol.In(self._charger_options()),
