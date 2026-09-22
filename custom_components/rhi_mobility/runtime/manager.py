@@ -57,19 +57,46 @@ class MobilityRuntimeManager:
             return None
         return profile
 
-    def effective_profile_id(self, asset_id: str) -> str | None:
-        configured = self.configuration_value(asset_id, "asset.profile_id", None)
-        if configured in (None, ""):
-            return None
-        profile_id = str(configured)
-        getter = getattr(self.registry, "profile", None)
-        profile = getter(profile_id) if callable(getter) else None
+    def _profile_resolution_identity(self, asset_id: str) -> dict[str, Any]:
         asset = self.assets.get(asset_id)
-        if asset is None or not isinstance(profile, dict):
+        snap = self.snapshots.get(asset_id)
+        if asset is None:
+            return {}
+        prefix = asset.concept_id
+        legacy_brand_key = "vehicle.manufacturer" if prefix == "vehicle" else "charger.vendor"
+        def configured_or_snapshot(key: str, fallback_key: str | None = None):
+            sentinel = object()
+            configured = self.configuration_value(asset_id, key, sentinel)
+            if configured is not sentinel and configured not in (None, ""):
+                return configured
+            if snap is None:
+                return None
+            value = snap.values.get(key)
+            if value in (None, "") and fallback_key:
+                value = snap.values.get(fallback_key)
+            return value
+        return {
+            "brand": configured_or_snapshot(f"{prefix}.brand", legacy_brand_key),
+            "model": configured_or_snapshot(f"{prefix}.model"),
+            "variant": configured_or_snapshot(f"{prefix}.variant"),
+            "model_year": configured_or_snapshot(f"{prefix}.model_year"),
+        }
+
+    def effective_profile_id(self, asset_id: str) -> str | None:
+        asset = self.assets.get(asset_id)
+        if asset is None:
             return None
-        if profile.get("profile_type") != asset.concept_id:
+        configured = self.configuration_value(asset_id, "asset.profile_id", None)
+        if configured not in (None, ""):
+            profile_id = str(configured)
+            getter = getattr(self.registry, "profile", None)
+            profile = getter(profile_id) if callable(getter) else None
+            if isinstance(profile, dict) and profile.get("profile_type") == asset.concept_id:
+                return profile_id
             return None
-        return profile_id
+        resolver = getattr(self.registry, "resolve_profile", None)
+        resolved = resolver(asset.concept_id, self._profile_resolution_identity(asset_id)) if callable(resolver) else None
+        return str(resolved.get("profile_id")) if isinstance(resolved, dict) and resolved.get("profile_id") else None
 
     @property
     def control_profiles(self) -> dict[str, AssetControlProfile]:
@@ -706,6 +733,14 @@ class MobilityRuntimeManager:
 
         snap.values={k:v[1] for k,v in sorted(candidates.items())}
         snap.quality={k:f"candidate:{v[2]}" for k,v in sorted(candidates.items())}
+        # Brand is the new canonical product identity term. Legacy manufacturer/vendor
+        # remain compatibility/source facts and feed brand as one explicit derivation.
+        if asset.concept_id == "vehicle" and snap.values.get("vehicle.brand") in (None, "") and snap.values.get("vehicle.manufacturer") not in (None, ""):
+            snap.values["vehicle.brand"] = snap.values["vehicle.manufacturer"]
+            snap.quality["vehicle.brand"] = "derived_from:vehicle.manufacturer"
+        if asset.concept_id == "charger" and snap.values.get("charger.brand") in (None, "") and snap.values.get("charger.vendor") not in (None, ""):
+            snap.values["charger.brand"] = snap.values["charger.vendor"]
+            snap.quality["charger.brand"] = "derived_from:charger.vendor"
 
         selected_profile=self._selected_profile(asset_id)
         if selected_profile:
@@ -714,7 +749,7 @@ class MobilityRuntimeManager:
             snap.quality["asset.profile_id"]=(
                 "mobility_domain_configuration"
                 if self.configuration_value(asset_id, "asset.profile_id", None)
-                else "mobility_source_default_profile"
+                else "mobility_profile_identity_match"
             )
             semantic_properties=(getattr(self.registry,"semantic_catalog",{}).get("properties") or {})
             for property_key,definition in semantic_properties.items():
@@ -730,8 +765,17 @@ class MobilityRuntimeManager:
                 precedence=list(definition.get("truth_precedence") or [])
                 if "PROFILE" not in precedence:
                     continue
-                if property_key in snap.values and "SOURCE" in precedence and precedence.index("SOURCE") < precedence.index("PROFILE"):
-                    continue
+                if property_key in snap.values:
+                    quality = str(snap.quality.get(property_key) or "")
+                    existing_kind = None
+                    if quality.startswith("candidate:") or quality in {"source_device_identity", "logical_asset_identity"}:
+                        existing_kind = "SOURCE"
+                    elif quality.startswith("derived_from:") or quality.startswith("derived_"):
+                        existing_kind = "DERIVED"
+                    elif quality == "mobility_domain_configuration":
+                        existing_kind = "CONFIGURED"
+                    if existing_kind in precedence and precedence.index(existing_kind) < precedence.index("PROFILE"):
+                        continue
                 snap.values[property_key]=value
                 snap.quality[property_key]=f"mobility_profile:{pid}"
 

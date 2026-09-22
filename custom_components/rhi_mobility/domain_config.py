@@ -132,17 +132,29 @@ class MobilityDomainConfiguration:
         if not display_name:
             raise ValueError("profile display_name is required")
         short_name = str(values.get("short_name") or display_name).strip()
-        image_key = str(values.get("image_key") or ("generic_vehicle" if profile_type == "vehicle" else "generic_charger")).strip()
+        image_key = str(values.get("image_key") or "").strip() or None
+        brand = str(values.get("brand") or values.get("manufacturer") or values.get("vendor") or "").strip() or None
+        model = str(values.get("model") or "").strip() or None
+        variant = str(values.get("variant") or "").strip() or None
+        year_raw = values.get("model_year")
+        model_year = None if year_raw in (None, "") else int(year_raw)
+        if model_year is not None and not 1900 <= model_year <= 2200:
+            raise ValueError("model_year must be between 1900 and 2200")
         row: dict[str, Any] = {
             "profile_type": profile_type,
             "display_name": display_name,
             "short_name": short_name,
+            "brand": brand,
+            "model": model,
+            "variant": variant,
+            "model_year": model_year,
+            "auto_resolve": bool(brand and model and variant and model_year),
+            "catalog_role": "user_product",
             "image_key": image_key,
         }
         if profile_type == "vehicle":
             row.update({
-                "manufacturer": str(values.get("manufacturer") or "").strip() or None,
-                "model": str(values.get("model") or "").strip() or None,
+                "manufacturer": brand,
                 "vehicle_kind": str(values.get("vehicle_kind") or "").strip() or None,
                 "battery_capacity_kwh": _optional_positive_float(values.get("battery_capacity_kwh")),
                 "nominal_range_km": _optional_positive_float(values.get("nominal_range_km")),
@@ -156,8 +168,7 @@ class MobilityDomainConfiguration:
             if min_current is not None and max_current is not None and min_current > max_current:
                 raise ValueError("charger min_current_a cannot exceed max_current_a")
             row.update({
-                "vendor": str(values.get("vendor") or "").strip() or None,
-                "model": str(values.get("model") or "").strip() or None,
+                "vendor": brand,
                 "max_current_a": max_current,
                 "min_current_a": min_current,
                 "max_power_kw": _optional_positive_float(values.get("max_power_kw")),
@@ -207,28 +218,52 @@ class MobilityDomainConfiguration:
     @staticmethod
     def _validate_guest_vehicle(values: dict[str, Any], allowed_profile_ids: set[str] | None = None) -> dict[str, Any]:
         name = str(values.get("name") or "").strip()
-        profile_id = str(values.get("profile_id") or "").strip()
         if not name:
             raise ValueError("guest vehicle name is required")
-        if not profile_id or (allowed_profile_ids is not None and profile_id not in allowed_profile_ids):
+        profile_id = str(values.get("profile_id") or "").strip() or None
+        if profile_id and allowed_profile_ids is not None and profile_id not in allowed_profile_ids:
             raise ValueError("unsupported guest vehicle profile")
-        capacity = float(values.get("battery_capacity_kwh"))
-        soc = float(values.get("soc_pct", 0))
+        brand = str(values.get("brand") or "").strip() or None
+        model = str(values.get("model") or "").strip() or None
+        variant = str(values.get("variant") or "").strip() or None
+        year_raw = values.get("model_year")
+        model_year = None if year_raw in (None, "") else int(year_raw)
+        if model_year is not None and not 1900 <= model_year <= 2200:
+            raise ValueError("invalid guest vehicle model_year")
+        if profile_id is None and not (brand and model):
+            raise ValueError("guest vehicle requires a profile or free-format brand and model")
+        capacity_raw = values.get("battery_capacity_kwh")
+        capacity = None if capacity_raw in (None, "") else float(capacity_raw)
+        soc_raw = values.get("soc_pct")
+        soc = None if soc_raw in (None, "") else float(soc_raw)
         energy_raw = values.get("battery_energy_kwh")
-        energy = capacity * soc / 100.0 if energy_raw in (None, "") else float(energy_raw)
-        if capacity <= 0 or not 0 <= soc <= 100 or not 0 <= energy <= capacity:
-            raise ValueError("invalid guest vehicle battery values")
+        energy = None if energy_raw in (None, "") else float(energy_raw)
+        if capacity is not None and capacity <= 0:
+            raise ValueError("invalid guest vehicle battery capacity")
+        if soc is not None and not 0 <= soc <= 100:
+            raise ValueError("invalid guest vehicle soc")
+        if energy is not None and (energy < 0 or (capacity is not None and energy > capacity)):
+            raise ValueError("invalid guest vehicle battery energy")
+        if energy is None and capacity is not None and soc is not None:
+            energy = capacity * soc / 100.0
         selected = str(values.get("selected_charger") or "").strip() or None
-        return {
+        row = {
             "name": name,
             "profile_id": profile_id,
-            "battery_capacity_kwh": round(capacity, 3),
-            "soc_pct": round(soc, 3),
-            "battery_energy_kwh": round(energy, 3),
+            "brand": brand,
+            "model": model,
+            "variant": variant,
+            "model_year": model_year,
+            "color": str(values.get("color") or "").strip() or None,
+            "image_key": str(values.get("image_key") or "").strip() or None,
+            "battery_capacity_kwh": None if capacity is None else round(capacity, 3),
+            "soc_pct": None if soc is None else round(soc, 3),
+            "battery_energy_kwh": None if energy is None else round(energy, 3),
             "present": bool(values.get("present", True)),
             "selected_charger": selected,
             "lifecycle_status": "disabled" if values.get("lifecycle_status") == "disabled" else "active",
         }
+        return {key: value for key, value in row.items() if value is not None}
 
     async def _async_store_guests(
         self,
@@ -279,6 +314,12 @@ class MobilityDomainConfiguration:
             "vehicle.battery_energy_kwh": "battery_energy_kwh",
             "vehicle.present": "present",
             "vehicle.selected_charger": "selected_charger",
+            "vehicle.brand": "brand",
+            "vehicle.model": "model",
+            "vehicle.variant": "variant",
+            "vehicle.model_year": "model_year",
+            "vehicle.color": "color",
+            "vehicle.image_key": "image_key",
         }
         field = guest_fields.get(property_key)
         return guest.get(field, default) if field else default

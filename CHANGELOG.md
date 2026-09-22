@@ -1,3 +1,13 @@
+## M0.9.30 — 2026-09-22
+
+- Add canonical Vehicle/Charger product identity: brand, model, variant and model year.
+- Resolve local profiles only from explicit selection or exact structured identity; no integration-name or fuzzy product inference.
+- Keep profile knowledge local/offline and limited to stable product/technical facts.
+- Make partial and custom/free-format vehicle identity first-class; a profile is optional when brand/model are explicitly provided.
+- Expose identity, profile, color and image key directly on the canonical V2 asset read model.
+- Add a small read-only local profile-catalog V2 provider; registries remain projections, not semantic owners.
+- Freeze V1 for compatibility/defect fixes; no new product/profile/intelligence semantics are added there.
+
 ## M0.9.29 — 2026-09-22
 
 - Add a persistent vehicle visual selection through the existing `vehicle.image_key` semantic property.

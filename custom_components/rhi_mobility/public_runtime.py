@@ -350,10 +350,23 @@ class MobilityPublicRuntimeProvider:
                 "provenance": self.property_provenance(asset_id, key),
                 "editable": bool(definition.get("editable", False)),
             }
+        prefix = asset.concept_id
+        identity = {
+            "brand": self.property_value(asset_id, f"{prefix}.brand"),
+            "model": self.property_value(asset_id, f"{prefix}.model"),
+            "variant": self.property_value(asset_id, f"{prefix}.variant"),
+            "model_year": self.property_value(asset_id, f"{prefix}.model_year"),
+            "status": self.property_value(asset_id, f"{prefix}.identity_status"),
+        }
         return {
             "asset_id": asset_id,
             "concept_id": asset.concept_id,
             "display_name": self.property_value(asset_id, "asset.display_name") or asset.display_name,
+            "identity": identity,
+            "profile_id": self.property_value(asset_id, "asset.profile_id"),
+            "color": self.property_value(asset_id, f"{prefix}.color"),
+            "image_key": self.property_value(asset_id, f"{prefix}.image_key"),
+            "lifecycle_status": self.property_value(asset_id, "asset.lifecycle_status"),
             "health": snap.health,
             "primary_source": (self.manager.primary_source_metadata(asset_id) if callable(getattr(self.manager, "primary_source_metadata", None)) else {}),
             "components": [

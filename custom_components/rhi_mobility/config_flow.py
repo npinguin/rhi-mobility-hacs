@@ -118,15 +118,21 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
 
     def _vehicle_schema(self, current: dict | None = None):
         row = current or {}
-        profiles = self._guest_profiles()
+        profiles = {"": "Custom / free format", **self._guest_profiles()}
         default_profile = str(row.get("profile_id") or "")
-        if default_profile not in profiles and profiles:
-            default_profile = next(iter(profiles))
+        if default_profile not in profiles:
+            default_profile = ""
         return vol.Schema({
             vol.Required("name", default=row.get("name", "Guest vehicle")): str,
-            vol.Required("profile_id", default=default_profile): vol.In(profiles),
-            vol.Required("battery_capacity_kwh", default=row.get("battery_capacity_kwh", 20.0)): vol.All(vol.Coerce(float), vol.Range(min=1, max=200)),
-            vol.Required("soc_pct", default=row.get("soc_pct", 50.0)): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+            vol.Optional("profile_id", default=default_profile): vol.In(profiles),
+            vol.Optional("brand", default=row.get("brand", "")): str,
+            vol.Optional("model", default=row.get("model", "")): str,
+            vol.Optional("variant", default=row.get("variant", "")): str,
+            vol.Optional("model_year", default=row.get("model_year")): vol.Any(None, "", vol.All(vol.Coerce(int), vol.Range(min=1900, max=2200))),
+            vol.Optional("color", default=row.get("color", "")): str,
+            vol.Optional("image_key", default=row.get("image_key", "")): str,
+            vol.Optional("battery_capacity_kwh", default=row.get("battery_capacity_kwh")): vol.Any(None, "", vol.All(vol.Coerce(float), vol.Range(min=0.1, max=500))),
+            vol.Optional("soc_pct", default=row.get("soc_pct")): vol.Any(None, "", vol.All(vol.Coerce(float), vol.Range(min=0, max=100))),
             vol.Required("present", default=row.get("present", True)): bool,
             vol.Optional("selected_charger", default=row.get("selected_charger") or ""): vol.In(self._charger_options()),
             vol.Required("lifecycle_status", default=row.get("lifecycle_status", "active")): vol.In({"active": "Active", "disabled": "Disabled"}),
@@ -255,9 +261,11 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             vol.Required("profile_type", default=profile_type): vol.In({profile_type: profile_type.title()}),
             vol.Required("display_name", default=row.get("display_name", "")): str,
             vol.Required("short_name", default=row.get("short_name", "")): str,
-            vol.Optional("manufacturer" if profile_type == "vehicle" else "vendor", default=row.get("manufacturer" if profile_type == "vehicle" else "vendor", "")): str,
+            vol.Optional("brand", default=row.get("brand") or row.get("manufacturer") or row.get("vendor") or ""): str,
             vol.Optional("model", default=row.get("model", "")): str,
-            vol.Required("image_key", default=row.get("image_key", "generic_vehicle" if profile_type == "vehicle" else "generic_charger")): vol.In(self._profile_image_options(profile_type)),
+            vol.Optional("variant", default=row.get("variant", "")): str,
+            vol.Optional("model_year", default=row.get("model_year")): vol.Any(None, "", vol.All(vol.Coerce(int), vol.Range(min=1900, max=2200))),
+            vol.Optional("image_key", default=row.get("image_key", "")): str,
             vol.Optional("phase_capability", default=row.get("phase_capability")): vol.Any(None, vol.All(vol.Coerce(int), vol.In([1, 2, 3]))),
         }
         if profile_type == "vehicle":

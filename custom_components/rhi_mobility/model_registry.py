@@ -80,6 +80,42 @@ class MobilityModelRegistry:
         row = self._profiles_by_id.get(str(profile_id))
         return None if row is None else dict(row)
 
+    @staticmethod
+    def _identity_token(value: Any) -> str:
+        if value in (None, ""):
+            return ""
+        return " ".join(str(value).strip().casefold().replace("-", " ").split())
+
+    def resolve_profile(self, profile_type: str, identity: dict[str, Any]) -> dict[str, Any] | None:
+        """Resolve one local product profile from exact structured identity only.
+
+        Backend truth never uses fuzzy matching, integration names, device labels or
+        profile-id parsing.  Incomplete identity remains partial/custom and therefore
+        deliberately returns no automatic profile.
+        """
+        keys = ("brand", "model", "variant", "model_year")
+        wanted = {
+            "brand": self._identity_token(identity.get("brand")),
+            "model": self._identity_token(identity.get("model")),
+            "variant": self._identity_token(identity.get("variant")),
+            "model_year": str(identity.get("model_year") or "").strip(),
+        }
+        if not all(wanted.values()):
+            return None
+        matches = []
+        for row in self.profiles_for_type(profile_type):
+            if row.get("auto_resolve") is False:
+                continue
+            candidate = {
+                "brand": self._identity_token(row.get("brand")),
+                "model": self._identity_token(row.get("model")),
+                "variant": self._identity_token(row.get("variant")),
+                "model_year": str(row.get("model_year") or "").strip(),
+            }
+            if all(candidate[key] == wanted[key] for key in keys):
+                matches.append(dict(row))
+        return matches[0] if len(matches) == 1 else None
+
     def profiles_for_type(self, profile_type: str) -> list[dict[str, Any]]:
         rows = {str(row["profile_id"]): dict(row) for row in self.profiles if row.get("profile_type") == profile_type}
         provider = _profile_overlay_provider()

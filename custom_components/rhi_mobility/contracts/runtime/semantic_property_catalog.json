@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.7.2",
+  "release": "M0.9.30",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -19,7 +19,7 @@
     "applicability_explicit": true,
     "value_semantics_explicit": true
   },
-  "property_count": 268,
+  "property_count": 278,
   "properties": {
     "asset.availability_state": {
       "component_id": "identity",
@@ -259,10 +259,12 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "CONFIGURED"
+        "CONFIGURED",
+        "DERIVED"
       ],
       "truth_precedence": [
-        "CONFIGURED"
+        "CONFIGURED",
+        "DERIVED"
       ],
       "editable": {
         "platform": "select",
@@ -1759,8 +1761,9 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "PROFILE",
-        "SOURCE"
+        "CONFIGURED",
+        "SOURCE",
+        "PROFILE"
       ],
       "builder_sources": [
         {
@@ -1771,11 +1774,20 @@
         }
       ],
       "truth_precedence": [
-        "PROFILE",
-        "SOURCE"
+        "CONFIGURED",
+        "SOURCE",
+        "PROFILE"
       ],
       "profile_field": "model",
-      "value_type": "text"
+      "value_type": "text",
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Model"
+      }
     },
     "charger.nominal_voltage_v": {
       "component_id": "control",
@@ -6689,8 +6701,9 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "PROFILE",
-        "SOURCE"
+        "CONFIGURED",
+        "SOURCE",
+        "PROFILE"
       ],
       "builder_sources": [
         {
@@ -6701,11 +6714,20 @@
         }
       ],
       "truth_precedence": [
-        "PROFILE",
-        "SOURCE"
+        "CONFIGURED",
+        "SOURCE",
+        "PROFILE"
       ],
       "profile_field": "model",
-      "value_type": "text"
+      "value_type": "text",
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "vehicle"
+        ],
+        "name": "Model"
+      }
     },
     "vehicle.motion_state": {
       "component_id": "location",
@@ -10872,6 +10894,330 @@
       ],
       "value_type": "enum",
       "state_family": "maintenance_state"
+    },
+    "vehicle.brand": {
+      "component_id": "identity",
+      "section_id": "controls",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": true,
+      "friendly_name": "Brand",
+      "render_as": "text_input",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED",
+        "DERIVED",
+        "PROFILE"
+      ],
+      "truth_precedence": [
+        "CONFIGURED",
+        "DERIVED",
+        "PROFILE"
+      ],
+      "profile_field": "brand",
+      "derived_dependencies": [
+        "vehicle.manufacturer"
+      ],
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "vehicle"
+        ],
+        "name": "Brand"
+      },
+      "value_type": "text"
+    },
+    "vehicle.variant": {
+      "component_id": "identity",
+      "section_id": "controls",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Variant",
+      "render_as": "text_input",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "truth_precedence": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "profile_field": "variant",
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "vehicle"
+        ],
+        "name": "Variant"
+      },
+      "value_type": "text"
+    },
+    "vehicle.model_year": {
+      "component_id": "identity",
+      "section_id": "controls",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Model year",
+      "render_as": "number_input",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "truth_precedence": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "profile_field": "model_year",
+      "editable": {
+        "platform": "number",
+        "write_kind": "configuration",
+        "asset_types": [
+          "vehicle"
+        ],
+        "name": "Model Year",
+        "min": 1900,
+        "max": 2200,
+        "step": 1
+      },
+      "value_type": "number"
+    },
+    "vehicle.color": {
+      "component_id": "identity",
+      "section_id": "controls",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Color",
+      "render_as": "text_input",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED"
+      ],
+      "truth_precedence": [
+        "CONFIGURED"
+      ],
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "vehicle"
+        ],
+        "name": "Color"
+      },
+      "value_type": "text"
+    },
+    "vehicle.identity_status": {
+      "component_id": "identity",
+      "section_id": "overview",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": true,
+      "friendly_name": "Identity Status",
+      "render_as": "readonly_value",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "DERIVED"
+      ],
+      "truth_precedence": [
+        "DERIVED"
+      ],
+      "value_type": "enum",
+      "state_family": "identity_status",
+      "derived_dependencies": [
+        "vehicle.brand",
+        "vehicle.model",
+        "vehicle.variant",
+        "vehicle.model_year",
+        "asset.profile_id"
+      ]
+    },
+    "charger.brand": {
+      "component_id": "identity",
+      "section_id": "controls",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": true,
+      "friendly_name": "Brand",
+      "render_as": "text_input",
+      "applicable_asset_types": [
+        "charger"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED",
+        "DERIVED",
+        "PROFILE"
+      ],
+      "truth_precedence": [
+        "CONFIGURED",
+        "DERIVED",
+        "PROFILE"
+      ],
+      "profile_field": "brand",
+      "derived_dependencies": [
+        "charger.vendor"
+      ],
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Brand"
+      },
+      "value_type": "text"
+    },
+    "charger.variant": {
+      "component_id": "identity",
+      "section_id": "controls",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Variant",
+      "render_as": "text_input",
+      "applicable_asset_types": [
+        "charger"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "truth_precedence": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "profile_field": "variant",
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Variant"
+      },
+      "value_type": "text"
+    },
+    "charger.model_year": {
+      "component_id": "identity",
+      "section_id": "controls",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Model year",
+      "render_as": "number_input",
+      "applicable_asset_types": [
+        "charger"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "truth_precedence": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "profile_field": "model_year",
+      "editable": {
+        "platform": "number",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Model Year",
+        "min": 1900,
+        "max": 2200,
+        "step": 1
+      },
+      "value_type": "number"
+    },
+    "charger.color": {
+      "component_id": "identity",
+      "section_id": "controls",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Color",
+      "render_as": "text_input",
+      "applicable_asset_types": [
+        "charger"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED"
+      ],
+      "truth_precedence": [
+        "CONFIGURED"
+      ],
+      "editable": {
+        "platform": "text",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Color"
+      },
+      "value_type": "text"
+    },
+    "charger.identity_status": {
+      "component_id": "identity",
+      "section_id": "overview",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": true,
+      "friendly_name": "Identity Status",
+      "render_as": "readonly_value",
+      "applicable_asset_types": [
+        "charger"
+      ],
+      "v1_drop_in": false,
+      "producer_types": [
+        "DERIVED"
+      ],
+      "truth_precedence": [
+        "DERIVED"
+      ],
+      "value_type": "enum",
+      "state_family": "identity_status",
+      "derived_dependencies": [
+        "charger.brand",
+        "charger.model",
+        "charger.variant",
+        "charger.model_year",
+        "asset.profile_id"
+      ]
     }
   },
   "compatibility": {

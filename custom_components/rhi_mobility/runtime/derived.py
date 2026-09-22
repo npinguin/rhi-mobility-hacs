@@ -82,6 +82,23 @@ def _derive_total_range(values: dict[str, Any], quality: dict[str, str]) -> None
         _set(values,quality,"vehicle.range_total_km",round(ev_range+fuel_range,3),"derived_total_from_explicit_phev_ev_fuel_ranges")
 
 
+
+def _derive_identity_status(values: dict[str, Any], quality: dict[str, str], prefix: str) -> None:
+    """Classify canonical product identity without inventing missing facts."""
+    keys = (f"{prefix}.brand", f"{prefix}.model", f"{prefix}.variant", f"{prefix}.model_year")
+    identity = [values.get(key) for key in keys]
+    profile_id = values.get("asset.profile_id")
+    configured_identity = any(quality.get(key) == "mobility_domain_configuration" for key in keys)
+    if profile_id not in (None, ""):
+        status = "resolved"
+    elif identity[0] not in (None, "") and identity[1] not in (None, "") and configured_identity:
+        status = "custom"
+    elif any(value not in (None, "") for value in identity):
+        status = "partial"
+    else:
+        status = "unresolved"
+    _set(values, quality, f"{prefix}.identity_status", status, "derived_identity_completeness", overwrite=True)
+
 def apply_vehicle_derivations(values: dict[str, Any], quality: dict[str, str], *, charging_profile: dict[str, Any] | None = None) -> None:
     """Apply Mobility-owned pure derivations once, after source/profile/config facts exist."""
     soc = _num(values.get("vehicle.soc_pct"))
@@ -148,10 +165,12 @@ def apply_vehicle_derivations(values: dict[str, Any], quality: dict[str, str], *
     else:
         connectivity = None
     _set(values, quality, "vehicle.connectivity_state", connectivity, "derived_from_source_connectivity", overwrite=True)
+    _derive_identity_status(values, quality, "vehicle")
 
 
 def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str]) -> None:
     """Apply deterministic charger summaries and aggregate readback facts."""
+    _derive_identity_status(values, quality, "charger")
     phase_currents = [_num(values.get(f"charger.current_l{phase}_a")) for phase in (1, 2, 3)]
     observed_phase_currents = [current for current in phase_currents if current is not None]
     if values.get("charger.actual_current_a") is None and observed_phase_currents:

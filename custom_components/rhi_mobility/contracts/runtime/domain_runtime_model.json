@@ -4735,7 +4735,7 @@
     "full_semantic_parity_required": true,
     "semantic_property_catalog": "semantic_property_catalog.json",
     "profile_catalog": "profile_catalog.json",
-    "canonical_property_count": 262,
+    "canonical_property_count": 278,
     "v1_reference_role": "acceptance_only",
     "runtime_property_authority": "semantic_property_catalog.json"
   },
