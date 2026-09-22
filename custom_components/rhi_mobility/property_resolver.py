@@ -48,39 +48,6 @@ _CAPABILITY_PRIORITY = (
 )
 
 
-def _select_declared_candidate(
-    definition: dict[str, Any],
-    candidates: dict[str, dict[str, Any]],
-) -> tuple[dict[str, Any], PropertyProducerKind] | None:
-    """Choose exactly by catalog truth_precedence, never by runtime code order."""
-    if not candidates:
-        return None
-    declared = set(declared_producer_types(definition))
-    precedence = tuple(str(value) for value in definition.get("truth_precedence") or ())
-    unknown = sorted(set(candidates) - declared)
-    if unknown:
-        raise ValueError(f"candidate producers not declared by semantic catalog: {unknown}")
-    if not precedence:
-        raise ValueError("producer candidates exist but truth_precedence is empty")
-    for producer_name in precedence:
-        candidate = candidates.get(producer_name)
-        if candidate is None:
-            continue
-        producer_kind = _PRODUCER_KIND.get(producer_name)
-        if producer_kind is None:
-            raise ValueError(f"unsupported producer in truth_precedence: {producer_name}")
-        return candidate, producer_kind
-    raise ValueError("producer candidates exist but none are selectable by truth_precedence")
-
-
-def _single_declared_producer(definition: dict[str, Any]) -> PropertyProducerKind | None:
-    """Allow non-ledger producers only when ownership is unambiguous in the catalog."""
-    declared = declared_producer_types(definition)
-    if len(declared) != 1:
-        return None
-    return _PRODUCER_KIND.get(declared[0])
-
-
 def _quality_for(
     *,
     producer: PropertyProducerKind | None,
@@ -98,11 +65,12 @@ def _quality_for(
 
 
 class PropertyResolver:
-    """Single runtime authority for canonical Mobility property resolution.
+    """Typed resolution/status view over prebound canonical Mobility truth.
 
-    Resolution is deliberately strict: producer candidates and the semantic catalog own
-    precedence; capability diagnostics own absence/error classification. Public projection
-    text such as quality/reason labels is never interpreted as semantic evidence.
+    MobilityRuntimeManager materialises the single canonical winner using the semantic
+    catalog precedence. This layer never arbitrates producers again; it classifies the
+    already-selected value with typed availability, provenance, quality and error semantics
+    for consumers such as HA projection, Energy and diagnostics.
     """
 
     def __init__(self, manager: Any, public: Any) -> None:

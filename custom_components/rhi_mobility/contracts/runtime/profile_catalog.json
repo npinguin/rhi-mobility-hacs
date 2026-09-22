@@ -1,28 +1,26 @@
 {
   "kind": "RHI_MOBILITY_PROFILE_CATALOG",
-  "contract_version": "1.2.0",
-  "release": "M0.9.31",
+  "contract_version": "1.3.0",
+  "release": "M0.9.32",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
-    "legacy_profile_catalog_drives_v2": false,
-    "profile_never_fabricates_measured_actual": true,
-    "precedence": "explicit_configuration > selected_profile > unknown",
     "v1_reference_role": "acceptance_only",
     "identity_key": "brand + model + variant + model_year",
     "exact_profile_resolution_only": true,
     "integration_domain_is_not_product_identity": true,
     "custom_identity_without_profile_allowed": true,
-    "profile_scope": "stable local product identity and technical specification",
-    "instance_presentation_outside_profile": true,
+    "profile_scope": "complete verified stable local product identity and functional technical specification",
     "runtime_internet_dependency": false,
+    "shipped_profile_completeness": "all required functional fields present and evidence-backed",
+    "unknown_or_null_required_fields_forbidden": true,
+    "battery_capacity_semantics": "usable_energy_capacity_for_mobility_planning",
+    "user_policy_in_profile_forbidden": true,
+    "artwork_in_profile_forbidden": true,
+    "command_capability_in_profile_forbidden": true,
     "packaged_profiles_are_defaults": true,
     "integration_options_may_override_packaged_profile": true,
-    "integration_options_may_disable_packaged_profile": true,
-    "artwork_required_for_profile": false,
-    "image_key_scope": "instance_only",
-    "image_key_owner": "ux",
-    "profile_may_supply_image_key": false
+    "integration_options_may_disable_packaged_profile": true
   },
   "profiles": [
     {
@@ -34,19 +32,27 @@
       "brand": "Alfen",
       "model": "Eve Single Pro-line",
       "variant": "22 kW",
-      "model_year": null,
       "max_current_a": 32,
-      "min_current_a": null,
       "max_power_kw": 22,
-      "physical_min_power_kw": null,
-      "physical_max_power_kw": 22,
       "phase_capability": 3,
       "nominal_voltage_v": 400,
-      "supports_current_control": null,
-      "supports_remote_start_stop": null,
-      "current_step_a": null,
       "auto_resolve": false,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://alfen.com/nl-nl/ev-oplaadpunten/thuis/eve-single-pro-line",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "max_current_a",
+            "max_power_kw",
+            "phase_capability",
+            "nominal_voltage_v"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "charger",
@@ -57,43 +63,28 @@
       "brand": "Easee",
       "model": "Charge Up",
       "variant": "22 kW",
-      "model_year": null,
       "max_current_a": 32,
-      "min_current_a": 6,
       "max_power_kw": 22,
-      "physical_min_power_kw": null,
-      "physical_max_power_kw": 22,
       "phase_capability": 3,
       "nominal_voltage_v": 400,
-      "supports_current_control": null,
-      "supports_remote_start_stop": null,
-      "current_step_a": null,
       "auto_resolve": false,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "charger",
-      "profile_id": "utility_plug",
-      "display_name": "Utility plug charger",
-      "short_name": "Plug",
-      "vendor": "Fibaro",
-      "model": "Metered utility plug",
-      "max_current_a": 10,
-      "min_current_a": 0,
-      "max_power_kw": 2.3,
-      "physical_min_power_kw": 0,
-      "physical_max_power_kw": 2.3,
-      "phase_capability": 1,
-      "nominal_voltage_v": 230,
-      "image_key": "fibaro_utility_plug",
-      "supports_current_control": false,
-      "supports_remote_start_stop": true,
-      "current_step_a": 1,
-      "brand": "Fibaro",
-      "variant": null,
-      "model_year": null,
-      "auto_resolve": false,
-      "catalog_role": "legacy_compatibility"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://easee.com/en/products/ev-chargers/charge-up/",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "max_current_a",
+            "max_power_kw",
+            "phase_capability",
+            "nominal_voltage_v"
+          ]
+        }
+      ],
+      "min_current_a": 6
     },
     {
       "profile_type": "charger",
@@ -104,19 +95,35 @@
       "brand": "Peblar",
       "model": "Business",
       "variant": "Socket 22 kW",
-      "model_year": null,
       "max_current_a": 32,
-      "min_current_a": null,
       "max_power_kw": 22,
-      "physical_min_power_kw": null,
-      "physical_max_power_kw": 22,
       "phase_capability": 3,
       "nominal_voltage_v": 400,
-      "supports_current_control": null,
-      "supports_remote_start_stop": null,
-      "current_step_a": null,
       "auto_resolve": false,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://peblar.com/hubfs/EN_Peblar%20AC%20chargers_R06.pdf",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "max_current_a",
+            "max_power_kw",
+            "phase_capability",
+            "nominal_voltage_v"
+          ]
+        },
+        {
+          "url": "https://peblar.com/hubfs/User_manual_Peblar_ENG_R04.pdf?hsLang=en",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "min_current_a"
+          ]
+        }
+      ],
+      "min_current_a": 6
     },
     {
       "profile_type": "charger",
@@ -127,43 +134,35 @@
       "brand": "Peblar",
       "model": "Home",
       "variant": "11 kW",
-      "model_year": null,
       "max_current_a": 16,
-      "min_current_a": null,
       "max_power_kw": 11,
-      "physical_min_power_kw": null,
-      "physical_max_power_kw": 11,
       "phase_capability": 3,
       "nominal_voltage_v": 400,
-      "supports_current_control": null,
-      "supports_remote_start_stop": null,
-      "current_step_a": null,
       "auto_resolve": false,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "charger",
-      "profile_id": "peblar_22kw",
-      "display_name": "Peblar 22 kW (legacy profile)",
-      "short_name": "Peblar",
-      "vendor": "Peblar",
-      "model": "Peblar",
-      "max_current_a": 32,
-      "min_current_a": 6,
-      "max_power_kw": 22,
-      "physical_min_power_kw": 1.4,
-      "physical_max_power_kw": 22,
-      "phase_capability": 3,
-      "nominal_voltage_v": 230,
-      "image_key": "peblar_22kw",
-      "supports_current_control": true,
-      "supports_remote_start_stop": true,
-      "current_step_a": 1,
-      "brand": "Peblar",
-      "variant": null,
-      "model_year": null,
-      "auto_resolve": false,
-      "catalog_role": "legacy_compatibility"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://peblar.com/hubfs/EN_Peblar%20AC%20chargers_R06.pdf",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "max_current_a",
+            "max_power_kw",
+            "phase_capability",
+            "nominal_voltage_v"
+          ]
+        },
+        {
+          "url": "https://peblar.com/hubfs/User_manual_Peblar_ENG_R04.pdf?hsLang=en",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "min_current_a"
+          ]
+        }
+      ],
+      "min_current_a": 6
     },
     {
       "profile_type": "charger",
@@ -174,43 +173,27 @@
       "brand": "Smappee",
       "model": "EV Wall",
       "variant": "22 kW",
-      "model_year": null,
       "max_current_a": 32,
-      "min_current_a": null,
       "max_power_kw": 22,
-      "physical_min_power_kw": null,
-      "physical_max_power_kw": 22,
       "phase_capability": 3,
       "nominal_voltage_v": 400,
-      "supports_current_control": null,
-      "supports_remote_start_stop": null,
-      "current_step_a": null,
       "auto_resolve": false,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "charger",
-      "profile_id": "wallbox_ocpp",
-      "display_name": "Wallbox Commander 2 22 kW (legacy profile)",
-      "short_name": "Wallbox",
-      "vendor": "Wallbox",
-      "model": "Commander 2",
-      "max_current_a": 32,
-      "min_current_a": 6,
-      "max_power_kw": 22,
-      "physical_min_power_kw": 1.4,
-      "physical_max_power_kw": 22,
-      "phase_capability": 3,
-      "nominal_voltage_v": 230,
-      "image_key": "wallbox_ocpp",
-      "supports_current_control": true,
-      "supports_remote_start_stop": true,
-      "current_step_a": 1,
-      "brand": "Wallbox",
-      "variant": null,
-      "model_year": null,
-      "auto_resolve": false,
-      "catalog_role": "legacy_compatibility"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://www.smappee.com/uploads/Documentation/Technical-Documentation/EV-Wall/Smappee-Technical_specifications-EV_Wall-NL-260113.pdf",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "max_current_a",
+            "max_power_kw",
+            "phase_capability",
+            "nominal_voltage_v"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "charger",
@@ -221,19 +204,28 @@
       "brand": "Wallbox",
       "model": "Commander 2",
       "variant": "22 kW",
-      "model_year": null,
       "max_current_a": 32,
-      "min_current_a": 6,
       "max_power_kw": 22,
-      "physical_min_power_kw": 1.4,
-      "physical_max_power_kw": 22,
       "phase_capability": 3,
       "nominal_voltage_v": 400,
-      "supports_current_control": true,
-      "supports_remote_start_stop": true,
-      "current_step_a": 1,
       "auto_resolve": false,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://support.wallbox.com/wp-content/uploads/2022/11/EN_Commander_2_Datasheet_English.pdf",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "max_current_a",
+            "max_power_kw",
+            "phase_capability",
+            "nominal_voltage_v"
+          ]
+        }
+      ],
+      "min_current_a": 6
     },
     {
       "profile_type": "charger",
@@ -244,95 +236,163 @@
       "brand": "Zaptec",
       "model": "Go 2",
       "variant": "22 kW",
-      "model_year": null,
       "max_current_a": 32,
-      "min_current_a": null,
       "max_power_kw": 22,
-      "physical_min_power_kw": null,
-      "physical_max_power_kw": 22,
       "phase_capability": 3,
       "nominal_voltage_v": 400,
-      "supports_current_control": null,
-      "supports_remote_start_stop": null,
-      "current_step_a": null,
       "auto_resolve": false,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://help.zaptec.com/objects/sa-migration-assets/aaffa4be-5f88-4e9a-9a9e-c16298de05c7/c2b59031a52f335e3232d2fa7b3104eabfa8512079396d32c1349154341f09f9.pdf",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "max_current_a",
+            "max_power_kw",
+            "phase_capability",
+            "nominal_voltage_v"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "audi_a6_etron_2026",
-      "display_name": "Audi A6 e-tron",
-      "short_name": "Audi A6 e-tron",
+      "profile_id": "audi_a6_sportback_etron_performance_my2025",
+      "display_name": "Audi A6 Sportback e-tron performance",
+      "short_name": "Audi A6 Sportback e-tron",
       "manufacturer": "Audi",
       "brand": "Audi",
-      "model": "A6 e-tron",
-      "variant": "EV",
-      "model_year": 2026,
+      "model": "A6 Sportback e-tron",
+      "variant": "performance",
+      "model_year": 2025,
       "vehicle_kind": "ev",
-      "auto_resolve": false,
-      "catalog_role": "belgium_current"
+      "battery_capacity_kwh": 94.9,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
+      "auto_resolve": true,
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/2270/Audi-A6-Sportback-e-tron-performance",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "audi_q4_45_etron_2026",
-      "display_name": "Audi Q4 e-tron 45 e-tron",
+      "profile_id": "audi_q4_etron_45_quattro_my2026",
+      "display_name": "Audi Q4 e-tron 45 quattro",
       "short_name": "Audi Q4 e-tron",
       "manufacturer": "Audi",
       "brand": "Audi",
       "model": "Q4 e-tron",
-      "variant": "45 e-tron",
+      "variant": "45 quattro",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 77,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/2014/Audi-Q4-e-tron-45-quattro",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "audi_q6_etron_performance_2026",
-      "display_name": "Audi Q6 e-tron performance",
-      "short_name": "Audi Q6 e-tron",
+      "profile_id": "audi_q6_suv_etron_performance_my2024",
+      "display_name": "Audi Q6 SUV e-tron performance",
+      "short_name": "Audi Q6 SUV e-tron",
       "manufacturer": "Audi",
       "brand": "Audi",
-      "model": "Q6 e-tron",
+      "model": "Q6 SUV e-tron",
       "variant": "performance",
-      "model_year": 2026,
+      "model_year": 2024,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 94.9,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/2215/Audi-Q6-SUV-e-tron-performance",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "audi_q8_tfsi_55e_2025_phev",
-      "display_name": "Audi Q8 TFSI e 55 PHEV",
+      "profile_id": "audi_q8_55_tfsi_e_quattro_my2025",
+      "display_name": "Audi Q8 55 TFSI e quattro",
       "short_name": "Audi Q8",
       "manufacturer": "Audi",
-      "model": "Q8",
-      "vehicle_kind": "phev",
-      "battery_capacity_kwh": 17.9,
-      "nominal_range_km": 85,
-      "max_ac_power_kw": 7.6,
-      "phase_capability": 2,
-      "image_key": "audi_q8_daytona_grey_23",
-      "default_target_soc_pct": 80,
       "brand": "Audi",
-      "variant": "55 TFSI e",
+      "model": "Q8",
+      "variant": "55 TFSI e quattro",
       "model_year": 2025,
+      "vehicle_kind": "phev",
+      "battery_capacity_kwh": 22,
+      "max_ac_power_kw": 7.4,
+      "phase_capability": 2,
       "auto_resolve": true,
-      "catalog_role": "product"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/audi/q8/4m-facelift/335127/",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "bmw_i4_edrive40_2026",
+      "profile_id": "bmw_i4_edrive40_my2026",
       "display_name": "BMW i4 eDrive40",
       "short_name": "BMW i4",
       "manufacturer": "BMW",
@@ -341,45 +401,64 @@
       "variant": "eDrive40",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 81.3,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3205/BMW-i4-eDrive40",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "bmw_i5_edrive40_2026",
-      "display_name": "BMW i5 eDrive40",
+      "profile_id": "bmw_i5_edrive40_my2025",
+      "display_name": "BMW i5 eDrive40 Sedan",
       "short_name": "BMW i5",
       "manufacturer": "BMW",
       "brand": "BMW",
       "model": "i5",
-      "variant": "eDrive40",
-      "model_year": 2026,
+      "variant": "eDrive40 Sedan",
+      "model_year": 2025,
       "vehicle_kind": "ev",
+      "battery_capacity_kwh": 81.2,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3112/BMW-i5-eDrive40-Sedan",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "bmw_ix_xdrive60_2026",
-      "display_name": "BMW iX xDrive60",
-      "short_name": "BMW iX",
-      "manufacturer": "BMW",
-      "brand": "BMW",
-      "model": "iX",
-      "variant": "xDrive60",
-      "model_year": 2026,
-      "vehicle_kind": "ev",
-      "auto_resolve": true,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "bmw_ix1_edrive20_2026",
+      "profile_id": "bmw_ix1_edrive20_my2026",
       "display_name": "BMW iX1 eDrive20",
       "short_name": "BMW iX1",
       "manufacturer": "BMW",
@@ -388,17 +467,31 @@
       "variant": "eDrive20",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 65.2,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3458/BMW-iX1-eDrive20",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "bmw_ix1_xdrive30_2026",
+      "profile_id": "bmw_ix1_xdrive30_my2026",
       "display_name": "BMW iX1 xDrive30",
       "short_name": "BMW iX1",
       "manufacturer": "BMW",
@@ -407,17 +500,31 @@
       "variant": "xDrive30",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 65.2,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3459/BMW-iX1-xDrive30",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "bmw_ix2_xdrive30_2026",
+      "profile_id": "bmw_ix2_xdrive30_my2026",
       "display_name": "BMW iX2 xDrive30",
       "short_name": "BMW iX2",
       "manufacturer": "BMW",
@@ -426,127 +533,229 @@
       "variant": "xDrive30",
       "model_year": 2026,
       "vehicle_kind": "ev",
+      "battery_capacity_kwh": 65.2,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3461/BMW-iX2-xDrive30",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "bmw_x1_2025_phev",
-      "display_name": "BMW X1 2025 PHEV",
+      "profile_id": "bmw_x1_xdrive25e_my2026",
+      "display_name": "BMW X1 xDrive25e",
       "short_name": "BMW X1",
       "manufacturer": "BMW",
+      "brand": "BMW",
       "model": "X1",
+      "variant": "xDrive25e",
+      "model_year": 2026,
       "vehicle_kind": "phev",
       "battery_capacity_kwh": 14.2,
-      "nominal_range_km": 80,
-      "max_ac_power_kw": 7.4,
-      "phase_capability": 2,
-      "image_key": "bmw_x1_phev",
-      "default_target_soc_pct": 80,
-      "brand": "BMW",
-      "variant": "PHEV",
-      "model_year": 2025,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "product"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/bmw/x1/u11/345270/",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "byd_seal_design_2026",
-      "display_name": "BYD SEAL Design",
+      "profile_id": "byd_seal_82_5_rwd_design_my2026",
+      "display_name": "BYD SEAL 82.5 kWh RWD Design",
       "short_name": "BYD SEAL",
       "manufacturer": "BYD",
       "brand": "BYD",
       "model": "SEAL",
-      "variant": "Design",
+      "variant": "82.5 kWh RWD Design",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 82.5,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3515/BYD-SEAL-825-kWh-RWD-Design",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "cupra_born_2026",
-      "display_name": "CUPRA Born EV",
+      "profile_id": "cupra_born_170kw_79kwh_my2027",
+      "display_name": "CUPRA Born 170 kW 79 kWh",
       "short_name": "CUPRA Born",
       "manufacturer": "CUPRA",
       "brand": "CUPRA",
       "model": "Born",
-      "variant": "EV",
-      "model_year": 2026,
+      "variant": "170 kW 79 kWh",
+      "model_year": 2027,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 79,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3512/CUPRA-Born-170-kW---79-kWh",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "cupra_formentor_ehybrid_2026",
-      "display_name": "CUPRA Formentor e-HYBRID",
+      "profile_id": "cupra_formentor_1_5_ehybrid_200kw_my2026",
+      "display_name": "CUPRA Formentor 1.5 e-HYBRID 200 kW",
       "short_name": "CUPRA Formentor",
       "manufacturer": "CUPRA",
       "brand": "CUPRA",
       "model": "Formentor",
-      "variant": "e-HYBRID",
+      "variant": "1.5 e-HYBRID 200 kW",
       "model_year": 2026,
       "vehicle_kind": "phev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 19.7,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/cupra/formentor/1generation-facelift/346741/",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "cupra_tavascan_endurance_2026",
-      "display_name": "CUPRA Tavascan Endurance",
+      "profile_id": "cupra_tavascan_210kw_77kwh_endurance_my2027",
+      "display_name": "CUPRA Tavascan 210 kW 77 kWh Endurance",
       "short_name": "CUPRA Tavascan",
       "manufacturer": "CUPRA",
       "brand": "CUPRA",
       "model": "Tavascan",
-      "variant": "Endurance",
-      "model_year": 2026,
+      "variant": "210 kW 77 kWh Endurance",
+      "model_year": 2027,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 77,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3609/CUPRA-Tavascan-210-kW---77-kWh-Endurance",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "cupra_terramar_ehybrid_2026",
-      "display_name": "CUPRA Terramar e-HYBRID",
+      "profile_id": "cupra_terramar_1_5_ehybrid_vz_200kw_my2025",
+      "display_name": "CUPRA Terramar 1.5 e-HYBRID VZ 200 kW",
       "short_name": "CUPRA Terramar",
       "manufacturer": "CUPRA",
       "brand": "CUPRA",
       "model": "Terramar",
-      "variant": "e-HYBRID",
-      "model_year": 2026,
+      "variant": "1.5 e-HYBRID VZ 200 kW",
+      "model_year": 2025,
       "vehicle_kind": "phev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 19.7,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/cupra/terramar/1generation/336903/",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "ford_explorer_er_rwd_2026",
+      "profile_id": "ford_explorer_extended_range_rwd_my2026",
       "display_name": "Ford Explorer Extended Range RWD",
       "short_name": "Ford Explorer",
       "manufacturer": "Ford",
@@ -555,133 +764,31 @@
       "variant": "Extended Range RWD",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
-      "auto_resolve": true,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "guest_ev_3phase",
-      "display_name": "Guest EV 3-phase",
-      "short_name": "Guest EV",
-      "manufacturer": "Generic",
-      "model": "EV",
-      "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
+      "battery_capacity_kwh": 79,
       "max_ac_power_kw": 11,
       "phase_capability": 3,
-      "image_key": "guest_ev",
-      "default_target_soc_pct": 80,
-      "brand": "Generic",
-      "variant": null,
-      "model_year": null,
-      "auto_resolve": false,
-      "catalog_role": "legacy_generic"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "guest_phev_1phase",
-      "display_name": "Guest PHEV 1-phase",
-      "short_name": "Guest PHEV",
-      "manufacturer": "Generic",
-      "model": "PHEV",
-      "vehicle_kind": "phev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": 3.7,
-      "phase_capability": 1,
-      "image_key": "guest_phev",
-      "default_target_soc_pct": 80,
-      "brand": "Generic",
-      "variant": null,
-      "model_year": null,
-      "auto_resolve": false,
-      "catalog_role": "legacy_generic"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "hyundai_ioniq5_2026",
-      "display_name": "Hyundai IONIQ 5 EV",
-      "short_name": "Hyundai IONIQ 5",
-      "manufacturer": "Hyundai",
-      "brand": "Hyundai",
-      "model": "IONIQ 5",
-      "variant": "EV",
-      "model_year": 2026,
-      "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3454/Ford-Explorer-Extended-Range-RWD",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "hyundai_kona_electric_2026",
-      "display_name": "Hyundai KONA Electric EV",
-      "short_name": "Hyundai KONA Electric",
-      "manufacturer": "Hyundai",
-      "brand": "Hyundai",
-      "model": "KONA Electric",
-      "variant": "EV",
-      "model_year": 2026,
-      "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
-      "auto_resolve": true,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "kia_ev3_long_range_2026",
-      "display_name": "Kia EV3 Long Range",
-      "short_name": "Kia EV3",
-      "manufacturer": "Kia",
-      "brand": "Kia",
-      "model": "EV3",
-      "variant": "Long Range",
-      "model_year": 2026,
-      "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
-      "auto_resolve": true,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "kia_ev6_2026",
-      "display_name": "Kia EV6 EV",
-      "short_name": "Kia EV6",
-      "manufacturer": "Kia",
-      "brand": "Kia",
-      "model": "EV6",
-      "variant": "EV",
-      "model_year": 2026,
-      "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
-      "auto_resolve": true,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "mercedes_cla_250plus_eq_2026",
+      "profile_id": "mercedes_cla_250plus_my2026",
       "display_name": "Mercedes-Benz CLA 250+ with EQ Technology",
       "short_name": "Mercedes-Benz CLA",
       "manufacturer": "Mercedes-Benz",
@@ -690,223 +797,340 @@
       "variant": "250+ with EQ Technology",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 85,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3139/Mercedes-Benz-CLA-250plus",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "mercedes_gla_2021_phev",
-      "display_name": "Mercedes GLA 2021 PHEV",
-      "short_name": "Mercedes GLA",
+      "profile_id": "mercedes_gla_250e_my2025",
+      "display_name": "Mercedes-Benz GLA 250 e",
+      "short_name": "Mercedes-Benz GLA",
       "manufacturer": "Mercedes-Benz",
-      "model": "GLA",
-      "vehicle_kind": "phev",
-      "battery_capacity_kwh": 15.6,
-      "nominal_range_km": 70,
-      "max_ac_power_kw": 7.4,
-      "phase_capability": 2,
-      "image_key": "mercedes_gla_phev",
-      "default_target_soc_pct": 80,
       "brand": "Mercedes-Benz",
-      "variant": "PHEV",
-      "model_year": 2021,
+      "model": "GLA",
+      "variant": "250 e",
+      "model_year": 2025,
+      "vehicle_kind": "phev",
+      "battery_capacity_kwh": 12.9,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "product"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/mercedes-benz/gla/247-facelift/339258/",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "mini_cooper_electric_2026",
-      "display_name": "MINI Cooper Electric",
+      "profile_id": "mini_cooper_e_my2026",
+      "display_name": "MINI Cooper E",
       "short_name": "MINI Cooper",
       "manufacturer": "MINI",
       "brand": "MINI",
       "model": "Cooper",
-      "variant": "Electric",
+      "variant": "E",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "auto_resolve": false,
-      "catalog_role": "belgium_current"
+      "battery_capacity_kwh": 36.6,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
+      "auto_resolve": true,
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/1997/Mini-Cooper-E",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "peugeot_e3008_2026",
-      "display_name": "Peugeot E-3008 EV",
+      "profile_id": "peugeot_e3008_73kwh_my2026",
+      "display_name": "Peugeot E-3008 73 kWh",
       "short_name": "Peugeot E-3008",
       "manufacturer": "Peugeot",
       "brand": "Peugeot",
       "model": "E-3008",
-      "variant": "EV",
+      "variant": "73 kWh",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 73,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/2003/Peugeot-e-3008-73-kWh",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "polestar_2_long_range_single_2026",
-      "display_name": "Polestar 2 Long range Single motor",
+      "profile_id": "polestar_2_long_range_single_motor_my2026",
+      "display_name": "Polestar 2 Long Range Single Motor",
       "short_name": "Polestar 2",
       "manufacturer": "Polestar",
       "brand": "Polestar",
       "model": "2",
-      "variant": "Long range Single motor",
+      "variant": "Long Range Single Motor",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
-      "auto_resolve": true,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "renault_megane_etech_67_2026",
-      "display_name": "Renault Megane E-Tech electric Comfort Range 67 kWh",
-      "short_name": "Renault Megane E-Tech electric",
-      "manufacturer": "Renault",
-      "brand": "Renault",
-      "model": "Megane E-Tech electric",
-      "variant": "Comfort Range 67 kWh",
-      "model_year": 2026,
-      "vehicle_kind": "ev",
-      "battery_capacity_kwh": 67,
-      "nominal_range_km": null,
+      "battery_capacity_kwh": 79,
       "max_ac_power_kw": 11,
       "phase_capability": 3,
-      "default_target_soc_pct": 80,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3151/Polestar-2-Long-Range-Single-Motor",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "renault_scenic_etech_long_range_2026",
-      "display_name": "Renault Scenic E-Tech electric Long Range 87 kWh",
-      "short_name": "Renault Scenic E-Tech electric",
+      "profile_id": "renault_megane_etech_ev60_220hp_my2026",
+      "display_name": "Renault Megane E-Tech EV60 220hp",
+      "short_name": "Renault Megane E-Tech",
       "manufacturer": "Renault",
       "brand": "Renault",
-      "model": "Scenic E-Tech electric",
-      "variant": "Long Range 87 kWh",
+      "model": "Megane E-Tech",
+      "variant": "EV60 220hp",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": 87,
-      "nominal_range_km": null,
-      "max_ac_power_kw": 22,
+      "battery_capacity_kwh": 60,
+      "max_ac_power_kw": 11,
       "phase_capability": 3,
-      "default_target_soc_pct": 80,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3132/Renault-Megane-E-Tech-EV60-220hp",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "renault_scenic_techno_ev",
-      "display_name": "Renault Scenic Techno EV",
-      "short_name": "Renault Scenic",
-      "manufacturer": "Renault",
-      "model": "Scenic",
-      "vehicle_kind": "ev",
-      "battery_capacity_kwh": 87,
-      "nominal_range_km": 620,
-      "max_ac_power_kw": 22,
-      "phase_capability": 3,
-      "image_key": "renault_scenic_techno_ev",
-      "default_target_soc_pct": 80,
-      "brand": "Renault",
-      "variant": "Techno EV",
-      "model_year": null,
-      "auto_resolve": false,
-      "catalog_role": "legacy_compatibility"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "skoda_elroq_85_2026",
+      "profile_id": "skoda_elroq_85_my2027",
       "display_name": "Škoda Elroq 85",
       "short_name": "Škoda Elroq",
       "manufacturer": "Škoda",
       "brand": "Škoda",
       "model": "Elroq",
       "variant": "85",
-      "model_year": 2026,
+      "model_year": 2027,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 77,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3566/Skoda-Elroq-85",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "skoda_enyaq_85_2026",
+      "profile_id": "skoda_enyaq_85_my2027",
       "display_name": "Škoda Enyaq 85",
       "short_name": "Škoda Enyaq",
       "manufacturer": "Škoda",
       "brand": "Škoda",
       "model": "Enyaq",
       "variant": "85",
-      "model_year": 2026,
+      "model_year": 2027,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 77,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3570/Skoda-Enyaq-85",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "tesla_model_3_long_range_awd_2026",
-      "display_name": "Tesla Model 3 Long Range AWD",
+      "profile_id": "tesla_model3_long_range_my2026",
+      "display_name": "Tesla Model 3 Long Range",
       "short_name": "Tesla Model 3",
       "manufacturer": "Tesla",
       "brand": "Tesla",
       "model": "Model 3",
-      "variant": "Long Range AWD",
+      "variant": "Long Range",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 82,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://evkx.net/nl/models/tesla/model_3/model_3_long_range/",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh"
+          ]
+        },
+        {
+          "url": "https://www.tesla.com/nl_be/support/charging/onboard-charger",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "tesla_model_y_long_range_awd_2026",
-      "display_name": "Tesla Model Y Long Range AWD",
+      "profile_id": "tesla_model_y_premium_awd_my2026",
+      "display_name": "Tesla Model Y Premium AWD",
       "short_name": "Tesla Model Y",
       "manufacturer": "Tesla",
       "brand": "Tesla",
       "model": "Model Y",
-      "variant": "Long Range AWD",
+      "variant": "Premium AWD",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 82,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://evkx.net/nl/models/tesla/model_y/model_y_premium_awd/",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh"
+          ]
+        },
+        {
+          "url": "https://www.tesla.com/nl_be/support/charging/onboard-charger",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "vw_golf_ehybrid_2026",
+      "profile_id": "volkswagen_golf_ehybrid_my2026",
       "display_name": "Volkswagen Golf eHybrid",
       "short_name": "Volkswagen Golf",
       "manufacturer": "Volkswagen",
@@ -916,131 +1140,129 @@
       "model_year": 2026,
       "vehicle_kind": "phev",
       "battery_capacity_kwh": 19.7,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
-      "auto_resolve": true,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "volkswagen_id3_pro_58_2026",
-      "display_name": "Volkswagen ID.3 Pro 58 kWh",
-      "short_name": "Volkswagen ID.3",
-      "manufacturer": "Volkswagen",
-      "brand": "Volkswagen",
-      "model": "ID.3",
-      "variant": "Pro 58 kWh",
-      "model_year": 2026,
-      "vehicle_kind": "ev",
-      "battery_capacity_kwh": 58,
-      "nominal_range_km": null,
       "max_ac_power_kw": 11,
       "phase_capability": 3,
-      "default_target_soc_pct": 80,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://www.volkswagen.be/nl/modellen/golf.html/__ui/technical-data.app",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "vw_id4_business_pro_77kwh",
-      "display_name": "VW ID.4 Business Pro 77 kWh",
-      "short_name": "VW ID.4",
-      "manufacturer": "Volkswagen",
-      "model": "ID.4",
-      "vehicle_kind": "ev",
-      "battery_capacity_kwh": 77,
-      "nominal_range_km": 509,
-      "max_ac_power_kw": 11,
-      "phase_capability": 3,
-      "image_key": "vw_id4_business_pro_silver_grey",
-      "default_target_soc_pct": 80,
-      "brand": "Volkswagen",
-      "variant": "Business Pro 77 kWh",
-      "model_year": null,
-      "auto_resolve": false,
-      "catalog_role": "product"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "volkswagen_id4_pro_77_2026",
-      "display_name": "Volkswagen ID.4 Pro 77 kWh",
+      "profile_id": "volkswagen_id4_pro_my2026",
+      "display_name": "Volkswagen ID.4 Pro",
       "short_name": "Volkswagen ID.4",
       "manufacturer": "Volkswagen",
       "brand": "Volkswagen",
       "model": "ID.4",
-      "variant": "Pro 77 kWh",
+      "variant": "Pro",
       "model_year": 2026,
       "vehicle_kind": "ev",
       "battery_capacity_kwh": 77,
-      "nominal_range_km": null,
       "max_ac_power_kw": 11,
       "phase_capability": 3,
-      "default_target_soc_pct": 80,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3250/Volkswagen-ID4-Pro",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "volkswagen_id7_pro_77_2026",
-      "display_name": "Volkswagen ID.7 Pro 77 kWh",
+      "profile_id": "volkswagen_id7_pro_my2026",
+      "display_name": "Volkswagen ID.7 Pro",
       "short_name": "Volkswagen ID.7",
       "manufacturer": "Volkswagen",
       "brand": "Volkswagen",
       "model": "ID.7",
-      "variant": "Pro 77 kWh",
+      "variant": "Pro",
       "model_year": 2026,
       "vehicle_kind": "ev",
       "battery_capacity_kwh": 77,
-      "nominal_range_km": null,
       "max_ac_power_kw": 11,
       "phase_capability": 3,
-      "default_target_soc_pct": 80,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3256/Volkswagen-ID7-Pro",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "vw_passat_ehybrid_2026",
-      "display_name": "Volkswagen Passat eHybrid",
+      "profile_id": "volkswagen_passat_ehybrid_my2026",
+      "display_name": "Volkswagen Passat 1.5 TSI eHybrid",
       "short_name": "Volkswagen Passat",
       "manufacturer": "Volkswagen",
       "brand": "Volkswagen",
       "model": "Passat",
-      "variant": "eHybrid",
+      "variant": "1.5 TSI eHybrid",
       "model_year": 2026,
       "vehicle_kind": "phev",
       "battery_capacity_kwh": 19.7,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://www.volkswagen.be/nl/modellen/passat.html/__ui/technical-data.app",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "vw_tiguan_ehybrid_2026",
-      "display_name": "Volkswagen Tiguan eHybrid",
-      "short_name": "Volkswagen Tiguan",
-      "manufacturer": "Volkswagen",
-      "brand": "Volkswagen",
-      "model": "Tiguan",
-      "variant": "eHybrid",
-      "model_year": 2026,
-      "vehicle_kind": "phev",
-      "battery_capacity_kwh": 19.7,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
-      "auto_resolve": true,
-      "catalog_role": "belgium_current"
-    },
-    {
-      "profile_type": "vehicle",
-      "profile_id": "volvo_ex30_single_motor_er_2026",
+      "profile_id": "volvo_ex30_single_motor_er_my2026",
       "display_name": "Volvo EX30 Single Motor Extended Range",
       "short_name": "Volvo EX30",
       "manufacturer": "Volvo",
@@ -1049,51 +1271,93 @@
       "variant": "Single Motor Extended Range",
       "model_year": 2026,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": null,
-      "nominal_range_km": null,
-      "max_ac_power_kw": null,
-      "phase_capability": null,
-      "default_target_soc_pct": 80,
+      "battery_capacity_kwh": 65,
+      "max_ac_power_kw": 11,
+      "phase_capability": 3,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/1910/Volvo-EX30-Single-Motor-ER",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "volvo_ex40_p5_long_range_2026",
+      "profile_id": "volvo_ex40_p5_long_range_my2027",
       "display_name": "Volvo EX40 P5 Long Range",
       "short_name": "Volvo EX40",
       "manufacturer": "Volvo",
       "brand": "Volvo",
       "model": "EX40",
       "variant": "P5 Long Range",
-      "model_year": 2026,
+      "model_year": 2027,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": 82,
-      "nominal_range_km": null,
+      "battery_capacity_kwh": 79,
       "max_ac_power_kw": 11,
       "phase_capability": 3,
-      "default_target_soc_pct": 80,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3732/Volvo-EX40-P5-Long-Range",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     },
     {
       "profile_type": "vehicle",
-      "profile_id": "volvo_ex40_p5_2026",
+      "profile_id": "volvo_ex40_p5_my2027",
       "display_name": "Volvo EX40 P5",
       "short_name": "Volvo EX40",
       "manufacturer": "Volvo",
       "brand": "Volvo",
       "model": "EX40",
       "variant": "P5",
-      "model_year": 2026,
+      "model_year": 2027,
       "vehicle_kind": "ev",
-      "battery_capacity_kwh": 70,
-      "nominal_range_km": null,
+      "battery_capacity_kwh": 67,
       "max_ac_power_kw": 11,
       "phase_capability": 3,
-      "default_target_soc_pct": 80,
       "auto_resolve": true,
-      "catalog_role": "belgium_current"
+      "catalog_role": "verified_product",
+      "evidence": [
+        {
+          "url": "https://ev-database.org/nl/auto/3731/Volvo-EX40-P5",
+          "checked_at": "2026-09-22",
+          "verified_fields": [
+            "brand",
+            "model",
+            "variant",
+            "model_year",
+            "vehicle_kind",
+            "battery_capacity_kwh",
+            "max_ac_power_kw",
+            "phase_capability"
+          ]
+        }
+      ]
     }
   ]
 }

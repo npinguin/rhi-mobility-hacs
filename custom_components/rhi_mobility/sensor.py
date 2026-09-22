@@ -8,7 +8,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import device_registry as dr
 
 from .device_surfaces import logical_surface_device_info
-from .profile_presentation import profile_image_url, profile_metadata
 from .projection import logical_device_info
 from .property_projection import MobilityPropertyProjection
 from .property_resolver import PropertyResolver
@@ -335,12 +334,6 @@ class MobilityPropertySensor(SensorEntity):
         return self.asset_id in self.manager.assets
 
     @property
-    def entity_picture(self):
-        if self.property_key not in {"vehicle.image_key", "charger.image_key"}:
-            return None
-        return profile_image_url(self.manager, self.asset_id)
-
-    @property
     def extra_state_attributes(self):
         asset = self.manager.assets.get(self.asset_id)
         definition = self.provider.property_definition(self.property_key, None if asset is None else asset.concept_id) or {}
@@ -358,8 +351,6 @@ class MobilityPropertySensor(SensorEntity):
             **provenance,
             "canonical_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
         }
-        if self.property_key in {"asset.profile_id", "vehicle.image_key", "charger.image_key"}:
-            attrs.update(profile_metadata(self.manager, self.asset_id))
         return attrs
 
 

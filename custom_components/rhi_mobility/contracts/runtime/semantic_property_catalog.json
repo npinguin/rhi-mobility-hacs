@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.9.31",
+  "release": "M0.9.32",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -1591,20 +1591,10 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "CONFIGURED",
-        "SOURCE"
-      ],
-      "builder_sources": [
-        {
-          "builder_id": "mobility.charger.full_evse.v1",
-          "input_id": "compat_charger_image_key",
-          "usage": "observation",
-          "normalizer": "text"
-        }
+        "CONFIGURED"
       ],
       "truth_precedence": [
-        "CONFIGURED",
-        "SOURCE"
+        "CONFIGURED"
       ],
       "value_type": "text",
       "editable": {
@@ -5780,20 +5770,10 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "CONFIGURED",
-        "SOURCE"
-      ],
-      "builder_sources": [
-        {
-          "builder_id": "mobility.vehicle.connected_vehicle.v1",
-          "input_id": "compat_vehicle_image_key",
-          "usage": "observation",
-          "normalizer": "text"
-        }
+        "CONFIGURED"
       ],
       "truth_precedence": [
-        "CONFIGURED",
-        "SOURCE"
+        "CONFIGURED"
       ],
       "value_type": "text",
       "editable": {
@@ -8953,14 +8933,11 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "CONFIGURED",
-        "PROFILE"
+        "CONFIGURED"
       ],
       "truth_precedence": [
-        "CONFIGURED",
-        "PROFILE"
+        "CONFIGURED"
       ],
-      "profile_field": "default_target_soc_pct",
       "editable": {
         "platform": "number",
         "write_kind": "configuration",

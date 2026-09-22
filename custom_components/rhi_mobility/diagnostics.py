@@ -5,7 +5,6 @@ from typing import Any
 
 from .const import DOMAIN, FOUNDATION_DOMAIN_ID, RELEASE, SHARED_BASELINE_VERSION, SELECTED_BUILD_INPUT_REGISTRY_KEY
 from .coverage import completeness_gate, normalized_property_coverage, source_capability_coverage
-from .profile_presentation import profile_metadata
 from .property_resolver import PropertyResolver
 from .readiness import evaluate_asset_readiness
 from .relationship_resolution import resolve_vehicle_charger_relationship
@@ -267,7 +266,12 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
             materialized_asset_count=len(manager.assets),
         )
         profiles = [
-            {"asset_id": asset_id, "asset_type": asset.concept_id, **profile_metadata(manager, asset_id)}
+            {
+                "asset_id": asset_id,
+                "asset_type": asset.concept_id,
+                "profile_id": manager.effective_profile_id(asset_id),
+                "identity": manager._profile_resolution_identity(asset_id),
+            }
             for asset_id, asset in sorted(manager.assets.items())
         ]
         relationships = [

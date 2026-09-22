@@ -45,6 +45,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         self._target_guest: str | None = None
         self._target_product_asset: str | None = None
         self._target_profile: str | None = None
+        self._pending_guest: dict = {}
 
     def _entry(self):
         try:
@@ -105,17 +106,6 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
 
     def _guest_profiles(self) -> dict[str, str]:
         return self._profile_options_for_type("vehicle")
-
-    def _profile_image_options(self, profile_type: str) -> dict[str, str]:
-        fallback = "generic_vehicle" if profile_type == "vehicle" else "generic_charger"
-        rows = {fallback: "Generic"}
-        registry = self._registry()
-        if registry is not None:
-            for profile in registry.profiles_for_type(profile_type):
-                key = str(profile.get("image_key") or "").strip()
-                if key:
-                    rows[key] = str(profile.get("display_name") or key)
-        return rows
 
     def _vehicle_schema(self, current: dict | None = None):
         row = current or {}
@@ -207,13 +197,26 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             return {"": "Not configured"}
         return self._profile_options_for_type(str(getattr(asset, "concept_id", "")), include_empty=True)
 
+    def _resolved_product_value(self, asset_id: str, property_key: str):
+        runtime = self._runtime()
+        if runtime is None:
+            return None
+        configured = runtime.configuration_value(asset_id, property_key, None)
+        if configured is not None:
+            return configured
+        if property_key == "asset.profile_id":
+            getter = getattr(runtime, "effective_profile_id", None)
+            return getter(asset_id) if callable(getter) else None
+        snapshot = getattr(runtime, "snapshots", {}).get(asset_id)
+        return None if snapshot is None else snapshot.values.get(property_key)
+
     def _product_schema(self, asset_id: str):
         runtime = self._runtime()
         fields: dict = {}
         if runtime is None:
             return vol.Schema(fields)
         for property_key, editable in self._product_editables(asset_id):
-            current = runtime.configuration_value(asset_id, property_key, None)
+            current = self._resolved_product_value(asset_id, property_key)
             platform = editable.get("platform")
             write_kind = editable.get("write_kind")
             if platform == "text":
@@ -264,16 +267,13 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             vol.Optional("model", default=row.get("model", "")): str,
             vol.Optional("variant", default=row.get("variant", "")): str,
             vol.Optional("model_year", default=row.get("model_year")): vol.Any(None, "", vol.All(vol.Coerce(int), vol.Range(min=1900, max=2200))),
-            vol.Optional("image_key", default=row.get("image_key", "")): str,
             vol.Optional("phase_capability", default=row.get("phase_capability")): vol.Any(None, vol.All(vol.Coerce(int), vol.In([1, 2, 3]))),
         }
         if profile_type == "vehicle":
             common.update({
                 vol.Optional("vehicle_kind", default=row.get("vehicle_kind", "")): vol.In({"": "Not specified", "ev": "EV", "phev": "PHEV"}),
                 vol.Optional("battery_capacity_kwh", default=row.get("battery_capacity_kwh")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=500))),
-                vol.Optional("nominal_range_km", default=row.get("nominal_range_km")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=2000))),
                 vol.Optional("max_ac_power_kw", default=row.get("max_ac_power_kw")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=100))),
-                vol.Optional("default_target_soc_pct", default=row.get("default_target_soc_pct", 80)): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0, max=100))),
             })
         else:
             common.update({
@@ -282,15 +282,26 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 vol.Optional("max_power_kw", default=row.get("max_power_kw")): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=1000))),
                 vol.Optional("nominal_voltage_v", default=row.get("nominal_voltage_v", 230)): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=1, max=1000))),
                 vol.Optional("current_step_a", default=row.get("current_step_a", 1)): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0.1, max=100))),
-                vol.Required("supports_current_control", default=bool(row.get("supports_current_control", False))): bool,
-                vol.Required("supports_remote_start_stop", default=bool(row.get("supports_remote_start_stop", False))): bool,
             })
         return vol.Schema(common)
+
+    def _assert_unique_profile_identity(self, values: dict, *, profile_id: str | None = None) -> None:
+        identity = tuple(str(values.get(key) or "").strip().casefold() for key in ("brand", "model", "variant", "model_year"))
+        if not all(identity):
+            return
+        profile_type = str(values.get("profile_type") or "")
+        for existing_id, row in self._manageable_profiles().items():
+            if existing_id == profile_id or str(row.get("profile_type") or "") != profile_type:
+                continue
+            other = tuple(str(row.get(key) or "").strip().casefold() for key in ("brand", "model", "variant", "model_year"))
+            if other == identity:
+                raise ValueError(f"duplicate auto-resolve identity: {existing_id}")
 
     async def _store_profile(self, values: dict, *, profile_id: str | None = None):
         domain_config = self._domain_config()
         if domain_config is None:
             raise ValueError("Mobility semantic configuration store unavailable")
+        self._assert_unique_profile_identity(values, profile_id=profile_id)
         if profile_id is None:
             profile_id = await domain_config.async_add_profile(values)
         else:
@@ -340,8 +351,9 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         try:
             for property_key, editable in editables.items():
                 value = self._normalized_product_value(editable, user_input.get(property_key))
-                current = runtime.configuration_value(asset_id, property_key, None)
-                if value == current:
+                configured = runtime.configuration_value(asset_id, property_key, None)
+                resolved = self._resolved_product_value(asset_id, property_key)
+                if value == configured or (configured is None and value == resolved):
                     continue
                 await runtime.async_set_configuration_property(asset_id, property_key, value)
         except (TypeError, ValueError):
@@ -396,6 +408,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             domain_config = self._domain_config()
             if domain_config is None:
                 raise ValueError("Mobility semantic configuration store unavailable")
+            self._assert_unique_profile_identity(dict(user_input), profile_id=target)
             await domain_config.async_update_profile(target, dict(user_input), expected_type=profile_type)
             return self.async_create_entry(title="", data=self._options())
         except (TypeError, ValueError):
@@ -406,7 +419,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
 
     async def async_step_remove_selected_profile(self, user_input=None):
         target = str(self._target_profile or "")
-        current = self._authored_profiles().get(target)
+        current = self._manageable_profiles().get(target)
         if not isinstance(current, dict):
             return await self.async_step_init()
         if user_input is None:
@@ -430,14 +443,61 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
 
     async def async_step_add_guest_vehicle(self, user_input=None):
         if user_input is None:
-            return self._vehicle_form("add_guest_vehicle")
-        try:
-            values = self._validated_vehicle(user_input)
-        except (TypeError, ValueError):
-            return self._vehicle_form("add_guest_vehicle", user_input, error="invalid_guest_vehicle")
+            return self.async_show_form(
+                step_id="add_guest_vehicle",
+                data_schema=vol.Schema({
+                    vol.Required("name", default="Guest vehicle"): str,
+                    vol.Required("product_source", default="profile"): vol.In({
+                        "profile": "Known product",
+                        "custom": "Custom / free format",
+                    }),
+                }),
+            )
+        self._pending_guest = {"name": str(user_input.get("name") or "Guest vehicle").strip()}
+        if user_input.get("product_source") == "custom":
+            return await self.async_step_add_guest_custom()
+        return await self.async_step_add_guest_product()
+
+    async def async_step_add_guest_product(self, user_input=None):
+        profiles = self._guest_profiles()
+        if user_input is None:
+            return self.async_show_form(
+                step_id="add_guest_product",
+                data_schema=vol.Schema({
+                    vol.Required("profile_id"): vol.In(profiles),
+                    vol.Optional("color", default=""): str,
+                    vol.Required("present", default=True): bool,
+                    vol.Optional("selected_charger", default=""): vol.In(self._charger_options()),
+                    vol.Required("lifecycle_status", default="active"): vol.In({"active": "Active", "disabled": "Disabled"}),
+                }),
+            )
+        values = {**getattr(self, "_pending_guest", {}), **dict(user_input)}
+        values["selected_charger"] = values.get("selected_charger") or None
         guests = self._guests()
         asset_id = _guest_asset_id(values["name"], set(guests))
-        guests[asset_id] = values
+        guests[asset_id] = MobilityDomainConfiguration._validate_guest_vehicle(values, set(profiles))
+        return self._result(guests)
+
+    async def async_step_add_guest_custom(self, user_input=None):
+        if user_input is None:
+            return self.async_show_form(
+                step_id="add_guest_custom",
+                data_schema=vol.Schema({
+                    vol.Required("brand"): str,
+                    vol.Required("model"): str,
+                    vol.Optional("variant", default=""): str,
+                    vol.Optional("model_year"): vol.Any(None, "", vol.All(vol.Coerce(int), vol.Range(min=1900, max=2200))),
+                    vol.Optional("color", default=""): str,
+                    vol.Required("present", default=True): bool,
+                    vol.Optional("selected_charger", default=""): vol.In(self._charger_options()),
+                    vol.Required("lifecycle_status", default="active"): vol.In({"active": "Active", "disabled": "Disabled"}),
+                }),
+            )
+        values = {**getattr(self, "_pending_guest", {}), **dict(user_input), "profile_id": None}
+        values["selected_charger"] = values.get("selected_charger") or None
+        guests = self._guests()
+        asset_id = _guest_asset_id(values["name"], set(guests))
+        guests[asset_id] = MobilityDomainConfiguration._validate_guest_vehicle(values, set(self._guest_profiles()))
         return self._result(guests)
 
     async def _select_guest(self, step_id: str, next_step: str, user_input=None):
@@ -462,11 +522,85 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         if not isinstance(current, dict):
             return await self.async_step_init()
         if user_input is None:
-            return self._vehicle_form("edit_guest", current)
-        try:
-            guests[target] = self._validated_vehicle(user_input)
-        except (TypeError, ValueError):
-            return self._vehicle_form("edit_guest", user_input, error="invalid_guest_vehicle")
+            return self.async_show_form(
+                step_id="edit_guest",
+                data_schema=vol.Schema({
+                    vol.Required("name", default=current.get("name", "Guest vehicle")): str,
+                    vol.Required(
+                        "product_source",
+                        default="profile" if current.get("profile_id") else "custom",
+                    ): vol.In({"profile": "Known product", "custom": "Custom / free format"}),
+                }),
+            )
+        self._pending_guest = {
+            "name": str(user_input.get("name") or current.get("name") or "Guest vehicle").strip(),
+            "_current": dict(current),
+        }
+        if user_input.get("product_source") == "custom":
+            return await self.async_step_edit_guest_custom()
+        return await self.async_step_edit_guest_product()
+
+    async def async_step_edit_guest_product(self, user_input=None):
+        guests = self._guests()
+        target = str(self._target_guest or "")
+        current = dict(getattr(self, "_pending_guest", {}).get("_current") or guests.get(target) or {})
+        profiles = self._guest_profiles()
+        current_profile = str(current.get("profile_id") or "")
+        if current_profile not in profiles:
+            current_profile = next(iter(profiles), "")
+        if user_input is None:
+            return self.async_show_form(
+                step_id="edit_guest_product",
+                data_schema=vol.Schema({
+                    vol.Required("profile_id", default=current_profile): vol.In(profiles),
+                    vol.Optional("color", default=current.get("color", "")): str,
+                    vol.Required("present", default=current.get("present", True)): bool,
+                    vol.Optional("selected_charger", default=current.get("selected_charger") or ""): vol.In(self._charger_options()),
+                    vol.Required("lifecycle_status", default=current.get("lifecycle_status", "active")): vol.In({"active": "Active", "disabled": "Disabled"}),
+                }),
+            )
+        values = {
+            **current,
+            **dict(user_input),
+            "name": getattr(self, "_pending_guest", {}).get("name") or current.get("name"),
+            "brand": None,
+            "model": None,
+            "variant": None,
+            "model_year": None,
+        }
+        values["selected_charger"] = values.get("selected_charger") or None
+        # Switching to a known product removes stale free-format identity.
+        values = {k: v for k, v in values.items() if v is not None}
+        guests[target] = MobilityDomainConfiguration._validate_guest_vehicle(values, set(profiles))
+        return self._result(guests)
+
+    async def async_step_edit_guest_custom(self, user_input=None):
+        guests = self._guests()
+        target = str(self._target_guest or "")
+        current = dict(getattr(self, "_pending_guest", {}).get("_current") or guests.get(target) or {})
+        if user_input is None:
+            return self.async_show_form(
+                step_id="edit_guest_custom",
+                data_schema=vol.Schema({
+                    vol.Required("brand", default=current.get("brand", "")): str,
+                    vol.Required("model", default=current.get("model", "")): str,
+                    vol.Optional("variant", default=current.get("variant", "")): str,
+                    vol.Optional("model_year", default=current.get("model_year")): vol.Any(None, "", vol.All(vol.Coerce(int), vol.Range(min=1900, max=2200))),
+                    vol.Optional("color", default=current.get("color", "")): str,
+                    vol.Required("present", default=current.get("present", True)): bool,
+                    vol.Optional("selected_charger", default=current.get("selected_charger") or ""): vol.In(self._charger_options()),
+                    vol.Required("lifecycle_status", default=current.get("lifecycle_status", "active")): vol.In({"active": "Active", "disabled": "Disabled"}),
+                }),
+            )
+        values = {
+            **current,
+            **dict(user_input),
+            "name": getattr(self, "_pending_guest", {}).get("name") or current.get("name"),
+            "profile_id": None,
+        }
+        values["selected_charger"] = values.get("selected_charger") or None
+        values.pop("profile_id", None)
+        guests[target] = MobilityDomainConfiguration._validate_guest_vehicle(values, set(self._guest_profiles()))
         return self._result(guests)
 
     async def async_step_remove_guest_vehicle(self, user_input=None):

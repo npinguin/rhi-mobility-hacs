@@ -1,3 +1,17 @@
+## M0.9.32 — 2026-09-22
+
+- Replace broad/incomplete catalog rows with complete evidence-backed VehicleProfile and ChargerProfile knowledge only.
+- Forbid required null/unknown technical profile fields, generic product variants, user policy and artwork in profiles.
+- Keep target SoC, color and image key on the concrete asset/user experience.
+- Remove backend profile artwork serving/presentation from canonical V2.
+- Collapse duplicate canonical resolution ownership and remove the unused producer-candidate arbitration layer.
+- Make product configuration show resolved canonical truth and persist only deliberate overrides.
+- Make Guest Vehicle create/edit explicitly Known Product or Custom/free-format.
+- Fix packaged profile disable/restore through OptionsFlow and protect effectively resolved profile use.
+- Enforce unique auto-resolve identities and per-profile/per-field evidence coverage.
+- Decouple frozen V1 profile metadata from the canonical verified V2 catalog.
+- Align evergreen product vision, ownership, architecture and release authority.
+
 ## M0.9.31 — 2026-09-22
 
 - Expand the local/offline canonical catalog to current/common Belgian Vehicle and Charger products.

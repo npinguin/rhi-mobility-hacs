@@ -141,7 +141,7 @@ class MobilityRuntimeManager:
             configured_target = self.configuration_value(asset_id, "vehicle.target_soc_pct", None)
             ready_by = self.configuration_value(asset_id, "vehicle.ready_by", None)
             capacity = configured_capacity if configured_capacity is not None else profile.get("battery_capacity_kwh")
-            target = configured_target if configured_target is not None else profile.get("default_target_soc_pct")
+            target = configured_target
             lifecycle = self.configuration_value(asset_id, "asset.lifecycle_status", "active")
             if capacity is None and target is None and ready_by is None and not profile:
                 continue

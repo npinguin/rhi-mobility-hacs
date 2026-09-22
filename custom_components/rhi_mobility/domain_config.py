@@ -120,6 +120,25 @@ class MobilityDomainConfiguration:
         disabled.discard(profile_id)
         await self._async_store_profiles(profiles, profile_id, "profile_updated", disabled_profile_ids=disabled)
 
+    def _effective_profile_assets(self, profile_id: str) -> list[str]:
+        """Return concrete assets currently depending on a profile, explicit or exact-resolved."""
+        rows: list[str] = []
+        try:
+            domain = (getattr(self.hass, "data", {}).get("rhi_mobility", {}) or {}).get(self.entry.entry_id) or {}
+            runtime = domain.get("runtime")
+        except Exception:
+            runtime = None
+        if runtime is not None:
+            effective = getattr(runtime, "effective_profile_id", None)
+            if callable(effective):
+                for asset_id in sorted(getattr(runtime, "assets", {}) or {}):
+                    try:
+                        if effective(asset_id) == profile_id:
+                            rows.append(str(asset_id))
+                    except Exception:
+                        continue
+        return rows
+
     def _assigned_profile_assets(self, profile_id: str) -> list[str]:
         assigned = [
             asset_id for asset_id, row in self._data.items()
@@ -129,6 +148,7 @@ class MobilityDomainConfiguration:
             asset_id for asset_id, row in self.guest_vehicles().items()
             if isinstance(row, dict) and row.get("profile_id") == profile_id
         )
+        assigned.extend(self._effective_profile_assets(profile_id))
         return sorted(set(assigned))
 
     async def async_remove_profile(self, profile_id: str) -> None:
@@ -171,13 +191,18 @@ class MobilityDomainConfiguration:
         if not display_name:
             raise ValueError("profile display_name is required")
         short_name = str(values.get("short_name") or display_name).strip()
-        brand = str(values.get("brand") or values.get("manufacturer") or values.get("vendor") or "").strip() or None
-        model = str(values.get("model") or "").strip() or None
-        variant = str(values.get("variant") or "").strip() or None
+        brand = str(values.get("brand") or values.get("manufacturer") or values.get("vendor") or "").strip()
+        model = str(values.get("model") or "").strip()
+        variant = str(values.get("variant") or "").strip()
+        if not (brand and model and variant):
+            raise ValueError("profile requires brand, model and variant")
         year_raw = values.get("model_year")
         model_year = None if year_raw in (None, "") else int(year_raw)
+        if profile_type == "vehicle" and model_year is None:
+            raise ValueError("vehicle profile requires model_year")
         if model_year is not None and not 1900 <= model_year <= 2200:
             raise ValueError("model_year must be between 1900 and 2200")
+
         row: dict[str, Any] = {
             "profile_type": profile_type,
             "display_name": display_name,
@@ -190,20 +215,31 @@ class MobilityDomainConfiguration:
             "catalog_role": "user_product",
         }
         if profile_type == "vehicle":
+            vehicle_kind = str(values.get("vehicle_kind") or "").strip()
+            if vehicle_kind not in {"ev", "phev"}:
+                raise ValueError("vehicle profile requires vehicle_kind ev or phev")
             row.update({
                 "manufacturer": brand,
-                "vehicle_kind": str(values.get("vehicle_kind") or "").strip() or None,
+                "vehicle_kind": vehicle_kind,
                 "battery_capacity_kwh": _optional_positive_float(values.get("battery_capacity_kwh")),
                 "nominal_range_km": _optional_positive_float(values.get("nominal_range_km")),
                 "max_ac_power_kw": _optional_positive_float(values.get("max_ac_power_kw")),
                 "phase_capability": _optional_phase_count(values.get("phase_capability")),
-                "default_target_soc_pct": _optional_percentage(values.get("default_target_soc_pct")),
             })
+            missing = [
+                key for key in ("battery_capacity_kwh", "max_ac_power_kw", "phase_capability")
+                if row.get(key) is None
+            ]
+            if missing:
+                raise ValueError("incomplete vehicle profile: " + ", ".join(missing))
         else:
             min_current = _optional_nonnegative_float(values.get("min_current_a"))
             max_current = _optional_positive_float(values.get("max_current_a"))
-            if min_current is not None and max_current is not None and min_current > max_current:
+            if max_current is None:
+                raise ValueError("charger profile requires max_current_a")
+            if min_current is not None and min_current > max_current:
                 raise ValueError("charger min_current_a cannot exceed max_current_a")
+            current_step = _optional_positive_float(values.get("current_step_a"))
             row.update({
                 "vendor": brand,
                 "max_current_a": max_current,
@@ -211,10 +247,14 @@ class MobilityDomainConfiguration:
                 "max_power_kw": _optional_positive_float(values.get("max_power_kw")),
                 "phase_capability": _optional_phase_count(values.get("phase_capability")),
                 "nominal_voltage_v": _optional_positive_float(values.get("nominal_voltage_v")),
-                "supports_current_control": bool(values.get("supports_current_control", False)),
-                "supports_remote_start_stop": bool(values.get("supports_remote_start_stop", False)),
-                "current_step_a": _optional_positive_float(values.get("current_step_a")),
+                "current_step_a": current_step,
             })
+            missing = [
+                key for key in ("max_power_kw", "phase_capability", "nominal_voltage_v")
+                if row.get(key) is None
+            ]
+            if missing:
+                raise ValueError("incomplete charger profile: " + ", ".join(missing))
         return {key: value for key, value in row.items() if value is not None}
 
     async def _async_store_profiles(

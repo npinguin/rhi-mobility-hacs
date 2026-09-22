@@ -83,7 +83,6 @@ def choice_rows(manager, registry, asset_id: str, property_key: str, editable: d
                 "value":profile_id,
                 "label":str(profile.get("display_name") or profile_id),
                 "secondary_label":secondary,
-                "image_key":profile.get("image_key"),
             })
         return rows
     if kind=="selected_charger":

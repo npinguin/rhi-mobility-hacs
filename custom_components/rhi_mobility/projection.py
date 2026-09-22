@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 from .const import DOMAIN, RELEASE
-from .profile_presentation import profile_metadata
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,9 +25,12 @@ def logical_device_info(hass: Any, entry_id: str, manager: Any, asset_id: str, *
         name = asset.display_name
     if snap is not None and snap.values.get("asset.display_name"):
         name = str(snap.values["asset.display_name"])
-    profile = profile_metadata(manager, asset_id)
-    manufacturer = profile.get("manufacturer") or profile.get("vendor") or "Robotix"
-    profile_model = profile.get("model") or profile.get("display_name") or model
+    prefix = getattr(asset, "concept_id", "")
+    manufacturer = "Robotix"
+    profile_model = model
+    if snap is not None and prefix in {"vehicle", "charger"}:
+        manufacturer = str(snap.values.get(f"{prefix}.brand") or "Robotix")
+        profile_model = str(snap.values.get(f"{prefix}.model") or model)
     return {
         "identifiers": {(DOMAIN, asset_id)},
         "name": name,

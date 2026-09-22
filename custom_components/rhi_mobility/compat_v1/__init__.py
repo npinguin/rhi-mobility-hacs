@@ -8,10 +8,6 @@ class MobilityV1Facade(_ParityFacade):
     def required_entity_ids(self):
         return list(self.contract.get("required_entity_ids") or [])
 
-    def profile_rows(self, profile_type: str):
-        self.profiles = tuple(dict(row) for row in (self.registry.profiles or ()))
-        return super().profile_rows(profile_type)
-
     @staticmethod
     def _raw_capability_id(row: dict) -> str:
         provenance = row.get("source_provenance")

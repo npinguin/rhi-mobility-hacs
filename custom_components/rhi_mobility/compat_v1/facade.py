@@ -43,12 +43,7 @@ class MobilityV1Facade:
         self.command_contracts = tuple(dict(row) for row in self.contract.get("commands", ()))
         self.command_projection = dict(self.projection_contract.get("command_projection") or {})
         parity = json.loads((runtime_root / "v1_drop_in_parity.json").read_text(encoding="utf-8"))
-        legacy_profile_ids = {str(row["profile_id"]) for row in parity.get("profiles", ())}
-        self.profiles = tuple(
-            dict(row)
-            for row in getattr(registry, "profiles", ()) or ()
-            if str(row.get("profile_id")) in legacy_profile_ids
-        )
+        self.profiles = tuple(dict(row) for row in parity.get("profiles", ()))
         self.defs_by_type: dict[str, list[dict[str, Any]]] = {"vehicle": [], "charger": [], "person": []}
         for legacy in self.definitions:
             asset_type = str(legacy.get("asset_type") or "")
