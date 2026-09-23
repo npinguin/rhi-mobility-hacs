@@ -1,3 +1,11 @@
+## M0.9.43 — PILOT_HANDOVER_GOVERNANCE
+
+- preserve M0.9.42 runtime semantics and V2 contracts;
+- add release-specific engineer handover, lessons learned, open pilot issue register and next-engineer checklist;
+- add machine-enforced anti-drift gates for V1 authority regression and MQTT write-surface observation regression;
+- document exact owner and exit criterion for every remaining pilot blocker;
+- keep target Home Assistant runtime qualification as the final promotion gate.
+
 ## M0.9.42 — PILOT_BACKEND_CLOSURE
 
 - remove the MQTT utility write switch as required operating-state evidence; utility state remains power-derived and fail-closed;
