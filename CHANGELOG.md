@@ -1,11 +1,18 @@
-## M0.9.38 — utility charger power-state closure
+## M0.9.39 — V2 visual picker write contract
+
+- Expose canonical `vehicle.image_key` and `charger.image_key` as Mobility-owned configuration editors while keeping artwork/catalog ownership in UX.
+- Publish complete typed write metadata from the V2 semantic projection so visual pickers can persist and read back selected keys.
+- Add regression proof for both vehicle and charger visual-key write transport.
+- Preserve M0.9.38 utility charger state semantics unchanged.
+
+## M0.9.39 — utility charger power-state closure
 
 - Scope fake charger state derivation to `mobility.charger.utility_surface.v1`.
 - Treat target-observed utility power as canonical semantic state: 0 W free/idle, 2 W connected/preparing, >2 W connected/running.
 - Fail closed to unknown for unexpected sub-2 W measurements instead of guessing occupancy.
 - Allow utility power semantics to override switch-like technical state while preserving native EVSE state authority for full-EVSE chargers.
 - Add release-blocking regression coverage for all utility boundaries and full-EVSE isolation.
-- Align current release, handover, verification and traceability authorities with M0.9.38.
+- Align current release, handover, verification and traceability authorities with M0.9.39.
 
 ## M0.9.37 — 2026-09-23
 

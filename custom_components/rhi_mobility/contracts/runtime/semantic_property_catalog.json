@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.9.38",
+  "release": "M0.9.39",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -1614,7 +1614,7 @@
           "charger"
         ],
         "name": "Charger visual key",
-        "ui_exposed": false
+        "ui_exposed": true
       }
     },
     "charger.lifetime_energy_kwh": {
@@ -5852,7 +5852,7 @@
           "vehicle"
         ],
         "name": "Vehicle visual key",
-        "ui_exposed": false
+        "ui_exposed": true
       }
     },
     "vehicle.immediate_charging_state": {
