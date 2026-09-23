@@ -1,4 +1,4 @@
-## M0.9.40 — V2 contract-gap closure
+## M0.9.41 — V2 contract-gap closure
 
 - Add persistent `MOBILITY_POLICY_V2` for range, maintenance, security-coverage and charge-demand interpretation rules.
 - Add backend-owned configuration completeness, runtime/data health and charge-demand facts.

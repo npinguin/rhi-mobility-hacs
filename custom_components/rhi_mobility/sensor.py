@@ -417,7 +417,10 @@ class MobilityPropertySensor(SensorEntity):
         definition = self.provider.property_definition(self.property_key, None if asset is None else asset.concept_id) or {}
         projected = self.projection.row(self.asset_id, self.property_key) or {}
         provenance = dict(projected.get("source_provenance") or {})
+        write = self.projection.write_metadata(self.asset_id, self.property_key) or {}
         attrs = {
+            "asset_id": self.asset_id,
+            "asset_type": None if asset is None else asset.concept_id,
             "property_key": self.property_key,
             "component_id": definition.get("component_id"),
             "section_id": definition.get("section_id"),
@@ -426,6 +429,25 @@ class MobilityPropertySensor(SensorEntity):
             "resolution_status": projected.get("resolution_status"),
             "resolution_error": projected.get("resolution_error"),
             "producer_kind": projected.get("producer_kind"),
+            "editable": bool(write.get("editable")),
+            "write_supported": bool(write.get("write_supported")),
+            "write_binding_type": write.get("write_binding_type") or "",
+            "write_service_domain": write.get("write_service_domain") or "",
+            "write_service_action": write.get("write_service_action") or "",
+            "write_target_entity": write.get("write_target_entity") or "",
+            "write_property_key": write.get("write_property_key") or self.property_key,
+            "write_service_data": write.get("write_service_data") or {},
+            "write_value_field": write.get("write_value_field") or "",
+            "min": write.get("min"),
+            "max": write.get("max"),
+            "step": write.get("step"),
+            "choices": write.get("choices"),
+            "options": write.get("options"),
+            "value_field": write.get("value_field") or "value",
+            "label_field": write.get("label_field") or "label",
+            "secondary_label_field": write.get("secondary_label_field") or "secondary_label",
+            "allow_none": bool(write.get("allow_none")),
+            "none_value": write.get("none_value") or "",
             **provenance,
             "canonical_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
         }
