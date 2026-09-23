@@ -106,24 +106,46 @@ class MobilityRuntimeManager:
             if not profile:
                 continue
             if asset.concept_id == "vehicle":
-                phases = profile.get("phase_capability")
+                phases = self.configuration_value(asset_id, "vehicle.phase_capability", None)
+                if phases is None:
+                    phases = profile.get("phase_capability")
+                max_ac_power = self.configuration_value(asset_id, "vehicle.max_ac_power_kw", None)
+                if max_ac_power is None:
+                    max_ac_power = profile.get("max_ac_power_kw")
                 merged[asset_id] = AssetControlProfile(
                     asset_id=asset_id,
                     phase_count=int(phases) if phases is not None else None,
                     ac_phase_count=int(phases) if phases is not None else None,
-                    max_ac_power_kw=float(profile["max_ac_power_kw"]) if profile.get("max_ac_power_kw") is not None else None,
+                    max_ac_power_kw=float(max_ac_power) if max_ac_power is not None else None,
                 )
             elif asset.concept_id == "charger":
-                phases = profile.get("phase_capability")
+                phases = self.configuration_value(asset_id, "charger.phase_capability", None)
+                if phases is None:
+                    phases = profile.get("phase_capability")
+                nominal_voltage = self.configuration_value(asset_id, "charger.nominal_voltage_v", None)
+                if nominal_voltage is None:
+                    nominal_voltage = profile.get("nominal_voltage_v")
+                min_current = self.configuration_value(asset_id, "charger.min_current_a", None)
+                if min_current is None:
+                    min_current = profile.get("min_current_a")
+                max_current = self.configuration_value(asset_id, "charger.max_current_a", None)
+                if max_current is None:
+                    max_current = profile.get("max_current_a")
+                current_step = self.configuration_value(asset_id, "charger.current_step_a", None)
+                if current_step is None:
+                    current_step = profile.get("current_step_a")
+                max_power = self.configuration_value(asset_id, "charger.max_power_kw", None)
+                if max_power is None:
+                    max_power = profile.get("max_power_kw")
                 merged[asset_id] = AssetControlProfile(
                     asset_id=asset_id,
-                    nominal_voltage_v=float(profile["nominal_voltage_v"]) if profile.get("nominal_voltage_v") is not None else None,
+                    nominal_voltage_v=float(nominal_voltage) if nominal_voltage is not None else None,
                     phase_count=int(phases) if phases is not None else None,
-                    min_current_a=float(profile["min_current_a"]) if profile.get("min_current_a") is not None else None,
-                    max_current_a=float(profile["max_current_a"]) if profile.get("max_current_a") is not None else None,
-                    current_step_a=float(profile["current_step_a"]) if profile.get("current_step_a") is not None else None,
+                    min_current_a=float(min_current) if min_current is not None else None,
+                    max_current_a=float(max_current) if max_current is not None else None,
+                    current_step_a=float(current_step) if current_step is not None else None,
                     ac_phase_count=int(phases) if phases is not None else None,
-                    max_ac_power_kw=float(profile["max_power_kw"]) if profile.get("max_power_kw") is not None else None,
+                    max_ac_power_kw=float(max_power) if max_power is not None else None,
                 )
         return merged
 
@@ -297,13 +319,23 @@ class MobilityRuntimeManager:
                 raise ValueError(f'profile {value} is not valid for {asset.concept_id}')
         if property_key=='vehicle.selected_charger':
             if asset.concept_id!='vehicle': raise ValueError('selected charger is vehicle-only')
-            if value not in self.assets or self.assets[value].concept_id!='charger': raise ValueError('selected charger must reference a current charger asset')
+            if value not in (None,'') and (value not in self.assets or self.assets[value].concept_id!='charger'):
+                raise ValueError('selected charger must reference a current charger asset')
+            value=None if value in (None,'') else value
         if property_key=='vehicle.target_soc_pct':
             value=float(value)
             if not 0 <= value <= 100: raise ValueError('target_soc_pct must be between 0 and 100')
         if property_key=='vehicle.battery_capacity_kwh':
             value=float(value)
             if value <= 0: raise ValueError('battery_capacity_kwh must be positive')
+        if property_key in {'vehicle.max_ac_power_kw','charger.min_current_a','charger.max_current_a','charger.max_power_kw','charger.nominal_voltage_v','charger.current_step_a'}:
+            value=float(value)
+            if value <= 0:
+                raise ValueError(f'{property_key} must be positive')
+        if property_key in {'vehicle.phase_capability','charger.phase_capability'}:
+            value=int(value)
+            if value not in {1,2,3}:
+                raise ValueError(f'{property_key} must be 1, 2 or 3')
         if property_key in {'vehicle.soc_pct','vehicle.battery_energy_kwh'}:
             is_manual_vehicle = ('manual_profile' in asset.source_bindings or
                                  (self.domain_config is not None and hasattr(self.domain_config, 'is_guest_vehicle') and self.domain_config.is_guest_vehicle(asset_id)))
@@ -317,13 +349,26 @@ class MobilityRuntimeManager:
             cap=self.configuration_value(asset_id,'vehicle.battery_capacity_kwh',None)
             if property_key=='vehicle.battery_energy_kwh' and cap is not None and value > float(cap)+1e-9:
                 raise ValueError('vehicle.battery_energy_kwh cannot exceed battery capacity')
+        if property_key in {'charger.min_current_a','charger.max_current_a'}:
+            configured_min = value if property_key == 'charger.min_current_a' else self.configuration_value(asset_id,'charger.min_current_a',None)
+            configured_max = value if property_key == 'charger.max_current_a' else self.configuration_value(asset_id,'charger.max_current_a',None)
+            profile = self._selected_profile(asset_id) or {}
+            effective_min = configured_min if configured_min is not None else profile.get('min_current_a')
+            effective_max = configured_max if configured_max is not None else profile.get('max_current_a')
+            if effective_min is not None and effective_max is not None and float(effective_max) < float(effective_min):
+                raise ValueError('charger.max_current_a must be >= charger.min_current_a')
         if property_key=='vehicle.present': value=bool(value)
         if property_key=='vehicle.mobility_charge_policy' and value not in {'Automatic','Forced','Paused'}:
             raise ValueError('unsupported mobility charge policy')
         if self.domain_config is None:
             raise RuntimeError('Mobility semantic configuration store unavailable')
         await self.domain_config.async_set(asset_id,property_key,value)
-        affected=set(self.assets) if property_key in {'vehicle.selected_charger','vehicle.target_soc_pct','vehicle.battery_capacity_kwh'} else {asset_id}
+        affected=set(self.assets) if property_key in {
+            'vehicle.selected_charger','vehicle.target_soc_pct','vehicle.battery_capacity_kwh',
+            'vehicle.max_ac_power_kw','vehicle.phase_capability',
+            'charger.min_current_a','charger.max_current_a','charger.max_power_kw',
+            'charger.phase_capability','charger.nominal_voltage_v','charger.current_step_a'
+        } else {asset_id}
         for aid in affected:
             if aid in self.snapshots: self._refresh(aid)
 

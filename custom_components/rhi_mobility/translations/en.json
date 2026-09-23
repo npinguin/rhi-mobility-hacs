@@ -16,11 +16,11 @@
       "init": {
         "title": "Manage Mobility products",
         "menu_options": {
-          "configure_product_asset": "Configure vehicle or charger",
-          "add_guest_vehicle": "Add guest vehicle",
-          "edit_guest_vehicle": "Edit guest vehicle",
-          "remove_guest_vehicle": "Remove guest vehicle",
-          "manage_profiles": "Profiles"
+          "vehicle_profile_config": "Vehicle profile config",
+          "vehicle_config": "Vehicle config",
+          "guest_vehicle_config": "Guest vehicle config",
+          "charger_profile_config": "Charger profile config",
+          "charger_config": "Charger config"
         }
       },
       "configure_product_asset": {
@@ -32,19 +32,51 @@
       },
       "edit_product_asset": {
         "title": "Configure {asset}",
-        "description": "Edit Mobility-owned product semantics. Actual/readback values remain source-owned and are never replaced by requested or configured values.",
+        "description": "Profile = product default. Values entered here are explicit overrides for this concrete asset. Clear an optional override to fall back to profile/source truth where supported.",
         "data": {
+          "asset.profile_id": "Profile",
           "asset.display_name": "Display name",
           "asset.short_name": "Short name",
           "asset.owner_label": "Owner",
           "asset.location_label": "Location",
-          "asset.profile_id": "Mobility profile",
+          "vehicle.brand": "Brand",
+          "vehicle.model": "Model",
+          "vehicle.variant": "Variant",
+          "vehicle.model_year": "Model year",
+          "vehicle.color": "Color",
           "vehicle.battery_capacity_kwh": "Battery capacity (kWh)",
+          "vehicle.max_ac_power_kw": "Maximum AC power (kW)",
+          "vehicle.phase_capability": "AC phase capability",
+          "vehicle.selected_charger": "Assigned charger",
           "vehicle.target_soc_pct": "Target SoC (%)",
           "vehicle.ready_by": "Ready by",
-          "vehicle.present": "Present",
           "vehicle.mobility_charge_policy": "Charging policy",
-          "vehicle.selected_charger": "Assigned charger"
+          "vehicle.present": "Present",
+          "charger.brand": "Brand",
+          "charger.model": "Model",
+          "charger.variant": "Variant",
+          "charger.model_year": "Model year",
+          "charger.color": "Color",
+          "charger.min_current_a": "Minimum current (A)",
+          "charger.max_current_a": "Maximum current (A)",
+          "charger.max_power_kw": "Maximum power (kW)",
+          "charger.phase_capability": "Phase capability",
+          "charger.nominal_voltage_v": "Nominal voltage (V)",
+          "charger.current_step_a": "Current adjustment step (A)",
+          "lifecycle_status": "Lifecycle"
+        },
+        "data_description": {
+          "asset.profile_id": "Choose a product profile or leave it automatic so exact product identity can resolve the profile.",
+          "vehicle.battery_capacity_kwh": "Overrides the selected vehicle profile for this concrete vehicle only.",
+          "vehicle.max_ac_power_kw": "Overrides the profile maximum AC charging capability for this vehicle only.",
+          "vehicle.phase_capability": "Overrides the profile AC phase capability for this vehicle only.",
+          "charger.min_current_a": "Overrides the profile minimum controllable current for this charger only.",
+          "charger.max_current_a": "Overrides the profile maximum current for this charger only.",
+          "charger.max_power_kw": "Overrides the profile maximum power for this charger only.",
+          "charger.phase_capability": "Overrides the profile phase capability for this charger only.",
+          "charger.nominal_voltage_v": "Overrides the profile nominal voltage for this charger only.",
+          "charger.current_step_a": "Overrides the profile current adjustment step for this charger only.",
+          "vehicle.selected_charger": "Choose the charger assigned to this vehicle. The UI shows its human display name; the backend persists the stable asset id."
         }
       },
       "add_vehicle_profile": {
@@ -153,13 +185,14 @@
       },
       "add_guest_vehicle": {
         "title": "Add guest vehicle",
-        "description": "Create a Mobility-owned vehicle without a technical Foundation device."
+        "description": "Create a Mobility-owned vehicle without a Foundation technical device. Start from a known vehicle profile or enter a custom product."
       },
       "edit_guest_vehicle": {
         "title": "Choose guest vehicle"
       },
       "edit_guest": {
-        "title": "Edit guest vehicle"
+        "title": "Edit guest vehicle",
+        "description": "Change the guest name or switch between a known vehicle profile and a custom product."
       },
       "remove_guest_vehicle": {
         "title": "Choose guest vehicle"
@@ -179,6 +212,112 @@
           "action": "Choose what you want to do. Editing is the default for fast repeated maintenance.",
           "profile": "Type a brand, model, variant or year to find the profile. Packaged and local override profiles use the same stable product identity."
         }
+      },
+      "vehicle_profile_config": {
+        "title": "Vehicle profile config",
+        "description": "Manage vehicle product profiles. The list is sorted by brand and searchable by brand, model, variant or year. Profile values are product defaults; concrete vehicles can override permitted values in Vehicle config.",
+        "data": {
+          "action": "Action",
+          "profile": "Vehicle profile"
+        },
+        "data_description": {
+          "action": "Edit, add, remove/disable, or restore a profile.",
+          "profile": "Profiles are displayed as Brand — Model · Variant · Year so products from the same brand stay together."
+        }
+      },
+      "charger_profile_config": {
+        "title": "Charger profile config",
+        "description": "Manage charger product profiles. The list is sorted by brand and searchable by brand, model, variant or year. Profile values are product defaults; concrete chargers can override permitted values in Charger config.",
+        "data": {
+          "action": "Action",
+          "profile": "Charger profile"
+        },
+        "data_description": {
+          "action": "Edit, add, remove/disable, or restore a profile.",
+          "profile": "Profiles are displayed as Brand — Model · Variant · Year so products from the same brand stay together."
+        }
+      },
+      "vehicle_config": {
+        "title": "Vehicle config",
+        "description": "Choose one concrete connected vehicle. Profile values are defaults; fields shown in the next screen are Mobility-owned instance configuration or explicit overrides. Live/readback truth remains source-owned.",
+        "data": {
+          "product_asset": "Vehicle"
+        }
+      },
+      "charger_config": {
+        "title": "Charger config",
+        "description": "Choose one concrete charger. Profile values are defaults; fields shown in the next screen are Mobility-owned instance configuration or explicit overrides. Live/readback truth remains source-owned.",
+        "data": {
+          "product_asset": "Charger"
+        }
+      },
+      "guest_vehicle_config": {
+        "title": "Guest vehicle config",
+        "description": "Manage Mobility-owned guest vehicles with the same product/configuration model as connected vehicles, but without a Foundation technical source.",
+        "data": {
+          "action": "Action",
+          "guest_vehicle": "Guest vehicle"
+        },
+        "data_description": {
+          "action": "Edit, add or remove a guest vehicle.",
+          "guest_vehicle": "Choose the guest vehicle to edit or remove."
+        }
+      },
+      "add_guest_product": {
+        "title": "Guest vehicle — known product",
+        "description": "Choose a vehicle profile and configure instance values. Manual SoC/energy values are allowed because the guest has no OEM source.",
+        "data": {
+          "profile_id": "Vehicle profile",
+          "color": "Color",
+          "present": "Present",
+          "selected_charger": "Assigned charger",
+          "lifecycle_status": "Lifecycle"
+        }
+      },
+      "add_guest_custom": {
+        "title": "Guest vehicle — custom product",
+        "description": "Enter the product identity and manual vehicle state for a guest without a catalog profile.",
+        "data": {
+          "brand": "Brand",
+          "model": "Model",
+          "variant": "Variant",
+          "model_year": "Model year",
+          "color": "Color",
+          "present": "Present",
+          "selected_charger": "Assigned charger",
+          "lifecycle_status": "Lifecycle"
+        }
+      },
+      "edit_guest_product": {
+        "title": "Edit guest — known product",
+        "description": "Edit the guest product and its manual state. Manual SoC/energy is valid here because the guest has no OEM runtime source.",
+        "data": {
+          "profile_id": "Vehicle profile",
+          "color": "Color",
+          "battery_capacity_kwh": "Battery capacity (kWh)",
+          "soc_pct": "SoC (%)",
+          "battery_energy_kwh": "Battery energy (kWh)",
+          "present": "Present",
+          "selected_charger": "Assigned charger",
+          "lifecycle_status": "Lifecycle"
+        }
+      },
+      "edit_guest_custom": {
+        "title": "Edit guest — custom product",
+        "description": "Edit the custom guest identity and manual state.",
+        "data": {
+          "brand": "Brand",
+          "model": "Model",
+          "variant": "Variant",
+          "model_year": "Model year",
+          "color": "Color",
+          "battery_capacity_kwh": "Battery capacity (kWh)",
+          "soc_pct": "SoC (%)",
+          "battery_energy_kwh": "Battery energy (kWh)",
+          "present": "Present",
+          "selected_charger": "Assigned charger",
+          "lifecycle_status": "Lifecycle"
+        }
       }
     },
     "error": {
@@ -190,7 +329,8 @@
       "invalid_guest_vehicle": "The guest vehicle values are invalid. Battery energy cannot exceed capacity and SoC must be between 0 and 100%.",
       "unknown_guest_vehicle": "The selected guest vehicle no longer exists.",
       "profile_required": "Choose a profile for this action.",
-      "profile_not_disabled": "The selected profile is not disabled."
+      "profile_not_disabled": "The selected profile is not disabled.",
+      "guest_vehicle_required": "Choose a guest vehicle for this action."
     }
   }
 }

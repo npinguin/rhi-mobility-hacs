@@ -15,6 +15,8 @@ def editable_definitions(registry, asset_type: str, platform: str) -> list[tuple
         editable=definition.get("editable")
         if not isinstance(editable,dict) or editable.get("platform") != platform:
             continue
+        if editable.get("ui_exposed") is False:
+            continue
         if asset_type not in set(editable.get("asset_types") or []):
             continue
         rows.append((str(property_key),dict(editable)))
@@ -76,7 +78,7 @@ def choice_rows(manager, registry, asset_id: str, property_key: str, editable: d
             if not isinstance(profile,dict) or not profile.get("profile_id"):
                 continue
             profile_id=str(profile["profile_id"])
-            maker=str(profile.get("manufacturer") or profile.get("vendor") or "").strip()
+            maker=str(profile.get("manufacturer") or profile.get("vendor") or profile.get("brand") or "").strip()
             model=str(profile.get("model") or "").strip()
             secondary=" · ".join(part for part in (maker,model) if part)
             rows.append({
@@ -92,6 +94,50 @@ def choice_rows(manager, registry, asset_id: str, property_key: str, editable: d
             if row.concept_id=="charger"
         ]
     return [{"value":str(value),"label":str(value)} for value in editable.get("options") or []]
+
+
+def select_choices(manager, registry, asset_id: str, property_key: str, editable: dict[str, Any]) -> list[tuple[str,str]]:
+    """Return persisted values paired with human labels for HA config selects."""
+    kind=editable.get("write_kind")
+    if kind=="profile":
+        asset=manager.assets.get(asset_id)
+        rows=[] if asset is None else registry.profiles_for_type(asset.concept_id)
+        raw=[(NO_SELECTION,"Automatic / not explicitly selected")]
+        seen: dict[str,int]={}
+        built=[]
+        for profile in rows:
+            value=str(profile["profile_id"])
+            brand=str(profile.get("brand") or profile.get("manufacturer") or profile.get("vendor") or "").strip()
+            model=str(profile.get("model") or "").strip()
+            variant=str(profile.get("variant") or "").strip()
+            year=str(profile.get("model_year") or "").strip()
+            rest=" · ".join(part for part in (model,variant,year) if part)
+            label=f"{brand} — {rest}" if brand and rest else (brand or rest or str(profile.get("display_name") or value))
+            seen[label]=seen.get(label,0)+1
+            built.append((value,label))
+        duplicates={label for label,count in seen.items() if count>1}
+        return raw + [
+            (value, f"{label} · {value[-8:]}" if label in duplicates else label)
+            for value,label in built
+        ]
+    if kind=="selected_charger":
+        raw=[(NO_SELECTION,"Automatic / not explicitly selected")]
+        rows=[(str(row["value"]),str(row.get("label") or row["value"])) for row in choice_rows(manager,registry,asset_id,property_key,editable)]
+        return raw + rows
+    return [(str(value),str(value)) for value in editable.get("options") or []]
+
+
+def display_option(manager, registry, asset_id: str, property_key: str, editable: dict[str, Any], raw_value) -> str | None:
+    raw=str(raw_value) if raw_value is not None else NO_SELECTION
+    mapping=dict(select_choices(manager,registry,asset_id,property_key,editable))
+    return mapping.get(raw)
+
+
+def persisted_option(manager, registry, asset_id: str, property_key: str, editable: dict[str, Any], display_value: str) -> str:
+    reverse={label:value for value,label in select_choices(manager,registry,asset_id,property_key,editable)}
+    if display_value not in reverse:
+        raise ValueError(f"unsupported option {display_value}")
+    return reverse[display_value]
 
 
 def options(manager, registry, asset_id: str, property_key: str, editable: dict[str, Any]) -> list[str]:

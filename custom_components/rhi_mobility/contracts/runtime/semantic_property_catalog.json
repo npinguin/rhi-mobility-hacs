@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.9.35",
+  "release": "M0.9.36",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -19,7 +19,7 @@
     "applicability_explicit": true,
     "value_semantics_explicit": true
   },
-  "property_count": 278,
+  "property_count": 280,
   "properties": {
     "asset.availability_state": {
       "component_id": "identity",
@@ -1603,7 +1603,8 @@
         "asset_types": [
           "charger"
         ],
-        "name": "Charger visual key"
+        "name": "Charger visual key",
+        "ui_exposed": false
       }
     },
     "charger.lifetime_energy_kwh": {
@@ -1668,6 +1669,7 @@
       },
       "v1_drop_in": true,
       "producer_types": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
@@ -1680,11 +1682,23 @@
         }
       ],
       "truth_precedence": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
       "profile_field": "max_current_a",
-      "value_type": "number"
+      "value_type": "number",
+      "editable": {
+        "platform": "number",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Maximum Current",
+        "min": 0.1,
+        "max": 200,
+        "step": 0.1
+      }
     },
     "charger.min_current_a": {
       "component_id": "control",
@@ -1713,6 +1727,7 @@
       },
       "v1_drop_in": true,
       "producer_types": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
@@ -1725,11 +1740,23 @@
         }
       ],
       "truth_precedence": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
       "profile_field": "min_current_a",
-      "value_type": "number"
+      "value_type": "number",
+      "editable": {
+        "platform": "number",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Minimum Current",
+        "min": 0.1,
+        "max": 200,
+        "step": 0.1
+      }
     },
     "charger.model": {
       "component_id": "identity",
@@ -1813,6 +1840,7 @@
       },
       "v1_drop_in": true,
       "producer_types": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
@@ -1825,11 +1853,23 @@
         }
       ],
       "truth_precedence": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
       "profile_field": "nominal_voltage_v",
-      "value_type": "number"
+      "value_type": "number",
+      "editable": {
+        "platform": "number",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Nominal Voltage",
+        "min": 1,
+        "max": 1000,
+        "step": 1
+      }
     },
     "charger.observed_at": {
       "component_id": "engineering",
@@ -2025,6 +2065,7 @@
       },
       "v1_drop_in": true,
       "producer_types": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
@@ -2037,12 +2078,26 @@
         }
       ],
       "truth_precedence": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
       "profile_field": "phase_capability",
       "value_type": "enum",
-      "state_family": "phase_count"
+      "state_family": "phase_count",
+      "editable": {
+        "platform": "select",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Phase Capability",
+        "options": [
+          "1",
+          "2",
+          "3"
+        ]
+      }
     },
     "charger.phase_current_l1_a": {
       "component_id": "metering",
@@ -3627,15 +3682,14 @@
       "profile_field": "battery_capacity_kwh",
       "editable": {
         "platform": "number",
-        "write_kind": "manual_vehicle_configuration",
+        "write_kind": "configuration",
         "asset_types": [
           "vehicle"
         ],
-        "requires_binding_role": "manual_profile",
+        "name": "Battery Capacity",
         "min": 1,
-        "max": 200,
-        "step": 0.1,
-        "name": "Battery Capacity"
+        "max": 500,
+        "step": 0.1
       },
       "value_type": "number"
     },
@@ -5782,7 +5836,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Vehicle visual key"
+        "name": "Vehicle visual key",
+        "ui_exposed": false
       }
     },
     "vehicle.immediate_charging_state": {
@@ -6551,6 +6606,7 @@
       },
       "v1_drop_in": true,
       "producer_types": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
@@ -6563,11 +6619,23 @@
         }
       ],
       "truth_precedence": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
       "profile_field": "max_ac_power_kw",
-      "value_type": "number"
+      "value_type": "number",
+      "editable": {
+        "platform": "number",
+        "write_kind": "configuration",
+        "asset_types": [
+          "vehicle"
+        ],
+        "name": "Maximum AC Power",
+        "min": 0.1,
+        "max": 100,
+        "step": 0.1
+      }
     },
     "vehicle.max_oil_level": {
       "component_id": "maintenance",
@@ -7488,6 +7556,7 @@
       },
       "v1_drop_in": true,
       "producer_types": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
@@ -7500,12 +7569,26 @@
         }
       ],
       "truth_precedence": [
+        "CONFIGURED",
         "PROFILE",
         "SOURCE"
       ],
       "profile_field": "phase_capability",
       "value_type": "enum",
-      "state_family": "phase_count"
+      "state_family": "phase_count",
+      "editable": {
+        "platform": "select",
+        "write_kind": "configuration",
+        "asset_types": [
+          "vehicle"
+        ],
+        "name": "AC Phase Capability",
+        "options": [
+          "1",
+          "2",
+          "3"
+        ]
+      }
     },
     "vehicle.plug_lock_state": {
       "component_id": "access",
@@ -11199,6 +11282,102 @@
         "charger.model_year",
         "asset.profile_id"
       ]
+    },
+    "charger.max_power_kw": {
+      "component_id": "control",
+      "section_id": "details",
+      "visibility": "product",
+      "unit": "kW",
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Maximum power",
+      "render_as": "readonly_value",
+      "applicable_asset_types": [
+        "charger"
+      ],
+      "placements": {
+        "charger": {
+          "component_id": "control",
+          "section_id": "details",
+          "visibility": "product",
+          "render_as": "readonly_value",
+          "display_order": 35,
+          "friendly_name": "Maximum power",
+          "unit": "kW",
+          "empty_state_behavior": "hide_if_unavailable",
+          "datatype": "state/value"
+        }
+      },
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "truth_precedence": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "profile_field": "max_power_kw",
+      "value_type": "number",
+      "editable": {
+        "platform": "number",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Maximum Power",
+        "min": 0.1,
+        "max": 1000,
+        "step": 0.1
+      }
+    },
+    "charger.current_step_a": {
+      "component_id": "control",
+      "section_id": "details",
+      "visibility": "product",
+      "unit": "A",
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Current adjustment step",
+      "render_as": "readonly_value",
+      "applicable_asset_types": [
+        "charger"
+      ],
+      "placements": {
+        "charger": {
+          "component_id": "control",
+          "section_id": "details",
+          "visibility": "product",
+          "render_as": "readonly_value",
+          "display_order": 55,
+          "friendly_name": "Current adjustment step",
+          "unit": "A",
+          "empty_state_behavior": "hide_if_unavailable",
+          "datatype": "state/value"
+        }
+      },
+      "v1_drop_in": false,
+      "producer_types": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "truth_precedence": [
+        "CONFIGURED",
+        "PROFILE"
+      ],
+      "profile_field": "current_step_a",
+      "value_type": "number",
+      "editable": {
+        "platform": "number",
+        "write_kind": "configuration",
+        "asset_types": [
+          "charger"
+        ],
+        "name": "Current Step",
+        "min": 0.1,
+        "max": 100,
+        "step": 0.1
+      }
     }
   },
   "compatibility": {

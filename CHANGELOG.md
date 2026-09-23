@@ -1,3 +1,14 @@
+## M0.9.36 — 2026-09-23
+
+- Split Mobility configuration into Vehicle profile config, Vehicle config, Guest vehicle config, Charger profile config and Charger config.
+- Filter profile catalogs by product type and sort them as Brand — Model · Variant · Year.
+- Add explicit connected-vehicle overrides for battery capacity, maximum AC power and phase capability.
+- Add charger instance overrides for min/max current, maximum power, phase capability, nominal voltage and current step.
+- Add canonical charger.max_power_kw and charger.current_step_a properties.
+- Show human labels in HA profile/charger config selectors while persisting stable IDs.
+- Keep image keys UX-owned instead of ordinary user-editable configuration.
+- Route guest CRUD through the canonical MobilityDomainConfiguration owner.
+
 ## M0.9.35 — 2026-09-23
 
 - Replace fragmented profile actions with one searchable profile catalog.

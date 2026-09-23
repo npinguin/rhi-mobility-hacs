@@ -5,7 +5,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
-from .editable_projection import async_write, editable_definitions, is_available, options, value
+from .editable_projection import async_write, display_option, editable_definitions, is_available, persisted_option, select_choices, value
 from .projection import logical_device_info
 
 async def async_setup_entry(hass: HomeAssistant,entry: ConfigEntry,async_add_entities: AddEntitiesCallback) -> None:
@@ -46,10 +46,18 @@ class MobilitySelect(SelectEntity):
     @callback
     def _changed(self): self.async_write_ha_state()
     @property
-    def options(self): return options(self.manager,self.registry,self.asset_id,self.property_key,self.editable)
+    def options(self):
+        return [label for _value,label in select_choices(
+            self.manager,self.registry,self.asset_id,self.property_key,self.editable
+        )]
     @property
     def current_option(self):
         current=value(self.manager,self.controller,self.asset_id,self.property_key,self.editable)
+        kind=self.editable.get('write_kind')
+        if kind in {'profile','selected_charger'}:
+            return display_option(
+                self.manager,self.registry,self.asset_id,self.property_key,self.editable,current
+            )
         return None if current is None else str(current)
     @property
     def available(self): return is_available(self.manager,self.controller,self.asset_id,self.property_key,self.editable)
@@ -63,5 +71,12 @@ class MobilitySelect(SelectEntity):
             ]
         }
     async def async_select_option(self,option: str):
-        if option not in self.options: raise ValueError(f'unsupported option {option}')
-        await async_write(self.manager,self.controller,self.asset_id,self.property_key,self.editable,option)
+        if option not in self.options:
+            raise ValueError(f'unsupported option {option}')
+        kind=self.editable.get('write_kind')
+        persisted=(
+            persisted_option(self.manager,self.registry,self.asset_id,self.property_key,self.editable,option)
+            if kind in {'profile','selected_charger'}
+            else option
+        )
+        await async_write(self.manager,self.controller,self.asset_id,self.property_key,self.editable,persisted)
