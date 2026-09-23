@@ -98,8 +98,7 @@ class MobilityPublicRuntimeProvider:
         if key in {"charger.assigned_vehicle_id", "charger.effective_assigned_vehicle_id"} and asset.concept_id == "charger":
             return self.manager.configured_vehicle_for_charger(asset_id)
         if key == "charger.available_for_connection" and asset.concept_id == "charger":
-            state = None if snap is None else snap.values.get("charger.connection_state")
-            return None if state is None else state not in {"fault", "unknown"}
+            return None if snap is None else snap.values.get("charger.available_for_connection")
 
         # Physical control/readback owner. Requested intent never substitutes actual power/current.
         if key in {"charger.requested_power_kw", "charger.requested_charge_power_kw"} and asset.concept_id == "charger":

@@ -228,6 +228,29 @@ def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str]) -
         electrical = None
     _set(values, quality, "charger.electrical_state", electrical, "derived_charger_electrical_summary", overwrite=True)
 
+    connection = values.get("charger.connection_state")
+    operating = values.get("charger.operating_state")
+
+    # Canonical occupancy/availability truth.
+    # Free/available is a physical statement: a healthy charger with no EV attached.
+    # Assignment relationships are deliberately irrelevant here.
+    if connection == "no_asset_connected" and operating not in {"fault", "unavailable", "unknown"}:
+        available_for_connection = True
+    elif connection in {"asset_connected", "fault"}:
+        available_for_connection = False
+    elif operating in {"fault", "unavailable"}:
+        available_for_connection = False
+    else:
+        available_for_connection = None
+    _set(
+        values,
+        quality,
+        "charger.available_for_connection",
+        available_for_connection,
+        "derived_from_normalized_connection_operating_state",
+        overwrite=True,
+    )
+
     raw_session = values.get("charger.source_session_value_state")
     if raw_session is not None:
         session_state = raw_session

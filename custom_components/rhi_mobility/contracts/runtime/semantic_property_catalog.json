@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.9.36",
+  "release": "M0.9.37",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -576,12 +576,16 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "RELATIONSHIP"
+        "DERIVED"
       ],
       "truth_precedence": [
-        "RELATIONSHIP"
+        "DERIVED"
       ],
-      "value_type": "text"
+      "value_type": "boolean",
+      "derived_dependencies": [
+        "charger.connection_state",
+        "charger.operating_state"
+      ]
     },
     "charger.available_for_control": {
       "component_id": "status",

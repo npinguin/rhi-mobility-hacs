@@ -1,3 +1,11 @@
+## M0.9.37 — 2026-09-23
+
+- Unify OCPP, Peblar and Wallbox EVSE-state tokenization and normalization.
+- Fix Peblar/Wallbox space-delimited states such as "No EV connected" normalizing to unknown.
+- Derive charger.available_for_connection from canonical physical connection + operating state.
+- Keep configured vehicle-to-charger assignment separate from physical occupancy truth.
+- Add regression coverage for equivalent charger states across integrations.
+
 ## M0.9.36 — 2026-09-23
 
 - Split Mobility configuration into Vehicle profile config, Vehicle config, Guest vehicle config, Charger profile config and Charger config.

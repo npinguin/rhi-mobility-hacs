@@ -58,31 +58,71 @@ def text(value: Any, unit: str | None = None) -> str | None:
 def number(value: Any, unit: str | None = None) -> float | None:
     return _number(value)
 
-_OCPP={
- "available":("idle","no_asset_connected"), "preparing":("preparing","asset_connected"),
- "charging":("running","asset_connected"), "suspendedev":("suspended","asset_connected"),
- "suspendedevse":("suspended","asset_connected"), "finishing":("stopped","asset_connected"),
- "faulted":("fault","fault"), "unavailable":("unknown","unknown"),
-}
-_PEBLAR={
- "no_ev_connected":("idle","no_asset_connected"), "suspended":("suspended","asset_connected"),
- "charging":("running","asset_connected"), "error":("fault","fault"), "fault":("fault","fault"),
- "invalid":("unknown","unknown"),
-}
-_WALLBOX={
- "charging":("running","asset_connected"), "suspended":("suspended","asset_connected"),
- "no_ev_connected":("idle","no_asset_connected"), "fault":("fault","fault"), "error":("fault","fault"),
+def _charger_status_token(value: Any) -> str | None:
+    """Normalize EVSE state spelling across charger integrations.
+
+    Charger integrations expose the same EVSE concepts with spaces, underscores,
+    hyphens or concatenated OCPP tokens. Canonicalization must happen before any
+    integration-specific interpretation so equal physical states always produce
+    equal Mobility truth.
+    """
+    raw=_text(value)
+    if raw is None:
+        return None
+    return raw.strip().lower().replace("-", "_").replace(" ", "_")
+
+
+# Canonical physical state matrix. Values are:
+# (operating_state, connection_state)
+_CHARGER_STATE_MATRIX={
+    # physically free / ready
+    "available":("idle","no_asset_connected"),
+    "no_ev_connected":("idle","no_asset_connected"),
+    "disconnected":("idle","no_asset_connected"),
+    "idle":("idle","no_asset_connected"),
+
+    # vehicle physically attached, may or may not be drawing power
+    "preparing":("preparing","asset_connected"),
+    "ev_connected":("preparing","asset_connected"),
+    "connected":("preparing","asset_connected"),
+    "plugged":("preparing","asset_connected"),
+    "plugged_in":("preparing","asset_connected"),
+    "occupied":("preparing","asset_connected"),
+    "charging":("running","asset_connected"),
+    "running":("running","asset_connected"),
+    "suspended":("suspended","asset_connected"),
+    "suspended_ev":("suspended","asset_connected"),
+    "suspendedev":("suspended","asset_connected"),
+    "suspended_evse":("suspended","asset_connected"),
+    "suspendedevse":("suspended","asset_connected"),
+    "finishing":("stopped","asset_connected"),
+    "stopped_connected":("stopped","asset_connected"),
+
+    # charger cannot presently be used
+    "fault":("fault","fault"),
+    "faulted":("fault","fault"),
+    "error":("fault","fault"),
+    "unavailable":("unavailable","unknown"),
+    "reserved":("unavailable","unknown"),
+    "invalid":("unknown","unknown"),
+    "unknown":("unknown","unknown"),
 }
 
+
 def charger_state(integration_domain: str, value: Any) -> dict[str, str | None]:
-    raw=_text(value)
-    if raw is None: return {"charger.operating_state":None,"charger.connection_state":None}
-    key=raw.strip().lower().replace(" ","") if integration_domain=="ocpp" else raw.strip().lower()
-    table=_OCPP if integration_domain=="ocpp" else (_PEBLAR if integration_domain=="peblar" else _WALLBOX)
-    pair=table.get(key)
+    """Normalize a full-EVSE source into uniform operating + physical connection truth."""
+    token=_charger_status_token(value)
+    if token is None:
+        return {"charger.operating_state":None,"charger.connection_state":None}
+    pair=_CHARGER_STATE_MATRIX.get(token)
+    if pair is None and integration_domain=="ocpp":
+        # OCPP libraries sometimes publish concatenated enum names.
+        compact=token.replace("_","")
+        pair=_CHARGER_STATE_MATRIX.get(compact)
     if pair is None:
-        return {"charger.operating_state":"unknown","charger.connection_state":"unknown"}
+        pair=("unknown","unknown")
     return {"charger.operating_state":pair[0],"charger.connection_state":pair[1]}
+
 
 def utility_charger_state(integration_domain: str, value: Any) -> dict[str, str | None]:
     raw=_text(value)
@@ -93,33 +133,19 @@ def utility_charger_state(integration_domain: str, value: Any) -> dict[str, str 
     if key in {"fault","error"}: return {"charger.operating_state":"fault"}
     return {"charger.operating_state":"unknown"}
 
-def charger_connection(integration_domain: str, value: Any) -> dict[str, str | None]:
-    """Normalize physical connector state without contradicting charger_state.
 
-    OCPP exposes lifecycle states (Preparing/Charging/SuspendedEV/SuspendedEVSE/
-    Finishing) on the same accepted connector-status source.  Those states are
-    explicit evidence that an EV is physically connected.  Treating them as an
-    unknown generic token caused the higher-precedence charger_connection input to
-    overwrite the correct connection state published by charger_state and blocked
-    Start Charging with ``vehicle_not_connected`` on real OCPP chargers.
-    """
-    raw=_text(value)
-    if raw is None: return {"charger.connection_state":None}
-    compact=raw.strip().lower().replace(" ","").replace("_","").replace("-","")
-    key=raw.strip().lower().replace(" ","_").replace("-","_")
-    if integration_domain=="ocpp":
-        if compact in {"preparing","charging","suspendedev","suspendedevse","finishing"}:
-            return {"charger.connection_state":"asset_connected"}
-        if compact=="available":
-            return {"charger.connection_state":"no_asset_connected"}
-        if compact=="faulted":
-            return {"charger.connection_state":"fault"}
-        if compact in {"reserved","unavailable"}:
-            return {"charger.connection_state":"unknown"}
-    if key in {"connected","asset_connected","plugged","plugged_in","occupied"}: return {"charger.connection_state":"asset_connected"}
-    if key in {"disconnected","no_asset_connected","no_ev_connected","available"}: return {"charger.connection_state":"no_asset_connected"}
-    if key in {"fault","faulted","error"}: return {"charger.connection_state":"fault"}
+def charger_connection(integration_domain: str, value: Any) -> dict[str, str | None]:
+    """Normalize an explicit connector source through the same physical state matrix."""
+    token=_charger_status_token(value)
+    if token is None:
+        return {"charger.connection_state":None}
+    pair=_CHARGER_STATE_MATRIX.get(token)
+    if pair is None and integration_domain=="ocpp":
+        pair=_CHARGER_STATE_MATRIX.get(token.replace("_",""))
+    if pair is not None:
+        return {"charger.connection_state":pair[1]}
     return {"charger.connection_state":"unknown"}
+
 
 def vehicle_charging_state(integration_domain: str, value: Any) -> dict[str, str | None]:
     raw=_text(value)
