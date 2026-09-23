@@ -10,6 +10,8 @@ GUEST_VEHICLES_KEY = "guest_vehicles"
 PROFILES_KEY = "mobility_profiles"
 DISABLED_PROFILES_KEY = "disabled_mobility_profiles"
 CONFIG_SCHEMA_KEY = "mobility_configuration_schema_version"
+POLICY_KEY = "mobility_policy_v2"
+POLICY_REVISION_KEY = "mobility_policy_revision"
 CURRENT_CONFIG_SCHEMA_VERSION = 2
 PROFILE_TYPES = {"vehicle", "charger"}
 
@@ -57,6 +59,12 @@ class MobilityDomainConfiguration:
             self._revision = max(0, int(options.get(REVISION_KEY, 0)))
         except (TypeError, ValueError):
             self._revision = 0
+        raw_policy = options.get(POLICY_KEY, {})
+        self._policy_overrides: dict[str, dict[str, Any]] = deepcopy(raw_policy) if isinstance(raw_policy, dict) else {}
+        try:
+            self._policy_revision = max(0, int(options.get(POLICY_REVISION_KEY, 0)))
+        except (TypeError, ValueError):
+            self._policy_revision = 0
         self._legacy_migration_required = LEGACY_CONFIG_KEY in options and CONFIG_KEY not in options
         try:
             self._stored_schema_version = int(options.get(CONFIG_SCHEMA_KEY, 0) or 0)
@@ -464,6 +472,39 @@ class MobilityDomainConfiguration:
     def asset_values(self, asset_id: str) -> dict[str, Any]:
         row = self._data.get(asset_id, {})
         return dict(row) if isinstance(row, dict) else {}
+
+    @property
+    def policy_revision(self) -> int:
+        return self._policy_revision
+
+    def policy_overrides(self) -> dict[str, dict[str, Any]]:
+        return deepcopy(self._policy_overrides)
+
+    async def async_set_policy(self, policy_key: str, value: Any) -> None:
+        parts = str(policy_key or "").split(".", 1)
+        if len(parts) != 2 or not all(parts):
+            raise ValueError("policy_key must be section.field")
+        section, field = parts
+        updated = deepcopy(self._policy_overrides)
+        row = dict(updated.get(section, {}))
+        if value is None:
+            row.pop(field, None)
+        else:
+            row[field] = deepcopy(value)
+        if row:
+            updated[section] = row
+        else:
+            updated.pop(section, None)
+        options = dict(getattr(self.entry, "options", {}) or {})
+        options[POLICY_KEY] = deepcopy(updated)
+        self._policy_revision += 1
+        self._revision += 1
+        options[POLICY_REVISION_KEY] = self._policy_revision
+        options[REVISION_KEY] = self._revision
+        self.hass.config_entries.async_update_entry(self.entry, options=options)
+        self._policy_overrides = updated
+        for callback in tuple(self._listeners):
+            callback("__policy__", f"policy:{policy_key}")
 
     def snapshot(self) -> dict[str, dict[str, Any]]:
         return deepcopy(self._data)

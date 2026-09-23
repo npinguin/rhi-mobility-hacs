@@ -1,7 +1,7 @@
 {
   "kind": "mobility_domain_runtime_model",
-  "contract_version": "1.5.0",
-  "model_version": "M0.7.2",
+  "contract_version": "1.6.0",
+  "model_version": "M0.9.40",
   "source_of_truth": "contracts/domain/domain_runtime_model.json + generated DomainBuildSpecification",
   "canonical_state_vocabularies": {
     "charger.operating_state": [
@@ -4752,7 +4752,37 @@
       "critical",
       "service_required"
     ],
-    "rule": "Only explicit canonical unsafe/due values create attention; missing values remain unknown and do not create false alarms."
+    "rule": "Only explicit canonical unsafe/due values create attention; missing values remain unknown and do not create false alarms.",
+    "security_states": [
+      "secure",
+      "unsafe",
+      "incomplete",
+      "unknown"
+    ],
+    "maintenance_states": [
+      "overdue",
+      "due_soon",
+      "scheduled",
+      "ok",
+      "unknown"
+    ],
+    "configuration_states": [
+      "complete",
+      "incomplete"
+    ],
+    "runtime_data_health_states": [
+      "healthy",
+      "partial",
+      "stale",
+      "unavailable"
+    ],
+    "charge_demand_states": [
+      "needed",
+      "satisfied",
+      "incomplete",
+      "unknown"
+    ],
+    "policy_contract": "MOBILITY_POLICY_V2"
   },
   "activity_contract": {
     "contract_id": "MOBILITY_ACTIVITY_V2",
@@ -4798,5 +4828,29 @@
   "authoring_contract": {
     "builder_input_authority": "builders.input_rules + builders.input_order",
     "dbs_role": "generated Foundation handoff contract"
+  },
+  "policy_contract": {
+    "contract_id": "MOBILITY_POLICY_V2",
+    "provider_id": "mobility.policy.v2",
+    "persistence_owner": "MobilityDomainConfiguration config entry options",
+    "defaults": {
+      "range": {
+        "low_range_km": 100
+      },
+      "maintenance": {
+        "due_soon_days": 90
+      },
+      "security": {
+        "required_coverage": [
+          "lock",
+          "doors",
+          "windows"
+        ]
+      },
+      "charging": {
+        "minimum_demand_kwh": 0.5
+      }
+    },
+    "rule": "Policy owns thresholds only. Runtime owns facts; Experience owns conclusions; UX owns presentation."
   }
 }

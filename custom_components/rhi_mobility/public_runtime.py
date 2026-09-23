@@ -2,6 +2,28 @@ from __future__ import annotations
 from typing import Any
 
 
+def _vehicle_charger_relationship(manager, vehicle_id: str):
+    # Keep relationship semantics owned by relationship_resolution. Import lazily so
+    # this pure provider remains import-safe for contract/unit tooling.
+    try:
+        from .relationship_resolution import resolve_vehicle_charger_relationship
+    except ImportError:
+        # Standalone contract tests load this module outside package context.
+        import importlib.util
+        import sys
+        from pathlib import Path
+        path = Path(__file__).with_name("relationship_resolution.py")
+        name = "_rhi_mobility_relationship_resolution"
+        module = sys.modules.get(name)
+        if module is None:
+            spec = importlib.util.spec_from_file_location(name, path)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[name] = module
+            spec.loader.exec_module(module)
+        resolve_vehicle_charger_relationship = module.resolve_vehicle_charger_relationship
+    return resolve_vehicle_charger_relationship(manager, vehicle_id)
+
+
 class MobilityPublicRuntimeProvider:
     """Canonical Mobility V2 projection with complete R43.2.65 semantic coverage.
 
@@ -93,7 +115,9 @@ class MobilityPublicRuntimeProvider:
             return ids[0] if len(ids) == 1 else None
 
         # Relationship owner.
-        if key in {"vehicle.selected_charger", "vehicle.effective_charger"} and asset.concept_id == "vehicle":
+        if key == "vehicle.selected_charger" and asset.concept_id == "vehicle":
+            return _vehicle_charger_relationship(self.manager, asset_id).configured_charger_id
+        if key == "vehicle.effective_charger" and asset.concept_id == "vehicle":
             return self._effective_charger(asset_id)
         if key in {"charger.assigned_vehicle_id", "charger.effective_assigned_vehicle_id"} and asset.concept_id == "charger":
             return self.manager.configured_vehicle_for_charger(asset_id)
@@ -374,6 +398,53 @@ class MobilityPublicRuntimeProvider:
             ],
         }
 
+    def fleet_snapshot(self) -> dict[str, Any]:
+        active_vehicles = []
+        active_chargers = []
+        available = connected = charging = 0
+        known_power = 0
+        total_power = 0.0
+        for asset_id, asset in sorted(self.manager.assets.items()):
+            lifecycle = str(self.property_value(asset_id, "asset.lifecycle_status") or "active").lower()
+            if lifecycle == "disabled":
+                continue
+            if asset.concept_id == "vehicle":
+                active_vehicles.append(asset_id)
+                continue
+            if asset.concept_id != "charger":
+                continue
+            active_chargers.append(asset_id)
+            if self.property_value(asset_id, "charger.available_for_connection") is True:
+                available += 1
+            if self.property_value(asset_id, "charger.connection_state") == "asset_connected":
+                connected += 1
+            if self.property_value(asset_id, "charger.operating_state") == "running":
+                charging += 1
+            power = self.property_value(asset_id, "charger.power_kw")
+            if isinstance(power, (int, float)):
+                known_power += 1
+                total_power += max(0.0, float(power))
+        if not active_chargers or known_power == 0:
+            power_state = "unknown"
+            aggregate_power = None
+        elif known_power == len(active_chargers):
+            power_state = "complete"
+            aggregate_power = round(total_power, 3)
+        else:
+            power_state = "partial"
+            aggregate_power = round(total_power, 3)
+        return {
+            "active_vehicle_count": len(active_vehicles),
+            "active_charger_count": len(active_chargers),
+            "available_charger_count": available,
+            "connected_charger_count": connected,
+            "charging_charger_count": charging,
+            "aggregate_actual_charging_power_kw": aggregate_power,
+            "aggregate_power_state": power_state,
+            "power_known_charger_count": known_power,
+            "power_unknown_charger_count": len(active_chargers) - known_power,
+        }
+
     def snapshot(self) -> dict[str, Any]:
         return {
             "contract_id": self.CONTRACT_ID,
@@ -381,9 +452,15 @@ class MobilityPublicRuntimeProvider:
             "canonical": True,
             "v1_drop_in_parity": dict(self.parity.get("counts") or {}),
             "assets": [self.component_snapshot(aid) for aid in sorted(self.manager.assets)],
+            "fleet": self.fleet_snapshot(),
             "relationships": [
                 {"relationship_id": r.relationship_id, "relationship_type": r.relationship_type, "from_asset_id": r.from_asset_id, "to_asset_id": r.to_asset_id, "health": r.health}
                 for r in sorted(self.manager.effective_relationships.values(), key=lambda x: x.relationship_id)
+            ],
+            "vehicle_charger_relationships": [
+                _vehicle_charger_relationship(self.manager, aid).as_dict()
+                for aid, asset in sorted(self.manager.assets.items())
+                if asset.concept_id == "vehicle"
             ],
             "command_provider_id": "mobility.command.v1",
             "raw_integration_state_public": False,
@@ -402,8 +479,9 @@ class MobilityExperienceProvider:
         "vehicle.window_fl_state", "vehicle.window_fr_state", "vehicle.window_rl_state", "vehicle.window_rr_state",
     )
 
-    def __init__(self, public_provider: MobilityPublicRuntimeProvider, registry) -> None:
+    def __init__(self, public_provider: MobilityPublicRuntimeProvider, registry, policy_provider=None) -> None:
         self.public = public_provider
+        self.policy = policy_provider
         contract = registry.domain_model["experience_contract"]
         self.unsafe = set(contract["security_unsafe_values"])
         self.maintenance_attention = set(contract["maintenance_attention_values"])
@@ -414,6 +492,101 @@ class MobilityExperienceProvider:
 
     def _v(self, aid: str, key: str):
         return self.public.property_value(aid, key)
+
+    def _policy(self, key: str, default: Any) -> Any:
+        if self.policy is None:
+            return default
+        try:
+            return self.policy.value(key)
+        except Exception:
+            return default
+
+    @property
+    def policy_revision(self) -> int:
+        return int(getattr(self.policy, "revision", 0) or 0)
+
+    def _configuration_status(self, asset_id: str, asset_type: str) -> dict[str, Any]:
+        identity_state = str(self._v(asset_id, f"{asset_type}.identity_status") or "unresolved").lower()
+        profile_id = self._v(asset_id, "asset.profile_id")
+        brand = self._v(asset_id, f"{asset_type}.brand")
+        if brand is None and asset_type == "vehicle":
+            brand = self._v(asset_id, "vehicle.manufacturer")
+        if brand is None and asset_type == "charger":
+            brand = self._v(asset_id, "charger.vendor")
+        model = self._v(asset_id, f"{asset_type}.model")
+        missing = []
+        if profile_id in (None, ""):
+            if brand in (None, ""):
+                missing.append(f"{asset_type}.brand")
+            if model in (None, ""):
+                missing.append(f"{asset_type}.model")
+        complete = identity_state in {"resolved", "custom"} or (profile_id not in (None, ""))
+        return {
+            "state": "complete" if complete else "incomplete",
+            "missing_required_fields": [] if complete else missing or ["product_identity_confirmation"],
+            "reasons": [] if complete else [f"identity_status:{identity_state}"],
+            "profile_id": profile_id,
+        }
+
+    def _runtime_data_health(self, asset_id: str, lifecycle: str) -> dict[str, Any]:
+        if lifecycle == "disabled":
+            return {"state": "unavailable", "reasons": ["lifecycle_disabled"]}
+        manager = getattr(self.public, "manager", None)
+        if manager is None:
+            return {"state": "unavailable", "reasons": ["runtime_manager_unavailable"]}
+        snap = manager.snapshots.get(asset_id)
+        if snap is None:
+            return {"state": "unavailable", "reasons": ["runtime_snapshot_missing"]}
+        attempt = dict(getattr(manager, "last_build_attempt", {}) or {})
+        if str(attempt.get("status") or "").upper() == "STALE":
+            return {"state": "stale", "reasons": [str(attempt.get("reason") or "foundation_handoff_stale")]}
+        stale_inputs = sorted({
+            str(row.get("input_id") or "capability")
+            for row in getattr(manager, "_capability_diagnostics", ()) or ()
+            if isinstance(row, dict)
+            and str(row.get("asset_id") or "") == asset_id
+            and str(row.get("status") or "").upper() == "STALE"
+        })
+        if stale_inputs:
+            return {"state": "stale", "reasons": [f"{key}:stale" for key in stale_inputs]}
+        if str(getattr(snap, "health", "UNKNOWN")).upper() != "OK":
+            reason = str(getattr(snap, "health_reason", "") or "runtime_health_not_ok")
+            return {"state": "partial", "reasons": [reason]}
+        return {"state": "healthy", "reasons": []}
+
+    def _charging_relationship(self, asset_id: str) -> dict[str, Any]:
+        manager = getattr(self.public, "manager", None)
+        if manager is None:
+            return {
+                "vehicle_id": asset_id,
+                "configured_charger_id": None,
+                "effective_charger_id": None,
+                "physically_connected_charger_id": None,
+                "relationship_status": "UNKNOWN",
+                "observed_identity_proven": False,
+                "reason": "runtime_manager_unavailable",
+            }
+        return _vehicle_charger_relationship(manager, asset_id).as_dict()
+
+    def _charge_demand(self, asset_id: str, lifecycle: str) -> dict[str, Any]:
+        if lifecycle == "disabled":
+            return {"state": "unknown", "energy_needed_kwh": None, "target_soc_pct": self._v(asset_id, "vehicle.target_soc_pct"), "ready_by": self._v(asset_id, "vehicle.ready_by"), "reason": "lifecycle_disabled"}
+        need = self._v(asset_id, "vehicle.energy_needed_kwh")
+        target = self._v(asset_id, "vehicle.target_soc_pct")
+        ready_by = self._v(asset_id, "vehicle.ready_by")
+        inputs = {
+            "vehicle.soc_pct": self._v(asset_id, "vehicle.soc_pct"),
+            "vehicle.target_soc_pct": target,
+            "vehicle.battery_capacity_kwh": self._v(asset_id, "vehicle.battery_capacity_kwh"),
+        }
+        if need is None:
+            missing = [key for key, value in inputs.items() if value is None]
+            state = "incomplete" if missing else "unknown"
+            reason = "missing:" + ",".join(missing) if missing else "derived_energy_need_unavailable"
+            return {"state": state, "energy_needed_kwh": None, "target_soc_pct": target, "ready_by": ready_by, "reason": reason}
+        threshold = float(self._policy("charging.minimum_demand_kwh", 0.5))
+        state = "needed" if float(need) > threshold else "satisfied"
+        return {"state": state, "energy_needed_kwh": float(need), "target_soc_pct": target, "ready_by": ready_by, "reason": f"minimum_demand_kwh:{threshold:g}"}
 
     def _vehicle_row(self, asset_id: str) -> dict[str, Any]:
         lifecycle = self._v(asset_id, "lifecycle_status") or "active"
@@ -428,21 +601,29 @@ class MobilityExperienceProvider:
 
         total_range = self._v(asset_id, "vehicle.range_total_km")
         ev_range = self._v(asset_id, "vehicle.ev_range_km")
-        if total_range is not None:
-            reason = f"{ev_range:g} km electric" if isinstance(ev_range, (int, float)) else "Total range available"
-            range_i = self._intel("ok", "normal", f"{float(total_range):g} km total", reason, "property_backed_range", "measured", ["vehicle.range_total_km", "vehicle.ev_range_km", "vehicle.range_ev_km", "vehicle.nominal_range_km", "vehicle.soc_pct"])
-        elif ev_range is not None:
-            range_i = self._intel("ok", "normal", f"{float(ev_range):g} km electric", "Electric range available", "property_backed_range", "measured", ["vehicle.ev_range_km", "vehicle.range_ev_km", "vehicle.nominal_range_km", "vehicle.soc_pct"])
+        low_range_km = float(self._policy("range.low_range_km", 100.0))
+        effective_range = total_range if total_range is not None else ev_range
+        if effective_range is not None:
+            range_state = "low" if float(effective_range) < low_range_km else "ok"
+            severity = "warning" if range_state == "low" else "normal"
+            if total_range is not None:
+                summary = f"{float(total_range):g} km total"
+                reason = f"{ev_range:g} km electric" if isinstance(ev_range, (int, float)) else f"Low-range threshold {low_range_km:g} km"
+            else:
+                summary = f"{float(ev_range):g} km electric"
+                reason = f"Low-range threshold {low_range_km:g} km"
+            range_i = self._intel(range_state, severity, summary, reason, "policy_classified_range", "derived", ["vehicle.range_total_km", "vehicle.ev_range_km", "vehicle.range_ev_km", "vehicle.nominal_range_km"], threshold_km=low_range_km, policy_revision=self.policy_revision)
         else:
-            range_i = self._intel("unknown", "unknown", "No range data", "No range data", "no_range_data", "missing", ["vehicle.range_total_km", "vehicle.ev_range_km", "vehicle.nominal_range_km"])
+            range_i = self._intel("unknown", "unknown", "No range data", "No range data", "no_range_data", "missing", ["vehicle.range_total_km", "vehicle.ev_range_km", "vehicle.nominal_range_km"], threshold_km=low_range_km, policy_revision=self.policy_revision)
 
         soc = self._v(asset_id, "vehicle.soc_pct")
-        need = self._v(asset_id, "vehicle.energy_needed_kwh")
+        charge_demand = self._charge_demand(asset_id, str(lifecycle).lower())
+        need = charge_demand.get("energy_needed_kwh")
         if soc is not None:
-            reason = f"{float(need):.2f} kWh to target" if need is not None else "Target energy unresolved"
-            energy_i = self._intel("attention" if need is not None and float(need) > 0.05 else "ok", "warning" if need is not None and float(need) > 0.05 else "normal", f"{float(soc):.1f}%", reason, "soc_and_energy_to_target", "derived", ["vehicle.soc_pct", "vehicle.target_soc_pct", "vehicle.energy_needed_kwh", "vehicle.current_energy_kwh"])
+            reason = f"{float(need):.2f} kWh to target" if need is not None else charge_demand.get("reason", "Target energy unresolved")
+            energy_i = self._intel("attention" if charge_demand["state"] == "needed" else ("ok" if charge_demand["state"] == "satisfied" else "unknown"), "warning" if charge_demand["state"] == "needed" else ("normal" if charge_demand["state"] == "satisfied" else "unknown"), f"{float(soc):.1f}%", str(reason), "charge_demand_v2", "derived", ["vehicle.soc_pct", "vehicle.target_soc_pct", "vehicle.energy_needed_kwh", "vehicle.current_energy_kwh"], charge_demand_state=charge_demand["state"], policy_revision=self.policy_revision)
         else:
-            energy_i = self._intel("unknown", "unknown", "No battery data", "SoC unavailable", "soc_unavailable", "missing", ["vehicle.soc_pct", "vehicle.target_soc_pct", "vehicle.energy_needed_kwh"])
+            energy_i = self._intel("unknown", "unknown", "No battery data", "SoC unavailable", "soc_unavailable", "missing", ["vehicle.soc_pct", "vehicle.target_soc_pct", "vehicle.energy_needed_kwh"], charge_demand_state=charge_demand["state"], policy_revision=self.policy_revision)
 
         charging_state = self._v(asset_id, "vehicle.charging_state") or self._v(asset_id, "vehicle.charge_state")
         power = self._v(asset_id, "vehicle.charge_power_kw")
@@ -475,23 +656,19 @@ class MobilityExperienceProvider:
             ("vehicle.windows_locked" in access and str(access["vehicle.windows_locked"]).lower() not in self.unsafe)
             or all(k in access and str(access[k]).lower() not in self.unsafe for k in window_keys)
         )
-        secure_proven = lock_proven and doors_closed and windows_closed
+        coverage = {"lock": lock_proven, "doors": doors_closed, "windows": windows_closed}
+        required_coverage = list(self._policy("security.required_coverage", ["lock", "doors", "windows"]))
+        missing_coverage = [name for name in required_coverage if not coverage.get(name, False)]
+        secure_proven = not missing_coverage
 
         if unsafe:
-            security_i = self._intel("attention", "warning", "Check vehicle", "Unsafe/open state: " + ", ".join(unsafe), "property_backed_security", "measured", list(self._ACCESS_KEYS))
-        elif secure_proven:
-            security_i = self._intel("ok", "normal", "Secure", "Lock and opening coverage confirm the vehicle is secured", "property_backed_security", "derived", list(self._ACCESS_KEYS))
+            security_i = self._intel("unsafe", "warning", "Unsafe", "Unsafe/open state: " + ", ".join(unsafe), "property_backed_security", "measured", list(self._ACCESS_KEYS), unsafe_properties=unsafe, missing_coverage=missing_coverage, required_coverage=required_coverage, policy_revision=self.policy_revision)
+        elif access and secure_proven:
+            security_i = self._intel("secure", "normal", "Secure", "Required security coverage confirms the vehicle is secured", "property_backed_security", "derived", list(self._ACCESS_KEYS), unsafe_properties=[], missing_coverage=[], required_coverage=required_coverage, policy_revision=self.policy_revision)
         elif access:
-            missing_coverage = []
-            if not lock_proven:
-                missing_coverage.append("lock")
-            if not doors_closed:
-                missing_coverage.append("doors")
-            if not windows_closed:
-                missing_coverage.append("windows")
-            security_i = self._intel("unknown", "unknown", "Security partially known", "Missing authoritative coverage: " + ", ".join(missing_coverage), "partial_security_coverage", "partial", list(self._ACCESS_KEYS))
+            security_i = self._intel("incomplete", "unknown", "Security incomplete", "Missing authoritative coverage: " + ", ".join(missing_coverage), "partial_security_coverage", "partial", list(self._ACCESS_KEYS), unsafe_properties=[], missing_coverage=missing_coverage, required_coverage=required_coverage, policy_revision=self.policy_revision)
         else:
-            security_i = self._intel("unknown", "unknown", "No security data", "No security data", "no_security_data", "missing", list(self._ACCESS_KEYS))
+            security_i = self._intel("unknown", "unknown", "No security data", "No security data", "no_security_data", "missing", list(self._ACCESS_KEYS), unsafe_properties=[], missing_coverage=required_coverage, required_coverage=required_coverage, policy_revision=self.policy_revision)
 
         climate = self._v(asset_id, "vehicle.climate_state")
         remaining = self._v(asset_id, "vehicle.remaining_climate_time_s")
@@ -515,13 +692,36 @@ class MobilityExperienceProvider:
         ]
         due_fields = {k: self._v(asset_id, k) for k in maintenance_keys}
         present = {k: v for k, v in due_fields.items() if v is not None}
-        attention = [k for k, v in present.items() if (isinstance(v, (int, float)) and (k.endswith("due_days") or k.endswith("due_km") or "due_distance" in k) and v <= 0) or str(v).lower() in self.maintenance_attention]
-        if attention:
-            maint_state, sev = "attention", "warning"
+        due_soon_days = int(self._policy("maintenance.due_soon_days", 90))
+        numeric_due = {
+            k: float(v) for k, v in present.items()
+            if isinstance(v, (int, float)) and (k.endswith("due_days") or k.endswith("due_km") or "due_distance" in k)
+        }
+        explicit_states = {k: str(v).lower() for k, v in present.items() if not isinstance(v, (int, float))}
+        overdue_properties = sorted(
+            [k for k, v in numeric_due.items() if v < 0]
+            + [k for k, v in explicit_states.items() if v in {"due", "critical", "service_required"}]
+        )
+        due_soon_properties = sorted(
+            [k for k, v in numeric_due.items() if k.endswith("due_days") and 0 <= v <= due_soon_days]
+            + [k for k, v in explicit_states.items() if v == "warning"]
+        )
+        scheduled_properties = sorted(
+            k for k, v in numeric_due.items()
+            if (k.endswith("due_days") and v > due_soon_days)
+            or (not k.endswith("due_days") and v >= 0)
+        )
+        if overdue_properties:
+            maint_state, sev = "overdue", "warning"
+        elif due_soon_properties:
+            maint_state, sev = "due_soon", "warning"
+        elif scheduled_properties:
+            maint_state, sev = "scheduled", "normal"
         elif present:
             maint_state, sev = "ok", "normal"
         else:
             maint_state, sev = "unknown", "unknown"
+
         oil_days = due_fields.get("vehicle.oil_service_due_days") if due_fields.get("vehicle.oil_service_due_days") is not None else due_fields.get("vehicle.oil_change_due_days")
         oil_km = due_fields.get("vehicle.oil_service_due_km") if due_fields.get("vehicle.oil_service_due_km") is not None else due_fields.get("vehicle.oil_change_due_distance_km")
         insp_days = due_fields.get("vehicle.inspection_due_days")
@@ -531,14 +731,37 @@ class MobilityExperienceProvider:
         elif oil_km is not None: summaries.append(f"Oil in {int(oil_km)} km")
         if insp_days is not None: summaries.append(f"Inspection in {int(insp_days)} d")
         elif insp_km is not None: summaries.append(f"Inspection in {int(insp_km)} km")
-        summary = "; ".join(summaries) if summaries else ("No maintenance data" if not present else ("Vehicle needs attention" if attention else "Maintenance data available"))
+        summary = "; ".join(summaries) if summaries else ("No maintenance data" if not present else maint_state.replace("_", " ").title())
+
+        def service_state(days, km, extra_state=None):
+            if isinstance(days, (int, float)):
+                if days < 0:
+                    return "overdue"
+                if days <= due_soon_days:
+                    return "due_soon"
+                return "scheduled"
+            if isinstance(km, (int, float)):
+                return "overdue" if km < 0 else "scheduled"
+            if str(extra_state or "").lower() in {"due", "critical", "service_required"}:
+                return "overdue"
+            if str(extra_state or "").lower() == "warning":
+                return "due_soon"
+            if extra_state not in (None, ""):
+                return "ok"
+            return "unknown"
+
         pressure_values={k:v for k,v in due_fields.items() if "tire_pressure_" in k and v is not None}
-        tire_attention=[k for k in attention if "tire_" in k]
-        tire_state=due_fields.get("vehicle.tire_health_state") or ("attention" if tire_attention else ("ok" if pressure_values else "unknown"))
-        maintenance_i = self._intel(maint_state, sev, summary, ", ".join(attention) if attention else summary, "structured_vehicle_maintenance" if present else "no_maintenance_data", "derived" if present else "missing", maintenance_keys,
-            oil_service={"state": "attention" if any(k in attention for k in ("vehicle.oil_service_due_days","vehicle.oil_service_due_km","vehicle.oil_change_due_days","vehicle.oil_change_due_distance_km")) else ("ok" if oil_days is not None or oil_km is not None or due_fields.get("vehicle.oil_level_state") is not None else "unknown"), "days_remaining": oil_days, "km_remaining": oil_km, "oil_level_state": due_fields.get("vehicle.oil_level_state"), "oil_dipstick_state": due_fields.get("vehicle.oil_dipstick_state")},
-            general_inspection={"state": "attention" if "vehicle.inspection_due_days" in attention or "vehicle.inspection_due_km" in attention else ("ok" if insp_days is not None or insp_km is not None else "unknown"), "days_remaining": insp_days, "km_remaining": insp_km, "interval_days": due_fields.get("vehicle.inspection_interval_days"), "interval_km": due_fields.get("vehicle.inspection_interval_km")},
-            tires={"state": tire_state, "pressure_values_by_property": pressure_values, "attention_properties": tire_attention, "input_properties": [k for k in maintenance_keys if "tire_" in k]})
+        tire_raw = due_fields.get("vehicle.tire_health_state")
+        tire_state = service_state(None, None, tire_raw) if tire_raw is not None else ("ok" if pressure_values else "unknown")
+        actionable = sorted(set(overdue_properties + due_soon_properties))
+        maintenance_i = self._intel(maint_state, sev, summary, ", ".join(actionable) if actionable else summary, "structured_vehicle_maintenance" if present else "no_maintenance_data", "derived" if present else "missing", maintenance_keys,
+            policy_revision=self.policy_revision, due_soon_days=due_soon_days, actionable_properties=actionable,
+            oil_service={"state": service_state(oil_days, oil_km, due_fields.get("vehicle.oil_level_state")), "days_remaining": oil_days, "km_remaining": oil_km, "oil_level_state": due_fields.get("vehicle.oil_level_state"), "oil_dipstick_state": due_fields.get("vehicle.oil_dipstick_state")},
+            inspection={"state": service_state(insp_days, insp_km), "days_remaining": insp_days, "km_remaining": insp_km, "interval_days": due_fields.get("vehicle.inspection_interval_days"), "interval_km": due_fields.get("vehicle.inspection_interval_km")},
+            general_inspection={"state": service_state(insp_days, insp_km), "days_remaining": insp_days, "km_remaining": insp_km, "interval_days": due_fields.get("vehicle.inspection_interval_days"), "interval_km": due_fields.get("vehicle.inspection_interval_km")},
+            tires={"state": tire_state, "pressure_values_by_property": pressure_values, "attention_properties": [k for k in actionable if "tire_" in k], "input_properties": [k for k in maintenance_keys if "tire_" in k]},
+            attention_properties=actionable,
+            other_actionable_maintenance=[k for k in actionable if not any(token in k for token in ("oil_", "inspection_", "tire_"))])
 
         freshness_inputs=["vehicle.last_seen", "vehicle.source_timestamp", "vehicle.source_vehicle_clock"]
         freshness_values=[self._v(asset_id,k) for k in freshness_inputs]
@@ -547,8 +770,9 @@ class MobilityExperienceProvider:
 
         if lifecycle == "disabled":
             disabled=lambda inputs: self._intel("disabled", "normal", "Disabled", "Vehicle disabled", "lifecycle_disabled", "configured", inputs)
-            range_i=disabled(["lifecycle_status"]); energy_i=disabled(["lifecycle_status"]); charging_i=disabled(["lifecycle_status"]); security_i=disabled(["lifecycle_status"]); comfort_i=disabled(["lifecycle_status"])
-            maintenance_i=disabled(["lifecycle_status"]); maintenance_i.update({"oil_service":{"state":"disabled","summary":"Vehicle disabled","days_remaining":None,"km_remaining":None,"oil_level_state":None,"oil_dipstick_state":None},"general_inspection":{"state":"disabled","summary":"Vehicle disabled","days_remaining":None,"km_remaining":None},"tires":{"state":"disabled","summary":"Vehicle disabled","pressure_values_by_property":{},"attention_properties":[]}})
+            range_i=disabled(["lifecycle_status"]); energy_i=disabled(["lifecycle_status"]); charging_i=disabled(["lifecycle_status"]); comfort_i=disabled(["lifecycle_status"])
+            security_i=self._intel("unknown", "unknown", "Disabled", "Vehicle disabled", "lifecycle_disabled", "configured", ["lifecycle_status"], unsafe_properties=[], missing_coverage=[], required_coverage=list(self._policy("security.required_coverage", ["lock","doors","windows"])), policy_revision=self.policy_revision)
+            maintenance_i=self._intel("unknown", "unknown", "Disabled", "Vehicle disabled", "lifecycle_disabled", "configured", ["lifecycle_status"], oil_service={"state":"unknown","days_remaining":None,"km_remaining":None}, inspection={"state":"unknown","days_remaining":None,"km_remaining":None}, tires={"state":"unknown","pressure_values_by_property":{}}, other_actionable_maintenance=[], policy_revision=self.policy_revision)
             freshness_i=disabled(["lifecycle_status"])
 
         return {
@@ -557,6 +781,10 @@ class MobilityExperienceProvider:
             "display_name": self._v(asset_id, "asset.display_name") or asset_id,
             "lifecycle_status": lifecycle,
             "availability_state": availability,
+            "configuration_status": self._configuration_status(asset_id, "vehicle"),
+            "runtime_data_health": self._runtime_data_health(asset_id, str(lifecycle).lower()),
+            "charge_demand": charge_demand,
+            "charging_relationship": self._charging_relationship(asset_id),
             "readiness_intelligence": readiness,
             "range_intelligence": range_i,
             "energy_intelligence": energy_i,
@@ -565,6 +793,7 @@ class MobilityExperienceProvider:
             "comfort_intelligence": comfort_i,
             "maintenance_intelligence": maintenance_i,
             "freshness_intelligence": freshness_i,
+            "policy_revision": self.policy_revision,
         }
 
     def _charger_row(self, asset_id: str) -> dict[str, Any]:
@@ -598,20 +827,29 @@ class MobilityExperienceProvider:
         current_i = self._intel("ok" if current is not None else "unknown", "normal" if current is not None else "unknown", f"{float(current):.1f} A readback" if current is not None else "No current readback", "Physical/readback current" if current is not None else "No requested-current estimate", "integration_current_readback", "measured" if current is not None else "missing", ["charger.current_limit_a", "limits.requested_current_limit_a"])
         maintenance_i = self._intel("unknown", "unknown", "No maintenance data", "No maintenance data", "no_maintenance_data", "missing", ["charger.firmware_version", "charger.telemetry_state", "charger.health"])
         freshness_i = self._intel("fresh" if observed else "unknown", "normal" if observed else "unknown", "Source observed" if observed else "No freshness data", observed or "No freshness data", "source_observed_at" if observed else "no_freshness_data", "measured" if observed else "missing", ["charger.observed_at", "charger.snapshot_revision"])
+        fault = {
+            "state": "active" if operating == "fault" else ("unknown" if operating in (None, "unknown") else "none"),
+            "code": None,
+            "reason": "charger.operating_state=fault" if operating == "fault" else ("operating_state_unknown" if operating in (None, "unknown") else None),
+        }
         return {
             "asset_id": asset_id, "asset_type": "charger", "display_name": self._v(asset_id, "asset.display_name") or asset_id,
             "lifecycle_status": lifecycle, "availability_state": availability,
+            "configuration_status": self._configuration_status(asset_id, "charger"),
+            "runtime_data_health": self._runtime_data_health(asset_id, str(lifecycle).lower()),
+            "fault": fault,
             "availability_intelligence": availability_i, "connection_intelligence": connection_i,
             "vehicle_intelligence": vehicle_i, "charging_intelligence": charging_i,
             "power_intelligence": power_i, "current_intelligence": current_i,
             "maintenance_intelligence": maintenance_i, "freshness_intelligence": freshness_i,
             "health": health,
+            "policy_revision": self.policy_revision,
         }
 
     def snapshot(self) -> dict[str, Any]:
         vehicles = [self._vehicle_row(aid) for aid, asset in sorted(self.public.manager.assets.items()) if asset.concept_id == "vehicle"]
         chargers = [self._charger_row(aid) for aid, asset in sorted(self.public.manager.assets.items()) if asset.concept_id == "charger"]
-        return {"contract_id": self.CONTRACT_ID, "publisher": "rhi_mobility", "vehicles": vehicles, "chargers": chargers, "energy_planning_inference": False, "generic_truthiness_security": False, "not_evaluated_placeholders": False}
+        return {"contract_id": self.CONTRACT_ID, "publisher": "rhi_mobility", "policy_revision": self.policy_revision, "fleet": self.public.fleet_snapshot(), "vehicles": vehicles, "chargers": chargers, "energy_planning_inference": False, "generic_truthiness_security": False, "not_evaluated_placeholders": False}
 
 
 class MobilityActivityProvider:

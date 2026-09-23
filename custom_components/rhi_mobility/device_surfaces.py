@@ -188,7 +188,7 @@ class MobilityDeviceSurfaceProvider:
                     evidence += 1
                 if severity in {"warning", "error", "critical"} or state in {"attention", "fault", "blocked"}:
                     warning += 1
-                elif state == "unknown" or quality == "missing":
+                elif state in {"unknown", "incomplete"} or quality == "missing":
                     unknown += 1
         if warning:
             return "ATTENTION", warning, unknown

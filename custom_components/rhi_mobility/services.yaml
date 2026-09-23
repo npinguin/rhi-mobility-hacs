@@ -46,3 +46,21 @@ rearm_execution:
       required: true
       selector:
         text:
+
+set_policy:
+  name: Set Mobility policy
+  description: Persist one Mobility Policy V2 threshold or coverage rule. Runtime facts remain unchanged; Experience V2 recomputes conclusions from the policy.
+  fields:
+    policy_key:
+      required: true
+      selector:
+        select:
+          options:
+            - range.low_range_km
+            - maintenance.due_soon_days
+            - security.required_coverage
+            - charging.minimum_demand_kwh
+    value:
+      required: true
+      selector:
+        text:

@@ -1,3 +1,15 @@
+## M0.9.40 — V2 contract-gap closure
+
+- Add persistent `MOBILITY_POLICY_V2` for range, maintenance, security-coverage and charge-demand interpretation rules.
+- Add backend-owned configuration completeness, runtime/data health and charge-demand facts.
+- Add explicit Experience V2 security and maintenance vocabularies so UX no longer needs semantic inference.
+- Keep selected, effective and physically proven charger relationships distinct.
+- Add fleet charger counts and aggregate actual charging power with explicit completeness.
+- Expose compact direct V2 Runtime, Experience and Policy HA surfaces for gradual V1 retirement.
+- Keep site capacity/planning Energy-owned, discovery Foundation-owned and presentation UX-owned.
+- Preserve frozen V1 through compatibility-only state mapping.
+- Add persistence/reboot-boundary and ownership regression coverage.
+
 ## M0.9.39 — V2 visual picker write contract
 
 - Expose canonical `vehicle.image_key` and `charger.image_key` as Mobility-owned configuration editors while keeping artwork/catalog ownership in UX.

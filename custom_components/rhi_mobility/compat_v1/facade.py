@@ -360,7 +360,25 @@ class MobilityV1Facade:
     def experience_rows(self, asset_type: str) -> list[dict[str, Any]]:
         snapshot = self.experience.snapshot() or {}
         key = "vehicles" if asset_type == "vehicle" else "chargers" if asset_type == "charger" else None
-        return [] if key is None else [dict(row) for row in snapshot.get(key, [])]
+        rows = [] if key is None else [dict(row) for row in snapshot.get(key, [])]
+        # Frozen V1 keeps its legacy generic intelligence states while V2 exposes
+        # precise product vocabulary. This is shape/state compatibility only.
+        for row in rows:
+            security = row.get("security_intelligence")
+            if isinstance(security, dict):
+                mapped = {"secure": "ok", "unsafe": "attention", "incomplete": "unknown"}
+                if security.get("state") in mapped:
+                    row["security_intelligence"] = {**security, "state": mapped[security["state"]]}
+            maintenance = row.get("maintenance_intelligence")
+            if isinstance(maintenance, dict):
+                mapped = {"overdue": "attention", "due_soon": "attention", "scheduled": "ok"}
+                compat_maintenance = dict(maintenance)
+                if "inspection" in compat_maintenance and "general_inspection" not in compat_maintenance:
+                    compat_maintenance["general_inspection"] = compat_maintenance["inspection"]
+                if maintenance.get("state") in mapped:
+                    compat_maintenance["state"] = mapped[maintenance["state"]]
+                row["maintenance_intelligence"] = compat_maintenance
+        return rows
 
     def supervisory(self) -> dict[str, Any]:
         if self.supervision is None:
