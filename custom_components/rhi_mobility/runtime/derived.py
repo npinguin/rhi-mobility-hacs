@@ -168,7 +168,7 @@ def apply_vehicle_derivations(values: dict[str, Any], quality: dict[str, str], *
     _derive_identity_status(values, quality, "vehicle")
 
 
-def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str]) -> None:
+def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str], *, utility_surface: bool = False) -> None:
     """Apply deterministic charger summaries and aggregate readback facts."""
     _derive_identity_status(values, quality, "charger")
     phase_currents = [_num(values.get(f"charger.current_l{phase}_a")) for phase in (1, 2, 3)]
@@ -230,6 +230,47 @@ def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str]) -
 
     connection = values.get("charger.connection_state")
     operating = values.get("charger.operating_state")
+
+    # Utility charging surfaces intentionally fake EVSE occupancy/state from measured
+    # power because they do not expose a native connector-state model. Observed device
+    # semantics are exact and fail closed outside them:
+    #   0 W   -> no vehicle connected / idle
+    #   2 W   -> vehicle connected / preparing
+    #   > 2 W -> vehicle connected / charging
+    # Any other non-negative sub-2 W value is unexplained and therefore UNKNOWN.
+    # Full EVSE chargers never use this rule; native EVSE state remains authoritative.
+    if utility_surface:
+        utility_power_kw = _num(values.get("charger.power_kw"))
+        if utility_power_kw is not None:
+            utility_power_w = round(utility_power_kw * 1000.0, 3)
+            if utility_power_w == 0.0:
+                connection = "no_asset_connected"
+                operating = "idle"
+            elif utility_power_w == 2.0:
+                connection = "asset_connected"
+                operating = "preparing"
+            elif utility_power_w > 2.0:
+                connection = "asset_connected"
+                operating = "running"
+            else:
+                connection = "unknown"
+                operating = "unknown"
+            _set(
+                values,
+                quality,
+                "charger.connection_state",
+                connection,
+                "derived_from_utility_power_state",
+                overwrite=True,
+            )
+            _set(
+                values,
+                quality,
+                "charger.operating_state",
+                operating,
+                "derived_from_utility_power_state",
+                overwrite=True,
+            )
 
     # Canonical occupancy/availability truth.
     # Free/available is a physical statement: a healthy charger with no EV attached.

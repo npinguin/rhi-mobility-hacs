@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.9.37",
+  "release": "M0.9.38",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -584,7 +584,8 @@
       "value_type": "boolean",
       "derived_dependencies": [
         "charger.connection_state",
-        "charger.operating_state"
+        "charger.operating_state",
+        "charger.power_kw"
       ]
     },
     "charger.available_for_control": {
@@ -690,7 +691,8 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "builder_sources": [
         {
@@ -707,10 +709,14 @@
         }
       ],
       "truth_precedence": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "value_type": "enum",
-      "state_family": "charger_state"
+      "state_family": "charger_state",
+      "derived_dependencies": [
+        "charger.power_kw"
+      ]
     },
     "charger.connector_count": {
       "component_id": "identity",
@@ -2020,7 +2026,8 @@
       },
       "v1_drop_in": true,
       "producer_types": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "builder_sources": [
         {
@@ -2037,10 +2044,14 @@
         }
       ],
       "truth_precedence": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "value_type": "enum",
-      "state_family": "charger_state"
+      "state_family": "charger_state",
+      "derived_dependencies": [
+        "charger.power_kw"
+      ]
     },
     "charger.phase_capability": {
       "component_id": "control",

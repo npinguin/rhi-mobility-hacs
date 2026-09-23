@@ -878,7 +878,15 @@ class MobilityRuntimeManager:
         elif asset.concept_id=='charger':
             vid=self.configured_vehicle_for_charger(asset_id)
             if vid: snap.values['charger.assigned_vehicle_id']=vid; snap.quality['charger.assigned_vehicle_id']='mobility_domain_configuration_or_foundation_assignment'
-            apply_charger_derivations(snap.values, snap.quality)
+            utility_surface = any(
+                binding.builder_id == "mobility.charger.utility_surface.v1"
+                for binding in asset.source_bindings.values()
+            )
+            apply_charger_derivations(
+                snap.values,
+                snap.quality,
+                utility_surface=utility_surface,
+            )
 
         snap.source_configuration_revision=max_cfg; snap.build_input_revision=max_build
         build_required_issues=sorted({
