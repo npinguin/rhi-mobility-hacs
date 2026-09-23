@@ -238,6 +238,71 @@ def _charging_control_diagnostics(manager: Any, controller: Any) -> list[dict[st
     return rows
 
 
+def _v2_contract_diagnostics(data: dict[str, Any]) -> dict[str, Any]:
+    """Bounded proof that canonical first-party V2 authorities are live."""
+    public = data.get("public_provider")
+    policy = data.get("policy_provider")
+    experience = data.get("experience_provider")
+    command = data.get("command_provider")
+    energy = data.get("energy_provider")
+    profile = data.get("profile_catalog_provider")
+
+    public_snap = dict(public.snapshot() or {}) if public and callable(getattr(public, "snapshot", None)) else {}
+    policy_snap = dict(policy.snapshot() or {}) if policy and callable(getattr(policy, "snapshot", None)) else {}
+    experience_snap = dict(experience.snapshot() or {}) if experience and callable(getattr(experience, "snapshot", None)) else {}
+    command_snap = dict(command.command_snapshot() or {}) if command and callable(getattr(command, "command_snapshot", None)) else {}
+    energy_snap = dict(energy.snapshot() or {}) if energy and callable(getattr(energy, "snapshot", None)) else {}
+    profile_snap = dict(profile.snapshot() or {}) if profile and callable(getattr(profile, "snapshot", None)) else {}
+
+    return {
+        "public_runtime": {
+            "available": bool(public_snap),
+            "contract_id": public_snap.get("contract_id"),
+            "asset_count": len(public_snap.get("assets") or []),
+            "relationship_count": len(public_snap.get("vehicle_charger_relationships") or []),
+            "canonical": bool(public_snap.get("canonical")),
+        },
+        "policy": {
+            "available": bool(policy_snap),
+            "contract_id": policy_snap.get("contract_id"),
+            "revision": policy_snap.get("revision"),
+            "policy": policy_snap.get("policy") or {},
+        },
+        "experience": {
+            "available": bool(experience_snap),
+            "contract_id": experience_snap.get("contract_id"),
+            "vehicle_count": len(experience_snap.get("vehicles") or []),
+            "charger_count": len(experience_snap.get("chargers") or []),
+        },
+        "command": {
+            "available": bool(command_snap),
+            "contract_id": command_snap.get("contract_id"),
+            "command_count": len(command_snap.get("commands") or []),
+            "provider_id": "mobility.command.v2",
+            "v1_provider_id_role": "compatibility_alias_same_provider",
+        },
+        "energy": {
+            "available": bool(energy_snap),
+            "contract_id": energy_snap.get("contract_id"),
+            "consumer_asset_count": len(energy_snap.get("consumer_assets") or []),
+            "connection_asset_count": len(energy_snap.get("connection_assets") or []),
+            "command_provider_id": energy_snap.get("command_provider_id"),
+            "contains_physical_bindings": bool(energy_snap.get("contains_physical_bindings")),
+        },
+        "profile_catalog": {
+            "available": bool(profile_snap),
+            "contract_id": profile_snap.get("contract_id"),
+            "profile_count": len(profile_snap.get("profiles") or []),
+        },
+        "configuration_surface": {
+            "contract_id": "MOBILITY_PUBLIC_RUNTIME_V2",
+            "transport": "canonical_property_entities",
+            "write_metadata_owner": "rhi_mobility",
+            "v1_semantic_owner": False,
+        },
+    }
+
+
 async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str, Any]:
     data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
     manager = data.get("runtime")
@@ -342,6 +407,7 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
             "profile_count": len(profiles),
         },
         "charging_control": charging_control,
+        "v2_contracts": _v2_contract_diagnostics(data),
         "execution": {} if controller is None else controller.executor.snapshot(),
         "ha_projection": {} if manager is None else _ha_projection_diagnostics(hass, entry.entry_id, manager),
         "publication": {

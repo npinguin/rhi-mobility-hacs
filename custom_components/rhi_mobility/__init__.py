@@ -11,7 +11,7 @@ import logging
 from typing import Any
 
 from .const import (
-    ACTIVITY_PROVIDER_ID, COMMAND_PROVIDER_ID, DOMAIN, FOUNDATION_DOMAIN_ID,
+    ACTIVITY_PROVIDER_ID, COMMAND_COMPAT_PROVIDER_ID, COMMAND_PROVIDER_ID, DOMAIN, FOUNDATION_DOMAIN_ID,
     ENERGY_COMPAT_PROVIDER_ID, ENERGY_PROVIDER_ID, EXPERIENCE_PROVIDER_ID,
     INTEROP_PROVIDER_REGISTRY_KEY, PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,
     PUBLIC_RUNTIME_PROVIDER_ID, PROFILE_CATALOG_PROVIDER_ID, POLICY_PROVIDER_ID, RELEASE, SELECTED_BUILD_INPUT_REGISTRY_KEY,
@@ -258,7 +258,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         raise RuntimeError("R43.2.65 must be disabled before exact V2 facade takeover; "+"; ".join(details))
 
     interop=hass.data.setdefault(INTEROP_PROVIDER_REGISTRY_KEY,{})
-    interop_ids=(ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID)
+    interop_ids=(ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,COMMAND_COMPAT_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID)
     service_names=(SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION,SERVICE_SET_POLICY)
     selected_unsub=None; config_unsub=None; setup_data=None
     build_registration_attempted=False; supervision_registered=False; legacy_services_registered=False; platforms_forward_started=False
@@ -317,7 +317,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         if imported:
             sync_supervision_after_structural_build()
         config_unsub=_install_domain_configuration_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["config_unsub"]=config_unsub
-        interop.update({ENERGY_PROVIDER_ID:energy_provider,ENERGY_COMPAT_PROVIDER_ID:energy_compat_provider,COMMAND_PROVIDER_ID:command_provider,PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PROFILE_CATALOG_PROVIDER_ID:profile_catalog_provider,POLICY_PROVIDER_ID:policy_provider,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID:legacy_facade,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider})
+        interop.update({ENERGY_PROVIDER_ID:energy_provider,ENERGY_COMPAT_PROVIDER_ID:energy_compat_provider,COMMAND_PROVIDER_ID:command_provider,COMMAND_COMPAT_PROVIDER_ID:command_provider,PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PROFILE_CATALOG_PROVIDER_ID:profile_catalog_provider,POLICY_PROVIDER_ID:policy_provider,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID:legacy_facade,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider})
         hass.services.async_register(DOMAIN,SERVICE_EXECUTE_COMMAND,execute_command,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("command_key"):str,vol.Optional("request_id"):str}))
         hass.services.async_register(DOMAIN,SERVICE_SET_REQUESTED_POWER,set_requested_power,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("power_kw"):vol.Coerce(float),vol.Optional("request_id"):str}))
         hass.services.async_register(DOMAIN,SERVICE_REARM_EXECUTION,rearm_execution,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("conflict_family"):str}))
@@ -386,7 +386,7 @@ async def async_unload_entry(hass: Any, entry: Any) -> bool:
                 data["unregister_provider"](hass,publisher_domain=DOMAIN)
         hass.data.get(DOMAIN,{}).pop(entry.entry_id,None)
         interop=hass.data.get(INTEROP_PROVIDER_REGISTRY_KEY,{})
-        for pid in (ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID): interop.pop(pid,None)
+        for pid in (ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,COMMAND_COMPAT_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID): interop.pop(pid,None)
         for name in (SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION,SERVICE_SET_POLICY):
             if hass.services.has_service(DOMAIN,name): hass.services.async_remove(DOMAIN,name)
         from .compat_v1.services import unregister_services as unregister_legacy_services

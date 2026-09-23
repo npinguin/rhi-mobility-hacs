@@ -24,6 +24,20 @@ class MobilityEnergyV2Provider:
         self.public = public_provider
         self._resolver = PropertyResolver(manager, public_provider) if public_provider is not None else None
 
+    def add_listener(self, callback):
+        """Subscribe consumers to canonical Mobility runtime/control changes."""
+        runtime_unsub = self.manager.add_runtime_listener(callback)
+        control_unsub = self.controller.add_listener(callback)
+        active = True
+        def unsubscribe():
+            nonlocal active
+            if not active:
+                return
+            active = False
+            runtime_unsub()
+            control_unsub()
+        return unsubscribe
+
     def _base_value(self, aid: str, key: str):
         if self.public is not None:
             return self.public.property_value(aid, key)
@@ -78,7 +92,7 @@ class MobilityEnergyV2Provider:
             return {
                 "requested_power_kw_write_owner": "rhi_mobility",
                 "requested_power_kw_write_supported": False,
-                "requested_power_kw_write_source_index": "sensor.mobility_charger_property_index",
+                "requested_power_kw_write_provider_id": "mobility.command.v2",
                 "requested_power_kw_write_asset_id": asset_id,
                 "requested_power_kw_write_property_key": "charger.requested_charge_power_kw",
                 "requested_power_kw_write_target_entity": None,
@@ -89,7 +103,7 @@ class MobilityEnergyV2Provider:
                 "requested_power_kw_write_max": None,
                 "requested_power_kw_write_step": None,
                 "requested_power_kw_readback_property_key": "charger.requested_charge_power_kw",
-                "requested_power_kw_readback_source_index": "sensor.mobility_charger_property_index",
+                "requested_power_kw_readback_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
                 "physical_write_owner": "rhi_mobility",
                 "physical_write_target_exposed_to_consumer": False,
                 "physical_mapping_mode": "current_limit_only" if current_desc is not None else None,
@@ -101,7 +115,7 @@ class MobilityEnergyV2Provider:
         return {
             "requested_power_kw_write_owner": "rhi_mobility",
             "requested_power_kw_write_supported": True,
-            "requested_power_kw_write_source_index": "sensor.mobility_charger_property_index",
+            "requested_power_kw_write_provider_id": "mobility.command.v2",
             "requested_power_kw_write_asset_id": asset_id,
             "requested_power_kw_write_property_key": "charger.requested_charge_power_kw",
             "requested_power_kw_write_target_entity": self._mobility_editor_entity(asset_id),
@@ -114,7 +128,7 @@ class MobilityEnergyV2Provider:
             "requested_power_kw_write_max": float(desc.max_power_kw),
             "requested_power_kw_write_step": float(desc.step_power_kw),
             "requested_power_kw_readback_property_key": "charger.requested_charge_power_kw",
-            "requested_power_kw_readback_source_index": "sensor.mobility_charger_property_index",
+            "requested_power_kw_readback_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
             "physical_write_owner": "rhi_mobility",
             "physical_write_target_exposed_to_consumer": False,
             "physical_mapping_mode": str(desc.mode),
@@ -145,7 +159,7 @@ class MobilityEnergyV2Provider:
         key = f"charger.command.{operation}"
         desc = self.controller.command_descriptors().get(f"{charger_id}:{key}") if charger_id else None
         return {
-            "source_index": "sensor.mobility_command_index",
+            "provider_id": "mobility.command.v2",
             "command_id": f"{vehicle_id}:vehicle.command.{operation}_charging",
             "consumer_asset_id": vehicle_id,
             "command_source_asset_id": charger_id,
@@ -384,7 +398,7 @@ class MobilityEnergyV2Provider:
             "contract_id": self.CONTRACT_ID, "publisher": "rhi_mobility",
             "consumer_assets": consumer_assets, "connection_assets": connection_assets,
             "charging_relations": charging_relations, "directional_connection_counters": counters,
-            "command_provider_id": "mobility.command.v1", "contains_physical_bindings": False,
+            "command_provider_id": "mobility.command.v2", "contains_physical_bindings": False,
             "periodization_owner": "rhi_energy", "attribution_owner": "rhi_energy",
             "planning_owner": "rhi_energy", "physical_execution_owner": "rhi_mobility",
         }
@@ -473,7 +487,7 @@ class MobilityEnergyV2Provider:
             for asset_id, asset in sorted(self.manager.assets.items())
             if asset.concept_id == "vehicle"
         ]
-        out["resolution_contract"] = "MOBILITY_PROPERTY_RESOLUTION_V1"
+        out["resolution_contract"] = "MOBILITY_PUBLIC_RUNTIME_V2"
         out["resolved_assets"] = resolved_assets
         out["typed_relationships"] = relations
         out["contains_physical_bindings"] = False

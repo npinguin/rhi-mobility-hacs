@@ -4,7 +4,7 @@
   "publisher": "rhi_mobility",
   "domain_id": "mobility",
   "builder_id": "mobility.charger.utility_surface.v1",
-  "builder_version": "1.5.1",
+  "builder_version": "1.5.2",
   "concept": {
     "concept_id": "utility_charging_surface",
     "display_name": "Utility Charging Surface",
@@ -31,15 +31,14 @@
         "input_id": "charger_operating_state",
         "technical_capabilities": {
           "any_of": [
-            "binary_write_surface",
             "state_observation"
           ]
         },
         "allowed_source_kinds": [
           "entity"
         ],
-        "required": true,
-        "cardinality": "exactly_one_per_group",
+        "required": false,
+        "cardinality": "zero_or_one_per_group",
         "integration_matches": [
           {
             "integration_domain": "zwave_js",
@@ -50,18 +49,6 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "evse_status"
-              }
-            ]
-          },
-          {
-            "integration_domain": "mqtt",
-            "raw_capability_id": "switch_state",
-            "source_kind": "entity",
-            "all_of": [
-              {
-                "field": "source_identity.unique_id",
-                "operator": "ends_with",
-                "value": "37-0-currentValue"
               }
             ]
           }

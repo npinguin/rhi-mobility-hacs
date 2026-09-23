@@ -35,6 +35,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     device_surfaces = data["device_surface_provider"]
     experience = data["experience_provider"]
     policy = data["policy_provider"]
+    energy = data["energy_provider"]
+    command = data["command_provider"]
     domain_config = data["domain_config"]
     projection = MobilityPropertyProjection(hass, manager, controller, public)
     async_add_entities(
@@ -46,6 +48,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             RuntimeV2SummarySensor(entry.entry_id, manager, public),
             ExperienceV2Sensor(entry.entry_id, manager, domain_config, experience),
             PolicyV2Sensor(entry.entry_id, domain_config, policy),
+            EnergyV2Sensor(entry.entry_id, energy),
+            CommandV2Sensor(entry.entry_id, command),
             BroadDeviceSurfaceSensor("mobility", NAME, "Mobility Module V2", device_surfaces, manager, controller, diagnostic=True, device_identifier=entry.entry_id),
             BroadDeviceSurfaceSensor("mobility_intelligence", "Mobility Intelligence", "Mobility Intelligence", device_surfaces, manager, controller),
             BroadDeviceSurfaceSensor("vehicle_intelligence", "Vehicle Intelligence", "Vehicle Intelligence", device_surfaces, manager, controller),
@@ -214,6 +218,56 @@ class PolicyV2Sensor(MonitoringSensor):
     @property
     def extra_state_attributes(self):
         return dict(self.policy.snapshot() or {})
+
+
+class EnergyV2Sensor(MonitoringSensor):
+    _attr_icon = "mdi:transmission-tower-export"
+
+    def __init__(self, entry_id: str, provider) -> None:
+        super().__init__(entry_id, "energy_v2", "Energy V2")
+        self.provider = provider
+
+    async def async_added_to_hass(self) -> None:
+        add_listener = getattr(self.provider, "add_listener", None)
+        if callable(add_listener):
+            self.async_on_remove(add_listener(self._changed))
+
+    @callback
+    def _changed(self) -> None:
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self):
+        return "ready"
+
+    @property
+    def extra_state_attributes(self):
+        return dict(self.provider.snapshot() or {})
+
+
+class CommandV2Sensor(MonitoringSensor):
+    _attr_icon = "mdi:gesture-tap-button"
+
+    def __init__(self, entry_id: str, provider) -> None:
+        super().__init__(entry_id, "command_v2", "Command V2")
+        self.provider = provider
+
+    async def async_added_to_hass(self) -> None:
+        add_listener = getattr(self.provider.controller, "add_listener", None)
+        if callable(add_listener):
+            self.async_on_remove(add_listener(self._changed))
+
+    @callback
+    def _changed(self) -> None:
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self):
+        return "ready"
+
+    @property
+    def extra_state_attributes(self):
+        return dict(self.provider.command_snapshot() or {})
 
 
 class ReleaseSensor(MonitoringSensor):

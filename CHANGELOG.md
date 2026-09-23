@@ -1,3 +1,12 @@
+## M0.9.42 — PILOT_BACKEND_CLOSURE
+
+- remove the MQTT utility write switch as required operating-state evidence; utility state remains power-derived and fail-closed;
+- honor persisted Mobility semantic electrical configuration without requiring a product profile;
+- make MOBILITY_COMMAND_V2 the canonical command contract while retaining the V1 provider id as one compatibility alias only;
+- expose direct Energy V2 and Command V2 HA contract surfaces for first-party consumers;
+- remove V1 HA index references from the canonical Mobility Energy V2 contract;
+- add bounded diagnostics proof for Public Runtime, Policy, Experience, Command, Energy, Profile and configuration V2 authorities.
+
 ## M0.9.41 — V2 contract-gap closure
 
 - Add persistent `MOBILITY_POLICY_V2` for range, maintenance, security-coverage and charge-demand interpretation rules.

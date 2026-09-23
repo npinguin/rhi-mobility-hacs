@@ -102,9 +102,11 @@ class MobilityRuntimeManager:
     def control_profiles(self) -> dict[str, AssetControlProfile]:
         merged: dict[str, AssetControlProfile] = {}
         for asset_id, asset in self.assets.items():
-            profile = self._selected_profile(asset_id)
-            if not profile:
-                continue
+            # Product profile is optional. Explicit Mobility semantic configuration is
+            # equally authoritative for electrical/product control parameters and is
+            # reboot-safe through MobilityDomainConfiguration. Never require a profile
+            # merely to make already-configured control facts usable.
+            profile = self._selected_profile(asset_id) or {}
             if asset.concept_id == "vehicle":
                 phases = self.configuration_value(asset_id, "vehicle.phase_capability", None)
                 if phases is None:
@@ -112,12 +114,13 @@ class MobilityRuntimeManager:
                 max_ac_power = self.configuration_value(asset_id, "vehicle.max_ac_power_kw", None)
                 if max_ac_power is None:
                     max_ac_power = profile.get("max_ac_power_kw")
-                merged[asset_id] = AssetControlProfile(
-                    asset_id=asset_id,
-                    phase_count=int(phases) if phases is not None else None,
-                    ac_phase_count=int(phases) if phases is not None else None,
-                    max_ac_power_kw=float(max_ac_power) if max_ac_power is not None else None,
-                )
+                if phases is not None or max_ac_power is not None:
+                    merged[asset_id] = AssetControlProfile(
+                        asset_id=asset_id,
+                        phase_count=int(phases) if phases is not None else None,
+                        ac_phase_count=int(phases) if phases is not None else None,
+                        max_ac_power_kw=float(max_ac_power) if max_ac_power is not None else None,
+                    )
             elif asset.concept_id == "charger":
                 phases = self.configuration_value(asset_id, "charger.phase_capability", None)
                 if phases is None:
@@ -137,16 +140,17 @@ class MobilityRuntimeManager:
                 max_power = self.configuration_value(asset_id, "charger.max_power_kw", None)
                 if max_power is None:
                     max_power = profile.get("max_power_kw")
-                merged[asset_id] = AssetControlProfile(
-                    asset_id=asset_id,
-                    nominal_voltage_v=float(nominal_voltage) if nominal_voltage is not None else None,
-                    phase_count=int(phases) if phases is not None else None,
-                    min_current_a=float(min_current) if min_current is not None else None,
-                    max_current_a=float(max_current) if max_current is not None else None,
-                    current_step_a=float(current_step) if current_step is not None else None,
-                    ac_phase_count=int(phases) if phases is not None else None,
-                    max_ac_power_kw=float(max_power) if max_power is not None else None,
-                )
+                if any(value is not None for value in (phases, nominal_voltage, min_current, max_current, current_step, max_power)):
+                    merged[asset_id] = AssetControlProfile(
+                        asset_id=asset_id,
+                        nominal_voltage_v=float(nominal_voltage) if nominal_voltage is not None else None,
+                        phase_count=int(phases) if phases is not None else None,
+                        min_current_a=float(min_current) if min_current is not None else None,
+                        max_current_a=float(max_current) if max_current is not None else None,
+                        current_step_a=float(current_step) if current_step is not None else None,
+                        ac_phase_count=int(phases) if phases is not None else None,
+                        max_ac_power_kw=float(max_power) if max_power is not None else None,
+                    )
         return merged
 
     def control_profile(self, asset_id: str) -> AssetControlProfile | None:

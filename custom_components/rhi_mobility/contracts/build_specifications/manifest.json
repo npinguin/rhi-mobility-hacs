@@ -12,7 +12,7 @@
     },
     {
       "builder_id": "mobility.charger.utility_surface.v1",
-      "builder_version": "1.5.1",
+      "builder_version": "1.5.2",
       "file": "mobility_charger_utility_surface_v1.json"
     },
     {
@@ -42,7 +42,7 @@
     "creates_public_contract": false,
     "executes_commands": false
   },
-  "release": "M0.9.41",
+  "release": "M0.9.42",
   "closure": {
     "step": 3,
     "full_feature_migration": true,
@@ -64,7 +64,7 @@
   "builder_version": "1.9.0",
   "specification_versions": {
     "mobility.charger.full_evse.v1": "1.7.0",
-    "mobility.charger.utility_surface.v1": "1.5.0",
+    "mobility.charger.utility_surface.v1": "1.5.2",
     "mobility.person.presence.v1": "1.5.0",
     "mobility.vehicle.connected_vehicle.v1": "1.9.0",
     "mobility.vehicle.manual_profile.v1": "1.5.0"

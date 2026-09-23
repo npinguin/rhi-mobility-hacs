@@ -5,7 +5,7 @@ from typing import Any
 class MobilityCommandProvider:
     """Typed Mobility command boundary; never exposes raw HA service bindings."""
 
-    CONTRACT_ID='MOBILITY_COMMAND_EXECUTION_V1'
+    CONTRACT_ID='MOBILITY_COMMAND_V2'
 
     def __init__(self,controller) -> None:
         self.controller=controller
