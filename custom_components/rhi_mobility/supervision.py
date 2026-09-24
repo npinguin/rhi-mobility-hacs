@@ -294,3 +294,44 @@ class MobilityDomainSupervisoryStatusProvider:
             },
             "experience": self.experience.snapshot(),
         }
+
+
+class MobilityProductSupervisionProvider:
+    """Product-facing Mobility supervision for V2 consumers.
+
+    Mobility owns readiness/trust/attention/current activity. Energy planning,
+    opportunities and recommendations remain outside this contract.
+    """
+
+    CONTRACT_ID = "MOBILITY_SUPERVISION_V2"
+
+    def __init__(self, supervision_provider: Any, activity_provider: Any) -> None:
+        self.supervision = supervision_provider
+        self.activity = activity_provider
+
+    def snapshot(self) -> dict[str, Any]:
+        supervision = dict(self.supervision.snapshot() or {})
+        readiness = str(supervision.get("overall_domain_readiness") or "UNKNOWN").lower()
+        issues = [dict(row) for row in supervision.get("issues_summary", [])]
+        activities = [dict(row) for row in (self.activity.snapshot() or {}).get("activities", [])]
+        return {
+            "contract_id": self.CONTRACT_ID,
+            "publisher": "rhi_mobility",
+            "status": {"available": True, "value": readiness},
+            "system_trust": {
+                "available": True,
+                "value": "trusted" if readiness in {"ok", "ready"} else readiness,
+            },
+            "attention": {
+                "available": True,
+                "value": "attention" if issues else "none",
+                "reasons": [row.get("reason_code") for row in issues if row.get("reason_code")],
+            },
+            "current_activity": {
+                "available": bool(activities),
+                "activity": activities[-1] if activities else None,
+            },
+            "charging_plan": {"available": False, "reason": "owned_by_energy"},
+            "opportunity": {"available": False, "reason": "owned_by_energy"},
+            "recommended_action": {"available": False, "reason": "owned_by_energy"},
+        }

@@ -353,6 +353,25 @@ class MobilityPublicRuntimeProvider:
                 rows.append({"asset_id": asset_id, "property_key": key, **definition})
         return rows
 
+    def property_publication_snapshot(self, asset_id: str) -> dict[str, Any]:
+        """Describe the canonical per-asset V2 property publication contract.
+
+        expected_property_keys is the set that the backend says must materialise for
+        this concrete asset, based on accepted capabilities/configuration/derivation.
+        HA runtime diagnostics separately verify whether those expected entities are
+        really registered; this provider never uses V1 as a fallback authority.
+        """
+        expected = self.materialized_property_keys(asset_id)
+        catalog = self.available_property_keys(asset_id)
+        return {
+            "expected_property_keys": expected,
+            "expected_property_count": len(expected),
+            "catalog_property_keys": catalog,
+            "catalog_property_count": len(catalog),
+            "authority": self.CONTRACT_ID,
+            "v1_fallback_allowed": False,
+        }
+
     def component_snapshot(self, asset_id: str) -> dict[str, Any]:
         asset = self._asset(asset_id)
         snap = self._snap(asset_id)
@@ -392,6 +411,7 @@ class MobilityPublicRuntimeProvider:
             "lifecycle_status": self.property_value(asset_id, "asset.lifecycle_status"),
             "health": snap.health,
             "primary_source": (self.manager.primary_source_metadata(asset_id) if callable(getattr(self.manager, "primary_source_metadata", None)) else {}),
+            "property_publication": self.property_publication_snapshot(asset_id),
             "components": [
                 {"component_id": c["component_id"], "sections": [c["sections"][k] for k in sorted(c["sections"])]}
                 for c in (components[k] for k in sorted(components))
@@ -462,7 +482,7 @@ class MobilityPublicRuntimeProvider:
                 for aid, asset in sorted(self.manager.assets.items())
                 if asset.concept_id == "vehicle"
             ],
-            "command_provider_id": "mobility.command.v1",
+            "command_provider_id": "mobility.command.v2",
             "raw_integration_state_public": False,
             "ux_inference_forbidden": True,
         }

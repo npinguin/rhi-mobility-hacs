@@ -124,6 +124,7 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
 
 def _publication_diagnostics(hass: Any, energy_provider: Any = None) -> dict[str, Any]:
     entity_ids = (
+        "sensor.rhi_mobility_energy_v2",
         "sensor.mobility_energy_asset_publication",
         "sensor.mobility_energy_contract_registry",
         "sensor.mobility_energy_publication_health",
@@ -158,7 +159,7 @@ def _publication_diagnostics(hass: Any, energy_provider: Any = None) -> dict[str
             "publication_revision": None if state is None else attrs.get("publication_revision"),
             "consumer_asset_count": None if state is None else len(attrs.get("consumer_assets") or []),
         }
-        if entity_id == "sensor.mobility_energy_asset_publication":
+        if entity_id in {"sensor.rhi_mobility_energy_v2", "sensor.mobility_energy_asset_publication"}:
             live_consumers = list(attrs.get("consumer_assets") or [])
             live_connections = list(attrs.get("connection_assets") or [])
             live_consumer_ids = sorted(
@@ -246,6 +247,8 @@ def _v2_contract_diagnostics(data: dict[str, Any]) -> dict[str, Any]:
     command = data.get("command_provider")
     energy = data.get("energy_provider")
     profile = data.get("profile_catalog_provider")
+    activity = data.get("activity_provider")
+    product_supervision = data.get("product_supervision_provider")
 
     public_snap = dict(public.snapshot() or {}) if public and callable(getattr(public, "snapshot", None)) else {}
     policy_snap = dict(policy.snapshot() or {}) if policy and callable(getattr(policy, "snapshot", None)) else {}
@@ -253,6 +256,8 @@ def _v2_contract_diagnostics(data: dict[str, Any]) -> dict[str, Any]:
     command_snap = dict(command.command_snapshot() or {}) if command and callable(getattr(command, "command_snapshot", None)) else {}
     energy_snap = dict(energy.snapshot() or {}) if energy and callable(getattr(energy, "snapshot", None)) else {}
     profile_snap = dict(profile.snapshot() or {}) if profile and callable(getattr(profile, "snapshot", None)) else {}
+    activity_snap = dict(activity.snapshot() or {}) if activity and callable(getattr(activity, "snapshot", None)) else {}
+    supervision_snap = dict(product_supervision.snapshot() or {}) if product_supervision and callable(getattr(product_supervision, "snapshot", None)) else {}
 
     return {
         "public_runtime": {
@@ -293,6 +298,16 @@ def _v2_contract_diagnostics(data: dict[str, Any]) -> dict[str, Any]:
             "available": bool(profile_snap),
             "contract_id": profile_snap.get("contract_id"),
             "profile_count": len(profile_snap.get("profiles") or []),
+        },
+        "activity": {
+            "available": bool(activity_snap),
+            "contract_id": activity_snap.get("contract_id"),
+            "activity_count": len(activity_snap.get("activities") or []),
+        },
+        "product_supervision": {
+            "available": bool(supervision_snap),
+            "contract_id": supervision_snap.get("contract_id"),
+            "status": (supervision_snap.get("status") or {}).get("value"),
         },
         "configuration_surface": {
             "contract_id": "MOBILITY_PUBLIC_RUNTIME_V2",

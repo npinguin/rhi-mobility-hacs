@@ -37,6 +37,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     policy = data["policy_provider"]
     energy = data["energy_provider"]
     command = data["command_provider"]
+    activity = data["activity_provider"]
+    profile_catalog = data["profile_catalog_provider"]
+    product_supervision = data["product_supervision_provider"]
     domain_config = data["domain_config"]
     projection = MobilityPropertyProjection(hass, manager, controller, public)
     async_add_entities(
@@ -50,6 +53,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             PolicyV2Sensor(entry.entry_id, domain_config, policy),
             EnergyV2Sensor(entry.entry_id, energy),
             CommandV2Sensor(entry.entry_id, command),
+            ActivityV2Sensor(entry.entry_id, manager, controller, activity),
+            ProfileCatalogV2Sensor(entry.entry_id, profile_catalog),
+            ProductSupervisionV2Sensor(entry.entry_id, manager, controller, product_supervision),
             BroadDeviceSurfaceSensor("mobility", NAME, "Mobility Module V2", device_surfaces, manager, controller, diagnostic=True, device_identifier=entry.entry_id),
             BroadDeviceSurfaceSensor("mobility_intelligence", "Mobility Intelligence", "Mobility Intelligence", device_surfaces, manager, controller),
             BroadDeviceSurfaceSensor("vehicle_intelligence", "Vehicle Intelligence", "Vehicle Intelligence", device_surfaces, manager, controller),
@@ -153,6 +159,7 @@ class RuntimeV2SummarySensor(RuntimeMonitoringSensor):
 
     def __init__(self, entry_id: str, manager, public) -> None:
         super().__init__(entry_id, "runtime_v2", "Runtime V2", manager)
+        self.entity_id = "sensor.rhi_mobility_runtime_v2"
         self.public = public
 
     @property
@@ -165,7 +172,9 @@ class RuntimeV2SummarySensor(RuntimeMonitoringSensor):
         return {
             "contract_id": snapshot.get("contract_id"),
             "canonical": True,
+            "assets": snapshot.get("assets") or [],
             "fleet": snapshot.get("fleet") or {},
+            "relationships": snapshot.get("relationships") or [],
             "vehicle_charger_relationships": snapshot.get("vehicle_charger_relationships") or [],
             "ux_inference_forbidden": True,
         }
@@ -176,6 +185,7 @@ class ExperienceV2Sensor(RuntimeMonitoringSensor):
 
     def __init__(self, entry_id: str, manager, domain_config, experience) -> None:
         super().__init__(entry_id, "experience_v2", "Experience V2", manager)
+        self.entity_id = "sensor.rhi_mobility_experience_v2"
         self.domain_config = domain_config
         self.experience = experience
 
@@ -201,6 +211,7 @@ class PolicyV2Sensor(MonitoringSensor):
 
     def __init__(self, entry_id: str, domain_config, policy) -> None:
         super().__init__(entry_id, "policy_v2", "Policy V2")
+        self.entity_id = "sensor.rhi_mobility_policy_v2"
         self.domain_config = domain_config
         self.policy = policy
 
@@ -225,6 +236,7 @@ class EnergyV2Sensor(MonitoringSensor):
 
     def __init__(self, entry_id: str, provider) -> None:
         super().__init__(entry_id, "energy_v2", "Energy V2")
+        self.entity_id = "sensor.rhi_mobility_energy_v2"
         self.provider = provider
 
     async def async_added_to_hass(self) -> None:
@@ -250,6 +262,7 @@ class CommandV2Sensor(MonitoringSensor):
 
     def __init__(self, entry_id: str, provider) -> None:
         super().__init__(entry_id, "command_v2", "Command V2")
+        self.entity_id = "sensor.rhi_mobility_command_v2"
         self.provider = provider
 
     async def async_added_to_hass(self) -> None:
@@ -268,6 +281,67 @@ class CommandV2Sensor(MonitoringSensor):
     @property
     def extra_state_attributes(self):
         return dict(self.provider.command_snapshot() or {})
+
+
+class ActivityV2Sensor(RuntimeMonitoringSensor):
+    _attr_icon = "mdi:history"
+
+    def __init__(self, entry_id: str, manager, controller, provider) -> None:
+        super().__init__(entry_id, "activity_v2", "Activity V2", manager)
+        self.entity_id = "sensor.rhi_mobility_activity_v2"
+        self.controller = controller
+        self.provider = provider
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.controller.add_listener(self._changed))
+
+    @property
+    def native_value(self):
+        return "ready"
+
+    @property
+    def extra_state_attributes(self):
+        return dict(self.provider.snapshot() or {})
+
+
+class ProfileCatalogV2Sensor(MonitoringSensor):
+    _attr_icon = "mdi:car-info"
+
+    def __init__(self, entry_id: str, provider) -> None:
+        super().__init__(entry_id, "profile_catalog_v2", "Profile Catalog V2")
+        self.entity_id = "sensor.rhi_mobility_profile_catalog_v2"
+        self.provider = provider
+
+    @property
+    def native_value(self):
+        return "ready"
+
+    @property
+    def extra_state_attributes(self):
+        return dict(self.provider.snapshot() or {})
+
+
+class ProductSupervisionV2Sensor(RuntimeMonitoringSensor):
+    _attr_icon = "mdi:shield-star-outline"
+
+    def __init__(self, entry_id: str, manager, controller, provider) -> None:
+        super().__init__(entry_id, "supervision_v2", "Supervision V2", manager)
+        self.entity_id = "sensor.rhi_mobility_supervision_v2"
+        self.controller = controller
+        self.provider = provider
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.controller.add_listener(self._changed))
+
+    @property
+    def native_value(self):
+        return "ready"
+
+    @property
+    def extra_state_attributes(self):
+        return dict(self.provider.snapshot() or {})
 
 
 class ReleaseSensor(MonitoringSensor):

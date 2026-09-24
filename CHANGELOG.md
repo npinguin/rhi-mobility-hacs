@@ -1,3 +1,13 @@
+## M0.9.44 — V2_INTERFACE_COMPLETION
+
+- expose complete Runtime V2 assets and relationship projection;
+- expose direct Activity V2, Profile Catalog V2 and product Supervision V2 HA surfaces;
+- stabilize canonical V2 contract entity IDs, including Mobility→Energy V2;
+- add per-asset property-publication contract evidence and V2 publication diagnostics;
+- make Command V2 canonical in active requirements/runtime metadata;
+- retain frozen V1 only as compatibility leaf pending coordinated consumer cutover;
+- add regression gates for V2 completeness, V2→V1 independence and active release coherence.
+
 ## M0.9.43 — PILOT_HANDOVER_GOVERNANCE
 
 - preserve M0.9.42 runtime semantics and V2 contracts;
