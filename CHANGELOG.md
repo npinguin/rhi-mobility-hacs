@@ -1,3 +1,11 @@
+## M0.10.3 — VERIFIED_CHARGER_PRODUCT_CODES
+
+- populate exact manufacturer part numbers for Easee Charge Up, Peblar Business Socket and Zaptec Go 2 from manufacturer evidence;
+- leave ambiguous multi-variant charger profiles without product codes instead of guessing;
+- require shipped product-code fields to be explicitly evidence-backed;
+- preserve product_code as optional Profile Catalog V2 metadata only;
+- keep visual_ref primary and preserve runtime/readiness/command/Energy behavior unchanged.
+
 ## M0.10.2 — CHARGER_PRODUCT_CODE_HINTS
 
 - allow ChargerProfiles to carry optional `sku` and `manufacturer_part_number` metadata;
