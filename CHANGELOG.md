@@ -1,3 +1,12 @@
+## M0.10.2 — CHARGER_PRODUCT_CODE_HINTS
+
+- allow ChargerProfiles to carry optional `sku` and `manufacturer_part_number` metadata;
+- publish those values as a separate optional `product_code` object in MOBILITY_PROFILE_CATALOG_V2;
+- keep product codes out of `technical_specification`, readiness and automatic profile resolution;
+- keep VehicleProfiles unchanged and `visual_ref` as the primary stable UX visual identity;
+- expose the same optional fields in the Mobility charger-profile editor for local catalog/profile maintenance;
+- preserve V2-only runtime behavior, command ownership, Shared Baseline 1.8.1 and zero accepted technical/feature debt.
+
 ## M0.10.1 — VISUAL_REF_PUBLICATION
 
 - register the bounded Mobility visual catalog with Foundation's package-neutral Visual Asset Registry when that additive API is available;

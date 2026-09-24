@@ -27,11 +27,11 @@ class MobilityProfileCatalogProvider:
         excluded = {
             "profile_id", "profile_type", "brand", "manufacturer", "vendor", "model",
             "variant", "model_year", "display_name", "short_name", "image_key",
-            "auto_resolve", "catalog_role", "evidence",
+            "sku", "manufacturer_part_number", "auto_resolve", "catalog_role", "evidence",
         }
         # artwork is intentionally absent: image_key belongs to the concrete device instance and is UX-owned.
         technical = {key: value for key, value in profile.items() if key not in excluded and value is not None}
-        return {
+        row = {
             "profile_id": str(profile["profile_id"]),
             "asset_type": str(profile["profile_type"]),
             "identity": identity,
@@ -39,6 +39,15 @@ class MobilityProfileCatalogProvider:
             "auto_resolve": bool(profile.get("auto_resolve", False)),
             "catalog_role": str(profile.get("catalog_role") or "product"),
         }
+        if str(profile.get("profile_type") or "") == "charger":
+            product_code = {
+                key: str(profile.get(key) or "").strip()
+                for key in ("sku", "manufacturer_part_number")
+                if str(profile.get(key) or "").strip()
+            }
+            if product_code:
+                row["product_code"] = product_code
+        return row
 
     def snapshot(self) -> dict[str, Any]:
         rows = []

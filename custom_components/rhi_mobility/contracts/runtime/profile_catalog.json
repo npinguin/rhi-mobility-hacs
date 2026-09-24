@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_PROFILE_CATALOG",
-  "contract_version": "1.3.0",
-  "release": "M0.10.1",
+  "contract_version": "1.4.0",
+  "release": "M0.10.2",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -20,7 +20,15 @@
     "command_capability_in_profile_forbidden": true,
     "packaged_profiles_are_defaults": true,
     "integration_options_may_override_packaged_profile": true,
-    "integration_options_may_disable_packaged_profile": true
+    "integration_options_may_disable_packaged_profile": true,
+    "charger_product_code_optional": true,
+    "product_code_fields": [
+      "sku",
+      "manufacturer_part_number"
+    ],
+    "product_code_not_required_for_profile_resolution": true,
+    "product_code_not_required_for_readiness": true,
+    "product_code_is_visual_resolution_hint": true
   },
   "profiles": [
     {

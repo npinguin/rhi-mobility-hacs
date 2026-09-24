@@ -537,6 +537,17 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             fields[vol.Required("nominal_voltage_v", default=float(row.get("nominal_voltage_v") or 230))] = NumberSelector(
                 NumberSelectorConfig(min=1, max=1000, step=1, unit_of_measurement="V")
             )
+            sku = str(row.get("sku") or "").strip()
+            mpn = str(row.get("manufacturer_part_number") or "").strip()
+            fields[
+                vol.Optional("sku", description={"suggested_value": sku}) if sku else vol.Optional("sku")
+            ] = str
+            fields[
+                vol.Optional(
+                    "manufacturer_part_number",
+                    description={"suggested_value": mpn},
+                ) if mpn else vol.Optional("manufacturer_part_number")
+            ] = str
             fields[vol.Optional("current_step_a", description={"suggested_value": row.get("current_step_a") or 1})] = NumberSelector(
                 NumberSelectorConfig(min=0.1, max=100, step=0.1, unit_of_measurement="A")
             )
@@ -548,6 +559,16 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         normalized["profile_type"] = profile_type
         if normalized.get("phase_capability") not in (None, ""):
             normalized["phase_capability"] = int(normalized["phase_capability"])
+        if profile_type == "charger":
+            for key in ("sku", "manufacturer_part_number"):
+                value = str(normalized.get(key) or "").strip()
+                if value:
+                    normalized[key] = value
+                else:
+                    normalized.pop(key, None)
+        else:
+            normalized.pop("sku", None)
+            normalized.pop("manufacturer_part_number", None)
         return normalized
 
     def _assert_unique_profile_identity(self, values: dict, *, profile_id: str | None = None) -> None:
