@@ -1,3 +1,11 @@
+## M0.10.1 — VISUAL_REF_PUBLICATION
+
+- register the bounded Mobility visual catalog with Foundation's package-neutral Visual Asset Registry when that additive API is available;
+- publish canonical `visual_ref` on vehicle/charger rows in MOBILITY_PUBLIC_RUNTIME_V2 and MOBILITY_ENERGY_V2;
+- keep `vehicle.image_key` / `charger.image_key` as writable configuration compatibility while downstream consumers use `visual_ref`;
+- keep image files, filters and rendering inside each consuming UX package; no cross-UX runtime dependency or central URL/path publication;
+- add fail-closed resolver/catalog regression coverage and preserve Shared Baseline 1.8.1.
+
 ## M0.10.0 — V1_INTERFACE_DECOMMISSION
 
 - remove the complete Mobility V1 public compatibility facade and state/service publisher;

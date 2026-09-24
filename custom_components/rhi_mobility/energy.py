@@ -6,6 +6,7 @@ import logging
 from .property_resolver import PropertyResolver
 from .readiness import evaluate_asset_readiness
 from .relationship_resolution import resolve_vehicle_charger_relationship
+from .visual_catalog import resolve_visual_ref
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -267,6 +268,7 @@ class MobilityEnergyV2Provider:
         return {
             "asset_id": aid,
             "display_name": self._v(aid, "asset.display_name") or aid,
+            "visual_ref": resolve_visual_ref("vehicle", self._v(aid, "vehicle.image_key"), profile_id),
             "source_domain": "mobility",
             "source_asset_kind": "vehicle",
             "asset_type": "vehicle",
@@ -332,6 +334,7 @@ class MobilityEnergyV2Provider:
         return {
             "asset_id": aid, "asset_type": "connection", "connection_type": "charger",
             "display_name": self._v(aid, "asset.display_name") or aid,
+            "visual_ref": resolve_visual_ref("charger", self._v(aid, "charger.image_key"), self._v(aid, "asset.profile_id")),
             "source_domain": "mobility", "source_asset_kind": "charger", "energy_asset_role": "connection",
             "lifecycle_status": lifecycle, "lifecycle_reason": self._lifecycle_reason(lifecycle),
             "availability_state": self._v(aid, "asset.availability_state") or "unknown",

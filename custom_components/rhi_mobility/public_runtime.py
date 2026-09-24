@@ -1,6 +1,13 @@
 from __future__ import annotations
 from typing import Any
 
+try:
+    from .visual_catalog import resolve_visual_ref
+except ImportError:  # standalone contract tests load this file outside package context
+    from pathlib import Path as _Path
+    import runpy as _runpy
+    resolve_visual_ref = _runpy.run_path(str(_Path(__file__).with_name("visual_catalog.py")))["resolve_visual_ref"]
+
 
 def _vehicle_charger_relationship(manager, vehicle_id: str):
     # Keep relationship semantics owned by relationship_resolution. Import lazily so
@@ -408,6 +415,11 @@ class MobilityPublicRuntimeProvider:
             "profile_id": self.property_value(asset_id, "asset.profile_id"),
             "color": self.property_value(asset_id, f"{prefix}.color"),
             "image_key": self.property_value(asset_id, f"{prefix}.image_key"),
+            "visual_ref": resolve_visual_ref(
+                asset.concept_id,
+                self.property_value(asset_id, f"{prefix}.image_key"),
+                self.property_value(asset_id, "asset.profile_id"),
+            ),
             "lifecycle_status": self.property_value(asset_id, "asset.lifecycle_status"),
             "health": snap.health,
             "primary_source": (self.manager.primary_source_metadata(asset_id) if callable(getattr(self.manager, "primary_source_metadata", None)) else {}),

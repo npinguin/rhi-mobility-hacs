@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.10.0",
+  "release": "M0.10.1",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
