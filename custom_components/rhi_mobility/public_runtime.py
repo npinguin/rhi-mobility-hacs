@@ -402,6 +402,7 @@ class MobilityPublicRuntimeProvider:
         }
         return {
             "asset_id": asset_id,
+            "asset_type": asset.concept_id,
             "concept_id": asset.concept_id,
             "display_name": self.property_value(asset_id, "asset.display_name") or asset.display_name,
             "identity": identity,

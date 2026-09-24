@@ -1,3 +1,11 @@
+## M0.9.45 — V2_RUNTIME_CONTRACT_MATERIALIZATION
+
+- publish `asset_type` alongside `concept_id` on Runtime V2 asset rows;
+- migrate pre-existing V2 monitor entity registry rows to stable canonical public IDs before platform setup;
+- fail closed if a canonical target entity ID is owned by another registry row;
+- add blocking producer-shape and registry-migration regressions;
+- preserve frozen V1 compatibility pending corrected bundle runtime proof.
+
 ## M0.9.44 — V2_INTERFACE_COMPLETION
 
 - expose complete Runtime V2 assets and relationship projection;

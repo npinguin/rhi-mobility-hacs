@@ -328,6 +328,8 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
             vol.Required("value"):lambda value: value,
         }))
         legacy_services_registered=True; register_legacy_services(hass,legacy_facade,command_provider)
+        from .entity_registry_migration import migrate_canonical_v2_entity_ids
+        setup_data["v2_entity_id_migrations"] = migrate_canonical_v2_entity_ids(hass, entry.entry_id)
         platforms_forward_started=True; await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)
         converged=await _async_import_existing_selected_inputs(hass,manager)
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
