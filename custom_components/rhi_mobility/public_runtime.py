@@ -39,8 +39,7 @@ class MobilityPublicRuntimeProvider:
         self.registry = registry
         semantic = dict(getattr(registry, "semantic_catalog", {}) or {})
         self.properties: dict[str, dict[str, Any]] = dict(semantic.get("properties") or {})
-        self.aliases = dict(getattr(registry, "legacy_aliases", {}) or {})
-        self.parity = dict(getattr(registry, "v1_drop_in_parity", {}) or {})  # reporting/acceptance only
+        self.aliases = dict(getattr(registry, "semantic_aliases", {}) or {})
 
     def property_definition(self, property_key: str, asset_type: str | None = None) -> dict[str, Any] | None:
         base = self.properties.get(property_key)
@@ -471,7 +470,6 @@ class MobilityPublicRuntimeProvider:
             "contract_id": self.CONTRACT_ID,
             "publisher": "rhi_mobility",
             "canonical": True,
-            "v1_drop_in_parity": dict(self.parity.get("counts") or {}),
             "assets": [self.component_snapshot(aid) for aid in sorted(self.manager.assets)],
             "fleet": self.fleet_snapshot(),
             "relationships": [

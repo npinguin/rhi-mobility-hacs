@@ -166,7 +166,7 @@ class PropertyResolver:
                 error_kind=PropertyResolutionError.INVALID_BINDING,
             )
 
-        aliases = dict(getattr(self.manager.registry, "legacy_aliases", {}) or {})
+        aliases = dict(getattr(self.manager.registry, "semantic_aliases", {}) or {})
         canonical_alias = str(aliases.get(property_id, property_id))
         if canonical_alias != property_id:
             return self._alias_resolution(asset_id, property_id, canonical_alias)

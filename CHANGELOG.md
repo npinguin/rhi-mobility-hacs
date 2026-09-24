@@ -1,3 +1,13 @@
+## M0.10.0 — V1_INTERFACE_DECOMMISSION
+
+- remove the complete Mobility V1 public compatibility facade and state/service publisher;
+- remove V1 public/command/energy compatibility provider IDs;
+- remove active V1 runtime/entity-shape/parity contracts and V1-only audit/generator tooling;
+- move retained compatibility vocabulary aliases into the canonical V2 semantic property catalog;
+- preserve M0.9.45 Runtime V2 asset-type and entity-registry materialization fixes;
+- add blocking anti-drift gates requiring zero active Mobility V1 runtime interfaces;
+- retain zero accepted technical debt and zero accepted feature debt.
+
 ## M0.9.45 — V2_RUNTIME_CONTRACT_MATERIALIZATION
 
 - publish `asset_type` alongside `concept_id` on Runtime V2 asset rows;

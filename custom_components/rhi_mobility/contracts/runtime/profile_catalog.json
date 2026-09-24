@@ -1,11 +1,11 @@
 {
   "kind": "RHI_MOBILITY_PROFILE_CATALOG",
   "contract_version": "1.3.0",
-  "release": "M0.9.43",
+  "release": "M0.10.0",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
-    "v1_reference_role": "acceptance_only",
+    "v1_reference_role": "retired",
     "identity_key": "brand + model + variant + model_year",
     "exact_profile_resolution_only": true,
     "integration_domain_is_not_product_identity": true,

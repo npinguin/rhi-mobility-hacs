@@ -4673,7 +4673,6 @@
   "energy_projection": {
     "contract_id": "MOBILITY_ENERGY_V2",
     "provider_id": "mobility.energy.v2",
-    "compatibility_provider_id": "mobility.energy.read_only.v1",
     "consumer_asset_facts": [
       "vehicle.soc_pct",
       "vehicle.target_soc_pct",
@@ -4694,14 +4693,14 @@
       "charger.operating_state"
     ],
     "includes_command_references": true,
-    "command_provider_id": "mobility.command.v1",
+    "command_provider_id": "mobility.command.v2",
     "includes_physical_bindings": false,
     "meter_counter_owner": "rhi_mobility",
     "periodization_owner": "rhi_energy",
     "attribution_owner": "rhi_energy"
   },
   "execution_contract": {
-    "contract_id": "MOBILITY_COMMAND_EXECUTION_V1",
+    "contract_id": "MOBILITY_COMMAND_EXECUTION_V2",
     "owner": "rhi_mobility",
     "queueing": "none",
     "physical_dispatch_per_request_max": 1,
@@ -4712,7 +4711,7 @@
     "actual_requested_separation": true
   },
   "command_interop": {
-    "provider_id": "mobility.command.v1",
+    "provider_id": "mobility.command.v2",
     "contains_physical_bindings": false,
     "energy_may_request_intent": true,
     "energy_may_execute_raw_service": false
@@ -4728,14 +4727,10 @@
       "fast_values_scalar_entities": true,
       "runtime_index_values_embedded": false
     },
-    "v1_drop_in_parity_contract": "v1_drop_in_parity.json",
-    "v1_property_definition_count": 236,
-    "v1_unique_property_key_count": 231,
     "full_semantic_parity_required": true,
     "semantic_property_catalog": "semantic_property_catalog.json",
     "profile_catalog": "profile_catalog.json",
     "canonical_property_count": 278,
-    "v1_reference_role": "acceptance_only",
     "runtime_property_authority": "semantic_property_catalog.json"
   },
   "experience_contract": {
@@ -4788,41 +4783,6 @@
     "provider_id": "mobility.activity.v2",
     "history_owner": "home_assistant_recorder",
     "runtime_scope": "latest typed execution result and current asset activity only"
-  },
-  "legacy_compatibility_contract": {
-    "contract_id": "MOBILITY_PUBLIC_RUNTIME_V1",
-    "provider_id": "mobility.public.compat.v1",
-    "mode": "exact_public_entity_facade",
-    "entity_id_drop_in": true,
-    "old_ux_modification_required": false,
-    "canonical_owner": "rhi_mobility",
-    "aliases": {
-      "lifecycle_status": "asset.lifecycle_status",
-      "vehicle.charge_state": "vehicle.charging_state",
-      "vehicle.charging_power_kw": "vehicle.charge_power_kw",
-      "vehicle.range_fuel_km": "vehicle.fuel_range_km",
-      "vehicle.tank_level_pct": "vehicle.fuel_level_pct",
-      "vehicle.inspection_distance_km": "vehicle.inspection_due_km",
-      "vehicle.inspection_interval_days": "vehicle.inspection_due_days",
-      "vehicle.oil_change_distance_km": "vehicle.oil_service_due_km",
-      "vehicle.oil_change_interval_days": "vehicle.oil_service_due_days",
-      "vehicle.requested_charge_power_kw": "charger.requested_power_kw",
-      "charger.requested_charge_power_kw": "charger.requested_power_kw",
-      "charger.lifetime_energy_kwh": "charger.energy_total_kwh",
-      "charger.phase_current_l1_a": "charger.current_l1_a",
-      "charger.phase_current_l2_a": "charger.current_l2_a",
-      "charger.phase_current_l3_a": "charger.current_l3_a",
-      "charger.phase_power_l1_kw": "charger.power_l1_kw",
-      "charger.phase_power_l2_kw": "charger.power_l2_kw",
-      "charger.phase_power_l3_kw": "charger.power_l3_kw",
-      "charger.phase_voltage_l1_v": "charger.voltage_l1_v",
-      "charger.phase_voltage_l2_v": "charger.voltage_l2_v",
-      "charger.phase_voltage_l3_v": "charger.voltage_l3_v",
-      "charger.added_energy_kwh": "charger.session_energy_kwh",
-      "charger.session_duration_s": "charger.session_duration_s"
-    },
-    "property_definition_source": "contracts/mobility/legacy_public_runtime_v1.json",
-    "rule": "Exact R43.2.65 exterior is projected from V2 only; no V1 computation."
   },
   "authoring_contract": {
     "builder_input_authority": "builders.input_rules + builders.input_order",

@@ -11,9 +11,9 @@ import logging
 from typing import Any
 
 from .const import (
-    ACTIVITY_PROVIDER_ID, COMMAND_COMPAT_PROVIDER_ID, COMMAND_PROVIDER_ID, DOMAIN, FOUNDATION_DOMAIN_ID,
-    ENERGY_COMPAT_PROVIDER_ID, ENERGY_PROVIDER_ID, EXPERIENCE_PROVIDER_ID,
-    INTEROP_PROVIDER_REGISTRY_KEY, PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,
+    ACTIVITY_PROVIDER_ID, COMMAND_PROVIDER_ID, DOMAIN, FOUNDATION_DOMAIN_ID,
+    ENERGY_PROVIDER_ID, EXPERIENCE_PROVIDER_ID,
+    INTEROP_PROVIDER_REGISTRY_KEY,
     PUBLIC_RUNTIME_PROVIDER_ID, PROFILE_CATALOG_PROVIDER_ID, POLICY_PROVIDER_ID, RELEASE, SELECTED_BUILD_INPUT_REGISTRY_KEY,
     SELECTED_BUILD_INPUTS_CHANGED_EVENT, SERVICE_EXECUTE_COMMAND,
     SERVICE_REARM_EXECUTION, SERVICE_SET_POLICY, SERVICE_SET_REQUESTED_POWER,
@@ -217,13 +217,9 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     import voluptuous as vol
     from .commands.controller import MobilityControlController
     from .commands.interop import MobilityCommandProvider
-    from .compat_v1 import MobilityV1Facade
-    from .compat_v1.services import collision_ids as legacy_service_collisions, register_services as register_legacy_services, unregister_services as unregister_legacy_services
-    from .compat_v1.quiescent_publisher import MobilityV1StatePublisher
     from .domain_config import MobilityDomainConfiguration
     from .device_surfaces import MobilityDeviceSurfaceProvider, MobilitySourceDiagnosticsProvider
     from .energy import MobilityEnergyV2Provider
-    from .interop import MobilityEnergyReadOnlyProvider
     from .model_registry import MobilityModelRegistry
     from .property_projection import MobilityPropertyProjection
     from .profile_catalog import MobilityProfileCatalogProvider
@@ -242,28 +238,16 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     profile_catalog_provider=MobilityProfileCatalogProvider(registry)
     policy_provider=MobilityPolicyProvider(domain_config)
     property_projection=MobilityPropertyProjection(hass,manager,controller,public_provider); energy_provider=MobilityEnergyV2Provider(manager,controller,registry,public_provider)
-    energy_compat_provider=MobilityEnergyReadOnlyProvider(manager,registry,controller,public_provider); command_provider=MobilityCommandProvider(controller)
+    command_provider=MobilityCommandProvider(controller)
     experience_provider=MobilityExperienceProvider(public_provider,registry,policy_provider); activity_provider=MobilityActivityProvider(manager,controller)
-    legacy_facade=MobilityV1Facade(projection=property_projection,public_provider=public_provider,command_provider=command_provider,experience_provider=experience_provider,activity_provider=activity_provider,energy_provider=energy_provider,registry=registry)
     supervision_provider=MobilityDomainSupervisoryStatusProvider(manager=manager,controller=controller,public_provider=public_provider,experience_provider=experience_provider,build_spec_provider=provider,release=RELEASE)
     product_supervision_provider=MobilityProductSupervisionProvider(supervision_provider,activity_provider)
     source_diagnostics_provider=MobilitySourceDiagnosticsProvider(manager,public_provider); device_surface_provider=MobilityDeviceSurfaceProvider(supervision_provider,experience_provider)
-    legacy_facade.supervision=supervision_provider
-    legacy_state=MobilityV1StatePublisher(hass,legacy_facade,subscribe_runtime=getattr(manager,'add_runtime_listener',manager.add_listener),subscribe_control=controller.add_listener)
-
-    collisions=legacy_state.collision_ids(); script_collisions=legacy_service_collisions(hass)
-    if collisions or script_collisions:
-        details=[]
-        if collisions: details.append("legacy entity states active: "+",".join(collisions))
-        if script_collisions: details.append("legacy script services active: "+",".join(script_collisions))
-        controller.shutdown(); manager.clear_all()
-        raise RuntimeError("R43.2.65 must be disabled before exact V2 facade takeover; "+"; ".join(details))
-
     interop=hass.data.setdefault(INTEROP_PROVIDER_REGISTRY_KEY,{})
-    interop_ids=(ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,COMMAND_COMPAT_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID,SUPERVISION_PROVIDER_ID)
+    interop_ids=(ENERGY_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID,SUPERVISION_PROVIDER_ID)
     service_names=(SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION,SERVICE_SET_POLICY)
     selected_unsub=None; config_unsub=None; setup_data=None
-    build_registration_attempted=False; supervision_registered=False; legacy_services_registered=False; platforms_forward_started=False
+    build_registration_attempted=False; supervision_registered=False; platforms_forward_started=False
     build_registration_unsub=None; supervision_registration_unsub=None
 
     def close_supervision_registration() -> None:
@@ -297,8 +281,6 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         some unrelated telemetry event happens to arrive.
         """
         sync_supervision_after_structural_build()
-        if getattr(legacy_state, "_started", False):
-            legacy_state.publish_runtime()
 
     async def execute_command(call: Any): return await command_provider.async_execute({"asset_id":call.data["asset_id"],"command_key":call.data["command_key"],"request_id":call.data.get("request_id")})
     async def set_requested_power(call: Any): return await command_provider.async_set_requested_power({"asset_id":call.data["asset_id"],"power_kw":call.data["power_kw"],"request_id":call.data.get("request_id")})
@@ -306,7 +288,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     async def set_policy(call: Any): return await policy_provider.async_set(call.data["policy_key"],call.data.get("value"))
 
     try:
-        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"energy_compat_provider":energy_compat_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"compatibility_provider":legacy_facade,"legacy_facade":legacy_facade,"legacy_state":legacy_state,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"build_registration_unsub":None,"supervision_registration_unsub":None}
+        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"build_registration_unsub":None,"supervision_registration_unsub":None}
         hass.data.setdefault(DOMAIN,{})[entry.entry_id]=setup_data
         selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["selected_unsub"]=selected_unsub
         build_registration_attempted=True
@@ -319,7 +301,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         if imported:
             sync_supervision_after_structural_build()
         config_unsub=_install_domain_configuration_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["config_unsub"]=config_unsub
-        interop.update({ENERGY_PROVIDER_ID:energy_provider,ENERGY_COMPAT_PROVIDER_ID:energy_compat_provider,COMMAND_PROVIDER_ID:command_provider,COMMAND_COMPAT_PROVIDER_ID:command_provider,PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PROFILE_CATALOG_PROVIDER_ID:profile_catalog_provider,POLICY_PROVIDER_ID:policy_provider,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID:legacy_facade,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider,SUPERVISION_PROVIDER_ID:product_supervision_provider})
+        interop.update({ENERGY_PROVIDER_ID:energy_provider,COMMAND_PROVIDER_ID:command_provider,PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PROFILE_CATALOG_PROVIDER_ID:profile_catalog_provider,POLICY_PROVIDER_ID:policy_provider,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider,SUPERVISION_PROVIDER_ID:product_supervision_provider})
         hass.services.async_register(DOMAIN,SERVICE_EXECUTE_COMMAND,execute_command,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("command_key"):str,vol.Optional("request_id"):str}))
         hass.services.async_register(DOMAIN,SERVICE_SET_REQUESTED_POWER,set_requested_power,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("power_kw"):vol.Coerce(float),vol.Optional("request_id"):str}))
         hass.services.async_register(DOMAIN,SERVICE_REARM_EXECUTION,rearm_execution,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("conflict_family"):str}))
@@ -327,7 +309,6 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
             vol.Required("policy_key"):str,
             vol.Required("value"):lambda value: value,
         }))
-        legacy_services_registered=True; register_legacy_services(hass,legacy_facade,command_provider)
         from .entity_registry_migration import migrate_canonical_v2_entity_ids
         setup_data["v2_entity_id_migrations"] = migrate_canonical_v2_entity_ids(hass, entry.entry_id)
         platforms_forward_started=True; await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)
@@ -335,16 +316,11 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
         if converged:
             sync_supervision_after_structural_build()
-        legacy_state.start(); return True
+        return True
     except Exception:
-        try: legacy_state.stop()
-        except Exception: _LOGGER.exception("Mobility setup rollback: V1 state cleanup failed")
         if platforms_forward_started:
             try: await hass.config_entries.async_unload_platforms(entry,PLATFORMS)
             except Exception: _LOGGER.exception("Mobility setup rollback: platform cleanup failed")
-        if legacy_services_registered:
-            try: unregister_legacy_services(hass)
-            except Exception: _LOGGER.exception("Mobility setup rollback: legacy service cleanup failed")
         for name in service_names:
             try:
                 if hass.services.has_service(DOMAIN,name): hass.services.async_remove(DOMAIN,name)
@@ -375,7 +351,6 @@ async def async_unload_entry(hass: Any, entry: Any) -> bool:
         for key in ("config_unsub","selected_unsub"):
             unsub=data.get(key)
             if unsub: unsub()
-        if data.get("legacy_state"): data["legacy_state"].stop()
         if data.get("controller"): data["controller"].shutdown()
         if data.get("runtime"): data["runtime"].clear_all()
 
@@ -390,11 +365,9 @@ async def async_unload_entry(hass: Any, entry: Any) -> bool:
                 data["unregister_provider"](hass,publisher_domain=DOMAIN)
         hass.data.get(DOMAIN,{}).pop(entry.entry_id,None)
         interop=hass.data.get(INTEROP_PROVIDER_REGISTRY_KEY,{})
-        for pid in (ENERGY_PROVIDER_ID,ENERGY_COMPAT_PROVIDER_ID,COMMAND_PROVIDER_ID,COMMAND_COMPAT_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,PUBLIC_RUNTIME_COMPAT_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID,SUPERVISION_PROVIDER_ID): interop.pop(pid,None)
+        for pid in (ENERGY_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID,SUPERVISION_PROVIDER_ID): interop.pop(pid,None)
         for name in (SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION,SERVICE_SET_POLICY):
             if hass.services.has_service(DOMAIN,name): hass.services.async_remove(DOMAIN,name)
-        from .compat_v1.services import unregister_services as unregister_legacy_services
-        unregister_legacy_services(hass)
     return ok
 
 

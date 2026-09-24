@@ -1,11 +1,11 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.9.43",
+  "release": "M0.10.0",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
-    "v1_reference_role": "acceptance_only",
+    "v1_reference_role": "retired",
     "legacy_runtime_drives_v2": false,
     "unknown_never_coerced_to_default": true,
     "one_computation_owner_per_property": true,
@@ -93,7 +93,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "PROFILE",
@@ -161,7 +160,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -203,7 +201,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -257,7 +254,6 @@
           "datatype": "reference"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "DERIVED"
@@ -314,7 +310,6 @@
           "datatype": "reference"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -372,7 +367,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "PROFILE",
@@ -421,7 +415,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -463,7 +456,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -498,7 +490,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -540,7 +531,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "RELATIONSHIP"
       ],
@@ -574,7 +564,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -613,7 +602,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONTROL_READBACK"
       ],
@@ -647,7 +635,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -689,7 +676,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE",
         "DERIVED"
@@ -743,7 +729,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -785,7 +770,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -828,7 +812,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -948,7 +931,6 @@
           "datatype": "number"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONTROL_READBACK",
         "SOURCE"
@@ -1001,7 +983,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1043,7 +1024,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "RELATIONSHIP"
       ],
@@ -1077,7 +1057,6 @@
           "datatype": "number"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1119,7 +1098,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -1164,7 +1142,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1206,7 +1183,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1280,7 +1256,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1323,7 +1298,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1365,7 +1339,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1407,7 +1380,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1449,7 +1421,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1491,7 +1462,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -1525,7 +1495,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -1559,7 +1528,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -1599,7 +1567,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -1642,7 +1609,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -1677,7 +1643,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "PROFILE",
@@ -1735,7 +1700,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "PROFILE",
@@ -1793,7 +1757,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "SOURCE",
@@ -1848,7 +1811,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "PROFILE",
@@ -1906,7 +1868,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -1940,7 +1901,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -1982,7 +1942,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -2024,7 +1983,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE",
         "DERIVED"
@@ -2078,7 +2036,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "PROFILE",
@@ -2139,7 +2096,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2174,7 +2130,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2209,7 +2164,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2244,7 +2198,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2279,7 +2232,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2314,7 +2266,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2349,7 +2300,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2384,7 +2334,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2419,7 +2368,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2454,7 +2402,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -2580,7 +2527,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -2642,7 +2588,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -2684,7 +2629,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -2753,7 +2697,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -2801,7 +2744,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -2841,7 +2783,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -2875,7 +2816,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -2917,7 +2857,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -2960,7 +2899,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3003,7 +2941,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "PROFILE",
         "SOURCE"
@@ -3138,7 +3075,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -3185,7 +3121,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONTROL_READBACK"
       ],
@@ -3219,7 +3154,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3349,7 +3283,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3391,7 +3324,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3433,7 +3365,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3475,7 +3406,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3517,7 +3447,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3559,7 +3488,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3601,7 +3529,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3643,7 +3570,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3685,7 +3611,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "PROFILE"
@@ -3733,7 +3658,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "SOURCE",
@@ -3795,7 +3719,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3838,7 +3761,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3880,7 +3802,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -3922,7 +3843,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -3961,7 +3881,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4003,7 +3922,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4045,7 +3963,6 @@
           "datatype": "number"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4087,7 +4004,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4145,7 +4061,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4188,7 +4103,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4230,7 +4144,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4272,7 +4185,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -4307,7 +4219,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4350,7 +4261,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4392,7 +4302,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4435,7 +4344,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4477,7 +4385,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4520,7 +4427,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4563,7 +4469,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4606,7 +4511,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4649,7 +4553,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4692,7 +4595,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4735,7 +4637,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4777,7 +4678,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -4815,7 +4715,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -4853,7 +4752,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4896,7 +4794,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4939,7 +4836,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -4982,7 +4878,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5025,7 +4920,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5068,7 +4962,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5111,7 +5004,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5154,7 +5046,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5197,7 +5088,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5240,7 +5130,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5283,7 +5172,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "RELATIONSHIP"
       ],
@@ -5317,7 +5205,6 @@
           "datatype": "number"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -5356,7 +5243,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -5395,7 +5281,6 @@
           "datatype": "number"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -5434,7 +5319,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5477,7 +5361,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5519,7 +5402,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5562,7 +5444,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5604,7 +5485,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5708,7 +5588,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5751,7 +5630,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5794,7 +5672,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5837,7 +5714,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -5880,7 +5756,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5923,7 +5798,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -5966,7 +5840,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -6001,7 +5874,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6043,7 +5915,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6085,7 +5956,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -6120,7 +5990,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6163,7 +6032,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "PROFILE",
         "SOURCE"
@@ -6208,7 +6076,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6250,7 +6117,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6318,7 +6184,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6360,7 +6225,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6403,7 +6267,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6446,7 +6309,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6489,7 +6351,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "PROFILE",
         "SOURCE"
@@ -6534,7 +6395,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6576,7 +6436,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6619,7 +6478,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "PROFILE",
@@ -6677,7 +6535,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6719,7 +6576,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -6766,7 +6622,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "SOURCE",
@@ -6821,7 +6676,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6863,7 +6717,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6905,7 +6758,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "PROFILE",
         "SOURCE"
@@ -6950,7 +6802,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -6992,7 +6843,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -7027,7 +6877,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -7062,7 +6911,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7105,7 +6953,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7147,7 +6994,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7190,7 +7036,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7232,7 +7077,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7274,7 +7118,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7316,7 +7159,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7359,7 +7201,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7401,7 +7242,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7443,7 +7283,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7485,7 +7324,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7527,7 +7365,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7569,7 +7406,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "PROFILE",
@@ -7630,7 +7466,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7673,7 +7508,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7716,7 +7550,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7759,7 +7592,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -7801,7 +7633,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7843,7 +7674,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -7885,7 +7715,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -7946,7 +7775,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -7986,7 +7814,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8028,7 +7855,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -8070,7 +7896,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8112,7 +7937,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8154,7 +7978,6 @@
           "datatype": "number"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -8221,7 +8044,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8263,7 +8085,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8306,7 +8127,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8348,7 +8168,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8390,7 +8209,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8432,7 +8250,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8475,7 +8292,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "RELATIONSHIP"
@@ -8519,7 +8335,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8562,7 +8377,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED",
         "SOURCE"
@@ -8618,7 +8432,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8660,7 +8473,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8702,7 +8514,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8744,7 +8555,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8786,7 +8596,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8828,7 +8637,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8871,7 +8679,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8913,7 +8720,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -8956,7 +8762,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "ALIAS"
       ],
@@ -8991,7 +8796,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "DERIVED"
       ],
@@ -9029,7 +8833,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -9074,7 +8877,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9116,7 +8918,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9159,7 +8960,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9202,7 +9002,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9245,7 +9044,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9287,7 +9085,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9329,7 +9126,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9371,7 +9167,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9413,7 +9208,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9455,7 +9249,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9497,7 +9290,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9539,7 +9331,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9581,7 +9372,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9623,7 +9413,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9665,7 +9454,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9707,7 +9495,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9749,7 +9536,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9791,7 +9577,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9833,7 +9618,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9875,7 +9659,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9917,7 +9700,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -9960,7 +9742,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10003,7 +9784,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10045,7 +9825,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10087,7 +9866,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10129,7 +9907,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10172,7 +9949,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10214,7 +9990,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10257,7 +10032,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10299,7 +10073,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10341,7 +10114,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10384,7 +10156,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10426,7 +10197,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10469,7 +10239,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": true,
       "producer_types": [
         "SOURCE"
       ],
@@ -10500,7 +10269,6 @@
         "vehicle"
       ],
       "placements": {},
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10533,7 +10301,6 @@
         "vehicle"
       ],
       "placements": {},
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10566,7 +10333,6 @@
         "vehicle"
       ],
       "placements": {},
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10598,7 +10364,6 @@
         "charger"
       ],
       "placements": {},
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10631,7 +10396,6 @@
         "charger"
       ],
       "placements": {},
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10664,7 +10428,6 @@
         "charger"
       ],
       "placements": {},
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10696,7 +10459,6 @@
         "vehicle",
         "charger"
       ],
-      "v1_drop_in": true,
       "canonical_alias_of": "asset.lifecycle_status",
       "truth_precedence": [
         "ALIAS",
@@ -10742,7 +10504,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10784,7 +10545,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10827,7 +10587,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10870,7 +10629,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10913,7 +10671,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10956,7 +10713,6 @@
           "datatype": "derived_state"
         }
       },
-      "v1_drop_in": false,
       "producer_types": [
         "SOURCE"
       ],
@@ -10986,7 +10742,6 @@
       "applicable_asset_types": [
         "vehicle"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED",
         "DERIVED",
@@ -11023,7 +10778,6 @@
       "applicable_asset_types": [
         "vehicle"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED",
         "PROFILE"
@@ -11055,7 +10809,6 @@
       "applicable_asset_types": [
         "vehicle"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED",
         "PROFILE"
@@ -11090,7 +10843,6 @@
       "applicable_asset_types": [
         "vehicle"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -11119,7 +10871,6 @@
       "applicable_asset_types": [
         "vehicle"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "DERIVED"
       ],
@@ -11148,7 +10899,6 @@
       "applicable_asset_types": [
         "charger"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED",
         "DERIVED",
@@ -11185,7 +10935,6 @@
       "applicable_asset_types": [
         "charger"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED",
         "PROFILE"
@@ -11217,7 +10966,6 @@
       "applicable_asset_types": [
         "charger"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED",
         "PROFILE"
@@ -11252,7 +11000,6 @@
       "applicable_asset_types": [
         "charger"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED"
       ],
@@ -11281,7 +11028,6 @@
       "applicable_asset_types": [
         "charger"
       ],
-      "v1_drop_in": false,
       "producer_types": [
         "DERIVED"
       ],
@@ -11323,7 +11069,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED",
         "PROFILE"
@@ -11371,7 +11116,6 @@
           "datatype": "state/value"
         }
       },
-      "v1_drop_in": false,
       "producer_types": [
         "CONFIGURED",
         "PROFILE"
@@ -11399,5 +11143,30 @@
     "facade_only_aliases": [
       "vehicle.charging_power_kw"
     ]
+  },
+  "aliases": {
+    "lifecycle_status": "asset.lifecycle_status",
+    "vehicle.charge_state": "vehicle.charging_state",
+    "vehicle.charging_power_kw": "vehicle.charge_power_kw",
+    "vehicle.range_fuel_km": "vehicle.fuel_range_km",
+    "vehicle.tank_level_pct": "vehicle.fuel_level_pct",
+    "vehicle.inspection_distance_km": "vehicle.inspection_due_km",
+    "vehicle.inspection_interval_days": "vehicle.inspection_due_days",
+    "vehicle.oil_change_distance_km": "vehicle.oil_service_due_km",
+    "vehicle.oil_change_interval_days": "vehicle.oil_service_due_days",
+    "vehicle.requested_charge_power_kw": "charger.requested_power_kw",
+    "charger.requested_charge_power_kw": "charger.requested_power_kw",
+    "charger.lifetime_energy_kwh": "charger.energy_total_kwh",
+    "charger.phase_current_l1_a": "charger.current_l1_a",
+    "charger.phase_current_l2_a": "charger.current_l2_a",
+    "charger.phase_current_l3_a": "charger.current_l3_a",
+    "charger.phase_power_l1_kw": "charger.power_l1_kw",
+    "charger.phase_power_l2_kw": "charger.power_l2_kw",
+    "charger.phase_power_l3_kw": "charger.power_l3_kw",
+    "charger.phase_voltage_l1_v": "charger.voltage_l1_v",
+    "charger.phase_voltage_l2_v": "charger.voltage_l2_v",
+    "charger.phase_voltage_l3_v": "charger.voltage_l3_v",
+    "charger.added_energy_kwh": "charger.session_energy_kwh",
+    "charger.session_duration_s": "charger.session_duration_s"
   }
 }

@@ -45,17 +45,11 @@ class MobilityModelRegistry:
         self.domain_model = json.loads((model_root / "domain_runtime_model.json").read_text(encoding="utf-8"))
         self.builder_models = self.domain_model["builders"]
 
-        legacy_runtime = json.loads((model_root / "legacy_public_runtime_v1.json").read_text(encoding="utf-8"))
-        self.legacy_aliases = dict(legacy_runtime.get("aliases") or {})
-        self.legacy_property_definitions = tuple(dict(row) for row in legacy_runtime.get("property_definitions", []))
-
         self.semantic_catalog = json.loads((model_root / "semantic_property_catalog.json").read_text(encoding="utf-8"))
+        self.semantic_aliases = dict(self.semantic_catalog.get("aliases") or {})
         profile_catalog = json.loads((model_root / "profile_catalog.json").read_text(encoding="utf-8"))
         self.profiles = tuple(dict(row) for row in profile_catalog.get("profiles", []))
         self._profiles_by_id = {str(row["profile_id"]): dict(row) for row in self.profiles}
-
-        parity_path = model_root / "v1_drop_in_parity.json"
-        self.v1_drop_in_parity = json.loads(parity_path.read_text(encoding="utf-8")) if parity_path.is_file() else {}
 
     def build_spec(self, builder_id: str) -> dict[str, Any]:
         try:
