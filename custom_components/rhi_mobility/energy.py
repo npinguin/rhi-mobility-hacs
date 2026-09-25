@@ -179,6 +179,30 @@ class MobilityEnergyV2Provider:
             "proxy_target_connection_id": charger_id,
         }
 
+    def _charger_command_resolution(self, consumer_asset_id: str, charger_id: str, operation: str) -> dict[str, Any]:
+        """Publish exact producer-owned charger command resolution for Energy."""
+        key = f"charger.command.{operation}"
+        desc = self.controller.command_descriptors().get(f"{charger_id}:{key}")
+        return {
+            "provider_id": "mobility.command.v2",
+            "command_id": None if desc is None else desc.command_id,
+            "consumer_asset_id": consumer_asset_id,
+            "command_source_asset_id": charger_id,
+            "logical_command_owner_asset_id": consumer_asset_id,
+            "command_owner_asset_id": charger_id,
+            "physical_executor_asset_id": charger_id,
+            "command_key": key,
+            "binding_available": desc is not None,
+            "action_available": bool(desc and desc.execution_allowed),
+            "action_reason": desc.blocked_reason if desc and not desc.execution_allowed else ("binding_ready" if desc else "binding_missing"),
+            "frontend_allowed": desc is not None,
+            "execution_allowed": bool(desc and desc.execution_allowed),
+            "blocked_reason": desc.blocked_reason if desc and not desc.execution_allowed else ("none" if desc else "binding_missing"),
+            "effective_connection_id": charger_id,
+            "physical_connection_id": charger_id if desc is not None else None,
+            "proxy_target_connection_id": charger_id,
+        }
+
     def _consumer(self, aid: str, snap) -> dict[str, Any]:
         charger_id = self._configured_charger(aid)
         charger = self.manager.snapshots.get(charger_id) if charger_id else None
@@ -382,6 +406,15 @@ class MobilityEnergyV2Provider:
         connected = str(connection.get("connection_state") or "") == "asset_connected"
         adjustable = bool(capabilities.get("adjust_power_supported"))
         executable = bool(limits.get("requested_power_execution_ready"))
+        start = self._charger_command_resolution(asset_id, asset_id, "start")
+        stop = self._charger_command_resolution(asset_id, asset_id, "stop")
+        protective_ready = bool(connected and stop.get("execution_allowed"))
+        readiness = dict(connection.get("readiness") or {})
+        readiness.update({
+            "planning_input_ready": False,
+            "positive_execution_ready": False,
+            "protective_execution_ready": protective_ready,
+        })
         return {
             "asset_id": asset_id,
             "display_name": connection.get("display_name") or asset_id,
@@ -418,22 +451,21 @@ class MobilityEnergyV2Provider:
             "planning_input_ready": False,
             "available_export_energy_kwh": None,
             "limits": limits,
-            "readiness": dict(connection.get("readiness") or {}),
+            "readiness": readiness,
             "capabilities": capabilities,
             "automation": {
-                "allowed": bool(lifecycle != "disabled" and connected and adjustable and executable),
+                "allowed": False,
                 "blocked_reason": (
-                    "none"
-                    if lifecycle != "disabled" and connected and adjustable and executable
-                    else "lifecycle_disabled"
+                    "lifecycle_disabled"
                     if lifecycle == "disabled"
-                    else "physical_connection_missing"
-                    if not connected
-                    else "execution_not_ready"
+                    else "vehicle_planning_context_missing"
                 ),
+                "positive_execution_ready": False,
+                "protective_execution_ready": protective_ready,
+                "physical_control_ready": bool(connected and adjustable and executable),
             },
             "command_refs": dict(connection.get("command_refs") or {}),
-            "command_resolution": {},
+            "command_resolution": {"start": start, "stop": stop},
             "command_feedback": {
                 "command_target_asset_id": asset_id,
                 "command_target_connection_id": asset_id,

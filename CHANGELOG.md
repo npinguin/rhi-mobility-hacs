@@ -1,4 +1,12 @@
-## M0.10.8 — Unassigned charger Energy consumer
+## M0.10.9 — ENERGY_BOUNDARY_PRECISION
+
+- publish exact producer-owned start/stop command resolution for the unassigned-Charger Energy fallback;
+- keep positive planning/execution unavailable without Vehicle planning context;
+- expose protective stop readiness independently from positive scheduling readiness;
+- prevent generic automation permission from aliasing mere physical controllability;
+- preserve M0.10.8 consumer fallback, command ownership, canonical topology and zero accepted debt.
+
+## M0.10.8 — UNASSIGNED_CHARGER_ENERGY_CONSUMER
 
 - publish an unassigned controllable charger as a Mobility-owned flexible Energy consumer;
 - retain the charger connection asset for physical power accounting;
