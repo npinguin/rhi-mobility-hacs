@@ -289,6 +289,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     from .property_projection import MobilityPropertyProjection
     from .profile_catalog import MobilityProfileCatalogProvider
     from .policy import MobilityPolicyProvider
+    from .product_contract import MobilityProductContractProvider
     from .publication import MobilityBuildSpecificationProvider
     from .public_runtime import MobilityActivityProvider,MobilityExperienceProvider,MobilityPublicRuntimeProvider
     from .runtime.manager import MobilityRuntimeManager
@@ -314,6 +315,16 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     experience_provider=MobilityExperienceProvider(public_provider,registry,policy_provider); activity_provider=MobilityActivityProvider(manager,controller)
     supervision_provider=MobilityDomainSupervisoryStatusProvider(manager=manager,controller=controller,public_provider=public_provider,experience_provider=experience_provider,build_spec_provider=provider,release=RELEASE)
     product_supervision_provider=MobilityProductSupervisionProvider(supervision_provider,activity_provider)
+    product_contract_provider=MobilityProductContractProvider(
+        public_provider,
+        experience_provider,
+        policy_provider,
+        command_provider,
+        activity_provider,
+        profile_catalog_provider,
+        product_supervision_provider,
+        energy_provider,
+    )
     source_diagnostics_provider=MobilitySourceDiagnosticsProvider(manager,public_provider); device_surface_provider=MobilityDeviceSurfaceProvider(supervision_provider,experience_provider)
     interop=hass.data.setdefault(INTEROP_PROVIDER_REGISTRY_KEY,{})
     interop_ids=(ENERGY_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID,SUPERVISION_PROVIDER_ID)
@@ -384,7 +395,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     async def set_policy(call: Any): return await policy_provider.async_set(call.data["policy_key"],call.data.get("value"))
 
     try:
-        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"visual_catalog_provider":visual_catalog_provider,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"unregister_visual":foundation_api.get("unregister_visual"),"build_registration_unsub":None,"supervision_registration_unsub":None,"visual_registration_unsub":None,"setup_timings_ms":setup_timings_ms}
+        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"product_contract_provider":product_contract_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"visual_catalog_provider":visual_catalog_provider,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"unregister_visual":foundation_api.get("unregister_visual"),"build_registration_unsub":None,"supervision_registration_unsub":None,"visual_registration_unsub":None,"setup_timings_ms":setup_timings_ms}
         hass.data.setdefault(DOMAIN,{})[entry.entry_id]=setup_data
         selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["selected_unsub"]=selected_unsub
         build_registration_attempted=True

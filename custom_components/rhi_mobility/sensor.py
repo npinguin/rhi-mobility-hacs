@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import json
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
@@ -40,6 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     activity = data["activity_provider"]
     profile_catalog = data["profile_catalog_provider"]
     product_supervision = data["product_supervision_provider"]
+    product_contract = data["product_contract_provider"]
     domain_config = data["domain_config"]
     projection = MobilityPropertyProjection(hass, manager, controller, public)
     async_add_entities(
@@ -56,6 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             ActivityV2Sensor(entry.entry_id, manager, controller, activity),
             ProfileCatalogV2Sensor(entry.entry_id, profile_catalog),
             ProductSupervisionV2Sensor(entry.entry_id, manager, controller, product_supervision),
+            ProductContractV2Sensor(entry.entry_id, manager, controller, domain_config, product_contract),
             BroadDeviceSurfaceSensor("mobility", NAME, "Mobility Module V2", device_surfaces, manager, controller, diagnostic=True, device_identifier=entry.entry_id),
             BroadDeviceSurfaceSensor("mobility_intelligence", "Mobility Intelligence", "Mobility Intelligence", device_surfaces, manager, controller, device_identifier=entry.entry_id),
             BroadDeviceSurfaceSensor("vehicle_intelligence", "Vehicle Intelligence", "Vehicle Intelligence", device_surfaces, manager, controller, device_identifier=entry.entry_id),
@@ -349,6 +354,74 @@ class ProductSupervisionV2Sensor(RuntimeMonitoringSensor):
     @property
     def extra_state_attributes(self):
         return dict(self.provider.snapshot() or {})
+
+
+class ProductContractV2Sensor(RuntimeMonitoringSensor):
+    """Single change-only aggregate Mobility product contract for UX consumers."""
+
+    _attr_icon = "mdi:car-multiple"
+
+    def __init__(self, entry_id: str, manager, controller, domain_config, provider) -> None:
+        super().__init__(entry_id, "public_contract_v2", "Public Contract V2", manager)
+        self.entity_id = "sensor.rhi_mobility_public_contract_v2"
+        self.controller = controller
+        self.domain_config = domain_config
+        self.provider = provider
+        self._scheduled = None
+        self._fingerprint = None
+        self._revision = 0
+        self._snapshot = {}
+        self._refresh_snapshot()
+
+    def _refresh_snapshot(self) -> bool:
+        payload = dict(self.provider.snapshot() or {})
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
+        fingerprint = hashlib.sha256(encoded).hexdigest()
+        if fingerprint == self._fingerprint:
+            return False
+        self._fingerprint = fingerprint
+        self._revision += 1
+        payload["content_fingerprint"] = fingerprint
+        payload["contract_revision"] = self._revision
+        self._snapshot = payload
+        return True
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.controller.add_listener(self._changed))
+        self.async_on_remove(self.domain_config.add_listener(self._configuration_changed))
+
+    def _request_refresh(self) -> None:
+        if self._scheduled is not None:
+            return
+        self._scheduled = self.hass.loop.call_soon(self._flush_refresh)
+
+    def _flush_refresh(self) -> None:
+        self._scheduled = None
+        if self._refresh_snapshot():
+            self.async_write_ha_state()
+
+    @callback
+    def _configuration_changed(self, _asset_id: str, _property_key: str) -> None:
+        self._request_refresh()
+
+    @callback
+    def _changed(self) -> None:
+        self._request_refresh()
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._scheduled is not None:
+            self._scheduled.cancel()
+            self._scheduled = None
+        await super().async_will_remove_from_hass()
+
+    @property
+    def native_value(self):
+        return self._revision
+
+    @property
+    def extra_state_attributes(self):
+        return dict(self._snapshot)
 
 
 class ReleaseSensor(MonitoringSensor):
