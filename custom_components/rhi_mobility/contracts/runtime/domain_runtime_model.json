@@ -1,7 +1,7 @@
 {
   "kind": "mobility_domain_runtime_model",
   "contract_version": "1.6.0",
-  "model_version": "M0.10.4",
+  "model_version": "M0.10.5",
   "source_of_truth": "contracts/domain/domain_runtime_model.json + generated DomainBuildSpecification",
   "canonical_state_vocabularies": {
     "charger.operating_state": [
@@ -4647,7 +4647,13 @@
     },
     "canonical_topology": {
       "via_device_usage": "canonical_composition_only",
-      "current_composition_edges": [],
+      "root_device": "mobility",
+      "current_composition_edges": [
+        "mobility->vehicle",
+        "mobility->charger"
+      ],
+      "maximum_ha_depth": 1,
+      "presentation_groups_are_devices": false,
       "vehicle_charger_relation_is_topology": false
     }
   },

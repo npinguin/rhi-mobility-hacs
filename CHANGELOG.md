@@ -1,4 +1,4 @@
-## M0.10.4 — CANONICAL_DOMAIN_GOVERNANCE
+## M0.10.5 — CANONICAL_DOMAIN_GOVERNANCE
 
 - establish a governed Vehicle/Charger-only domain definition and independently validate effective runtime semantics;
 - retire the Mobility-owned Person builder/properties/adapter and reference native Home Assistant `person.*` through `vehicle.person_entity_id`;

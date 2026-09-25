@@ -125,7 +125,22 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_re
                 payloads=_selected_input_payloads(hass) if registry_present else []
                 await manager.async_replace_selected_build_inputs(payloads)
                 from .projection import async_reconcile_projection
-                await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
+                await async_reconcile_projection(
+                    hass,
+                    entry.entry_id,
+                    set(manager.assets),
+                    {
+                        asset_id
+                        for asset_id in manager.assets
+                        if str(
+                            manager.configuration_value(
+                                asset_id, "asset.lifecycle_status", "active"
+                            )
+                            or "active"
+                        ).lower()
+                        == "disabled"
+                    },
+                )
                 if callable(on_rebuilt): on_rebuilt()
             except Exception as exc:
                 _record_handoff_exception(manager,exc)
@@ -150,7 +165,16 @@ def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any,
             return
         await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
         from .projection import async_reconcile_projection
-        await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
+        await async_reconcile_projection(
+            hass,
+            entry.entry_id,
+            set(manager.assets),
+            {
+                asset_id
+                for asset_id in manager.assets
+                if str(manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active").lower() == "disabled"
+            },
+        )
         if callable(on_rebuilt): on_rebuilt()
     add=getattr(entry,"add_update_listener",None)
     if not callable(add): return None
@@ -254,7 +278,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     interop=hass.data.setdefault(INTEROP_PROVIDER_REGISTRY_KEY,{})
     interop_ids=(ENERGY_PROVIDER_ID,COMMAND_PROVIDER_ID,PUBLIC_RUNTIME_PROVIDER_ID,PROFILE_CATALOG_PROVIDER_ID,POLICY_PROVIDER_ID,EXPERIENCE_PROVIDER_ID,ACTIVITY_PROVIDER_ID,SUPERVISION_PROVIDER_ID)
     service_names=(SERVICE_EXECUTE_COMMAND,SERVICE_SET_REQUESTED_POWER,SERVICE_REARM_EXECUTION,SERVICE_SET_POLICY)
-    selected_unsub=None; config_unsub=None; setup_data=None
+    selected_unsub=None; config_unsub=None; projection_config_unsub=None; setup_data=None
     build_registration_attempted=False; supervision_registered=False; platforms_forward_started=False
     build_registration_unsub=None; supervision_registration_unsub=None; visual_registration_unsub=None
 
@@ -290,6 +314,30 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         """
         sync_supervision_after_structural_build()
 
+    def sync_projection_after_lifecycle_change(asset_id: str, property_key: str) -> None:
+        """Reconcile HA device visibility when Mobility lifecycle configuration changes."""
+        if property_key != "asset.lifecycle_status":
+            return
+        from .projection import async_reconcile_projection
+        hass.async_create_task(
+            async_reconcile_projection(
+                hass,
+                entry.entry_id,
+                set(manager.assets),
+                {
+                    current_id
+                    for current_id in manager.assets
+                    if str(
+                        manager.configuration_value(
+                            current_id, "asset.lifecycle_status", "active"
+                        )
+                        or "active"
+                    ).lower()
+                    == "disabled"
+                },
+            )
+        )
+
     async def execute_command(call: Any): return await command_provider.async_execute({"asset_id":call.data["asset_id"],"command_key":call.data["command_key"],"request_id":call.data.get("request_id")})
     async def set_requested_power(call: Any): return await command_provider.async_set_requested_power({"asset_id":call.data["asset_id"],"power_kw":call.data["power_kw"],"request_id":call.data.get("request_id")})
     async def rearm_execution(call: Any): return await controller.async_rearm(call.data["asset_id"],call.data["conflict_family"])
@@ -310,10 +358,24 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
             setup_data["visual_registration_unsub"]=visual_registration_unsub
         imported=await _async_import_existing_selected_inputs(hass,manager)
         from .projection import async_reconcile_projection
-        await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
+        await async_reconcile_projection(
+            hass,
+            entry.entry_id,
+            set(manager.assets),
+            {
+                asset_id
+                for asset_id in manager.assets
+                if str(manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active").lower() == "disabled"
+            },
+        )
         if imported:
             sync_supervision_after_structural_build()
         config_unsub=_install_domain_configuration_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["config_unsub"]=config_unsub
+        projection_config_unsub=_idempotent_unload(
+            entry,
+            domain_config.add_listener(sync_projection_after_lifecycle_change),
+        )
+        setup_data["projection_config_unsub"]=projection_config_unsub
         interop.update({ENERGY_PROVIDER_ID:energy_provider,COMMAND_PROVIDER_ID:command_provider,PUBLIC_RUNTIME_PROVIDER_ID:public_provider,PROFILE_CATALOG_PROVIDER_ID:profile_catalog_provider,POLICY_PROVIDER_ID:policy_provider,EXPERIENCE_PROVIDER_ID:experience_provider,ACTIVITY_PROVIDER_ID:activity_provider,SUPERVISION_PROVIDER_ID:product_supervision_provider})
         hass.services.async_register(DOMAIN,SERVICE_EXECUTE_COMMAND,execute_command,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("command_key"):str,vol.Optional("request_id"):str}))
         hass.services.async_register(DOMAIN,SERVICE_SET_REQUESTED_POWER,set_requested_power,schema=vol.Schema({vol.Required("asset_id"):str,vol.Required("power_kw"):vol.Coerce(float),vol.Optional("request_id"):str}))
@@ -326,7 +388,16 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         setup_data["v2_entity_id_migrations"] = migrate_canonical_v2_entity_ids(hass, entry.entry_id)
         platforms_forward_started=True; await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)
         converged=await _async_import_existing_selected_inputs(hass,manager)
-        await async_reconcile_projection(hass,entry.entry_id,set(manager.assets))
+        await async_reconcile_projection(
+            hass,
+            entry.entry_id,
+            set(manager.assets),
+            {
+                asset_id
+                for asset_id in manager.assets
+                if str(manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active").lower() == "disabled"
+            },
+        )
         if converged:
             sync_supervision_after_structural_build()
         return True
@@ -339,7 +410,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
                 if hass.services.has_service(DOMAIN,name): hass.services.async_remove(DOMAIN,name)
             except Exception: _LOGGER.exception("Mobility setup rollback: service cleanup failed for %s",name)
         for pid in interop_ids: interop.pop(pid,None)
-        for unsub,label in ((config_unsub,"config"),(selected_unsub,"SDBI")):
+        for unsub,label in ((projection_config_unsub,"projection-config"),(config_unsub,"config"),(selected_unsub,"SDBI")):
             if unsub:
                 try: unsub()
                 except Exception: _LOGGER.exception("Mobility setup rollback: %s listener cleanup failed",label)

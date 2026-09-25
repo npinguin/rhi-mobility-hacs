@@ -57,9 +57,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             ProfileCatalogV2Sensor(entry.entry_id, profile_catalog),
             ProductSupervisionV2Sensor(entry.entry_id, manager, controller, product_supervision),
             BroadDeviceSurfaceSensor("mobility", NAME, "Mobility Module V2", device_surfaces, manager, controller, diagnostic=True, device_identifier=entry.entry_id),
-            BroadDeviceSurfaceSensor("mobility_intelligence", "Mobility Intelligence", "Mobility Intelligence", device_surfaces, manager, controller),
-            BroadDeviceSurfaceSensor("vehicle_intelligence", "Vehicle Intelligence", "Vehicle Intelligence", device_surfaces, manager, controller),
-            BroadDeviceSurfaceSensor("charger_intelligence", "Charger Intelligence", "Charger Intelligence", device_surfaces, manager, controller),
+            BroadDeviceSurfaceSensor("mobility_intelligence", "Mobility Intelligence", "Mobility Intelligence", device_surfaces, manager, controller, device_identifier=entry.entry_id),
+            BroadDeviceSurfaceSensor("vehicle_intelligence", "Vehicle Intelligence", "Vehicle Intelligence", device_surfaces, manager, controller, device_identifier=entry.entry_id),
+            BroadDeviceSurfaceSensor("charger_intelligence", "Charger Intelligence", "Charger Intelligence", device_surfaces, manager, controller, device_identifier=entry.entry_id),
         ],
         True,
     )

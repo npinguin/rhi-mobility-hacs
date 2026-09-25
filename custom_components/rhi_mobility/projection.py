@@ -37,6 +37,9 @@ def logical_device_info(hass: Any, entry_id: str, manager: Any, asset_id: str, *
         "manufacturer": str(manufacturer),
         "model": str(profile_model),
         "sw_version": RELEASE,
+        # Canonical composition only: every Mobility Vehicle/Charger lives one
+        # level below the existing Mobility module/root device.
+        "via_device": (DOMAIN, entry_id),
     }
 
 
@@ -49,7 +52,12 @@ def _asset_id_from_unique_id(unique_id: str | None) -> str | None:
     return parts[1]
 
 
-async def async_reconcile_projection(hass: Any, entry_id: str, current_asset_ids: set[str]) -> dict[str, int]:
+async def async_reconcile_projection(
+    hass: Any,
+    entry_id: str,
+    current_asset_ids: set[str],
+    disabled_asset_ids: set[str] | None = None,
+) -> dict[str, int]:
     """Remove stale Mobility-owned dynamic entities/devices from prior materialisations.
 
     Registry access here is projection cleanup only. It does not discover technical
@@ -58,6 +66,7 @@ async def async_reconcile_projection(hass: Any, entry_id: str, current_asset_ids
     """
     removed_entities = 0
     removed_devices = 0
+    disabled_asset_ids = set(disabled_asset_ids or set())
     stale_device_ids: set[str] = set()
     try:
         from homeassistant.helpers import entity_registry as er
@@ -65,6 +74,43 @@ async def async_reconcile_projection(hass: Any, entry_id: str, current_asset_ids
         entity_registry = er.async_get(hass)
         device_registry = dr.async_get(hass)
         entries = er.async_entries_for_config_entry(entity_registry, entry_id)
+
+        # M0.10.5 in-place topology migration. Reuse existing canonical device
+        # identities and move only Mobility-owned logical assets under the existing
+        # Mobility module/root device.
+        root = device_registry.async_get_device(identifiers={(DOMAIN, entry_id)})
+        if root is not None:
+            for asset_id in sorted(current_asset_ids):
+                logical = device_registry.async_get_device(identifiers={(DOMAIN, asset_id)})
+                if logical is None:
+                    continue
+                changes = {}
+                if getattr(logical, "via_device_id", None) != root.id:
+                    changes["via_device_id"] = root.id
+                integration_disabler = getattr(
+                    getattr(dr, "DeviceEntryDisabler", None),
+                    "INTEGRATION",
+                    "integration",
+                )
+                disabled_by = getattr(logical, "disabled_by", None)
+                if asset_id in disabled_asset_ids and disabled_by is None:
+                    changes["disabled_by"] = integration_disabler
+                elif asset_id not in disabled_asset_ids and disabled_by == integration_disabler:
+                    changes["disabled_by"] = None
+                if changes:
+                    device_registry.async_update_device(logical.id, **changes)
+
+            # Previous releases materialised three intelligence summary devices.
+            # Their entities now belong on the Mobility root; move the existing
+            # registry rows in-place so no duplicate entity identity is created.
+            surface_uids = {
+                f"{DOMAIN}:surface:mobility_intelligence:status",
+                f"{DOMAIN}:surface:vehicle_intelligence:status",
+                f"{DOMAIN}:surface:charger_intelligence:status",
+            }
+            for entity in list(entries):
+                if str(getattr(entity, "unique_id", "") or "") in surface_uids and getattr(entity, "device_id", None) != root.id:
+                    entity_registry.async_update_entity(entity.entity_id, device_id=root.id)
         for entity in list(entries):
             asset_id = _asset_id_from_unique_id(getattr(entity, "unique_id", None))
             if asset_id is None or asset_id in current_asset_ids:
@@ -94,12 +140,7 @@ async def async_reconcile_projection(hass: Any, entry_id: str, current_asset_ids
         # reached through stale entities. The exact accepted source device is managed by
         # its source integration and receives the Mobility Binding Status entity directly;
         # Mobility must never retain an empty identifier-copy proxy.
-        allowed_mobility_ids = set(current_asset_ids) | {
-            entry_id,
-            "mobility_intelligence",
-            "vehicle_intelligence",
-            "charger_intelligence",
-        }
+        allowed_mobility_ids = set(current_asset_ids) | {entry_id}
         for device in list(dr.async_entries_for_config_entry(device_registry, entry_id)):
             device_id = str(getattr(device, "id", "") or "")
             if not device_id:

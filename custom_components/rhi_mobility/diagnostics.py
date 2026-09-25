@@ -61,17 +61,26 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
     except Exception as exc:
         return {"status": "UNAVAILABLE", "error": type(exc).__name__}
 
+    root = device_registry.async_get_device(identifiers={(DOMAIN, entry_id)})
+    root_id = None if root is None else str(root.id)
     config_entries = er.async_entries_for_config_entry(entity_registry, entry_id)
     rows = []
+    source_reparenting = []
+
     for asset_id, asset in sorted(manager.assets.items()):
         logical = device_registry.async_get_device(identifiers={(DOMAIN, asset_id)})
-        primary_source_device_id = str(getattr(asset, "source_device_id", "") or "")
+        actual_parent_id = None if logical is None else getattr(logical, "via_device_id", None)
         expected_source_device_ids = sorted({
             str(ref.device_id)
             for binding in (getattr(asset, "source_bindings", {}) or {}).values()
             for ref in (getattr(binding, "inputs", {}) or {}).values()
             if getattr(ref, "device_id", None)
         })
+        for source_device_id in expected_source_device_ids:
+            source_device = device_registry.async_get(source_device_id)
+            if source_device is not None and getattr(source_device, "via_device_id", None) == root_id:
+                source_reparenting.append(source_device_id)
+
         binding_unique_prefix = f"{DOMAIN}:{asset_id}:source_binding:"
         binding_entries = [
             row for row in config_entries
@@ -82,11 +91,16 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
         })
         expected_set = set(expected_source_device_ids)
         actual_set = set(actual_binding_device_ids)
+        topology_match = logical is not None and root_id is not None and actual_parent_id == root_id
         rows.append({
             "asset_id": asset_id,
+            "asset_type": getattr(asset, "concept_id", None),
             "lifecycle_status": _asset_lifecycle(manager, asset_id),
-            "logical_device_id": None if logical is None else logical.id,
-            "primary_source_device_id": primary_source_device_id or None,
+            "logical_device_id": None if logical is None else str(logical.id),
+            "canonical_parent_asset_id": "mobility",
+            "expected_parent_device_id": root_id,
+            "actual_parent_device_id": actual_parent_id,
+            "topology_match": topology_match,
             "expected_source_device_ids": expected_source_device_ids,
             "source_devices_present": {
                 device_id: device_registry.async_get(device_id) is not None
@@ -99,12 +113,7 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
             "binding_on_exact_source_device": expected_set == actual_set,
         })
 
-    allowed_ids = set(manager.assets) | {
-        entry_id,
-        "mobility_intelligence",
-        "vehicle_intelligence",
-        "charger_intelligence",
-    }
+    allowed_ids = set(manager.assets) | {entry_id}
     orphan_ids = []
     for device in dr.async_entries_for_config_entry(device_registry, entry_id):
         identifiers = set(getattr(device, "identifiers", set()) or set())
@@ -114,8 +123,26 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
         attached = er.async_entries_for_device(entity_registry, device.id, include_disabled_entities=True)
         if not attached:
             orphan_ids.append(str(device.id))
+
+    topology_mismatches = [row["asset_id"] for row in rows if not row["topology_match"]]
+    binding_mismatches = [row["asset_id"] for row in rows if not row["binding_on_exact_source_device"]]
+    status = "OK" if (
+        root_id
+        and not topology_mismatches
+        and not binding_mismatches
+        and not orphan_ids
+        and not source_reparenting
+    ) else "DEGRADED"
     return {
-        "status": "OK" if not orphan_ids and all(row["binding_on_exact_source_device"] for row in rows) else "DEGRADED",
+        "status": status,
+        "root_device_id": root_id,
+        "canonical_device_count": len(rows),
+        "topology_match_count": len(rows) - len(topology_mismatches),
+        "topology_mismatch_count": len(topology_mismatches),
+        "topology_mismatch_asset_ids": topology_mismatches,
+        "source_reparenting_count": len(set(source_reparenting)),
+        "source_reparenting_device_ids": sorted(set(source_reparenting)),
+        "binding_mismatch_count": len(binding_mismatches),
         "asset_rows": rows,
         "orphan_proxy_device_count": len(orphan_ids),
         "orphan_proxy_device_ids": orphan_ids[:20],
