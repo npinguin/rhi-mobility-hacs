@@ -1,3 +1,11 @@
+## M0.10.10 — Product truth correction
+
+- removes charging-plug lock state from whole-vehicle access-security evaluation; an unlocked EV plug can no longer mark an otherwise locked/closed Vehicle as unsafe;
+- retains `vehicle.plug_lock_state` as canonical charging/connector evidence without promoting it to access-security authority;
+- adds regression proof that plug-lock state is independent from Vehicle Security Experience V2;
+- consumes refreshed Foundation technical handoffs normally; no UX-side source aliases or optimistic values are introduced;
+- keeps MOBILITY_PUBLIC_RUNTIME_V2 / MOBILITY_EXPERIENCE_V2 contract identities unchanged.
+
 ## M0.10.9 — ENERGY_BOUNDARY_PRECISION
 
 - publish exact producer-owned start/stop command resolution for the unassigned-Charger Energy fallback;

@@ -503,8 +503,10 @@ class MobilityExperienceProvider:
     """Backend-owned Mobility conclusions matching the R43.2.65 intelligence families."""
     CONTRACT_ID = "MOBILITY_EXPERIENCE_V2"
 
+    # Vehicle access security only. The charging-plug lock belongs to connector/
+    # charging semantics and must never make an otherwise secured vehicle unsafe.
     _ACCESS_KEYS = (
-        "vehicle.security_state", "vehicle.lock_state", "vehicle.opening_state", "vehicle.plug_lock_state",
+        "vehicle.security_state", "vehicle.lock_state", "vehicle.opening_state",
         "vehicle.doors_locked", "vehicle.windows_locked", "vehicle.trunk_state", "vehicle.hood_state",
         "vehicle.door_front_left_state", "vehicle.door_front_right_state", "vehicle.door_rear_left_state", "vehicle.door_rear_right_state",
         "vehicle.window_fl_state", "vehicle.window_fr_state", "vehicle.window_rl_state", "vehicle.window_rr_state",
