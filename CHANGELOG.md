@@ -1,3 +1,11 @@
+## M0.10.11 — V2 pilot and maintenance closure
+
+- normalize maintenance/service sign semantics across supported vehicle providers and fail closed on unknown sign conventions;
+- publish backend-owned canonical maintenance summaries for the V2 Overview surface;
+- require three-home target-runtime qualification for the V2-only frontend pilot;
+- align validation on Python 3.14 while retaining deterministic package, Hassfest and main-identity gates;
+- preserve zero accepted technical debt and zero accepted feature debt.
+
 ## M0.10.10 — Product truth correction
 
 - removes charging-plug lock state from whole-vehicle access-security evaluation; an unlocked EV plug can no longer mark an otherwise locked/closed Vehicle as unsafe;

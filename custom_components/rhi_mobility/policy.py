@@ -20,6 +20,54 @@ _ALLOWED_KEYS = {
 }
 _SECURITY_COVERAGE = {"lock", "doors", "windows"}
 
+POLICY_EDITORS: dict[str, dict[str, Any]] = {
+    "range.low_range_km": {
+        "label": "Low range warning",
+        "description": "Warn when effective vehicle range falls below this threshold.",
+        "control": "number",
+        "unit": "km",
+        "min": 1,
+        "max": 1000,
+        "step": 1,
+        "write_service_domain": "rhi_mobility",
+        "write_service_action": "set_policy",
+    },
+    "maintenance.due_soon_days": {
+        "label": "Maintenance warning",
+        "description": "Warn this many days before scheduled maintenance becomes due.",
+        "control": "number",
+        "unit": "d",
+        "min": 0,
+        "max": 730,
+        "step": 1,
+        "write_service_domain": "rhi_mobility",
+        "write_service_action": "set_policy",
+    },
+    "charging.minimum_demand_kwh": {
+        "label": "Minimum charging demand",
+        "description": "Treat charging demand below this value as satisfied.",
+        "control": "number",
+        "unit": "kWh",
+        "min": 0,
+        "max": 200,
+        "step": 0.1,
+        "write_service_domain": "rhi_mobility",
+        "write_service_action": "set_policy",
+    },
+    "security.required_coverage": {
+        "label": "Required security coverage",
+        "description": "Security is proven only when every selected coverage family is authoritative.",
+        "control": "multi_select",
+        "choices": [
+            {"value": "lock", "label": "Lock"},
+            {"value": "doors", "label": "Doors"},
+            {"value": "windows", "label": "Windows"},
+        ],
+        "write_service_domain": "rhi_mobility",
+        "write_service_action": "set_policy",
+    },
+}
+
 
 def _validate(key: str, value: Any) -> Any:
     if key not in _ALLOWED_KEYS:
@@ -68,11 +116,23 @@ class MobilityPolicyProvider:
         for section, values in overrides.items():
             if section in policy and isinstance(values, dict):
                 policy[section].update(values)
+        editors = []
+        for key in sorted(POLICY_EDITORS):
+            section, field = key.split(".", 1)
+            editor = deepcopy(POLICY_EDITORS[key])
+            editor.update({
+                "policy_key": key,
+                "value": deepcopy(policy[section][field]),
+                "write_service_data": {"policy_key": key},
+                "write_value_field": "value",
+            })
+            editors.append(editor)
         return {
             "contract_id": self.CONTRACT_ID,
             "publisher": "rhi_mobility",
             "revision": self.revision,
             "policy": policy,
+            "editors": editors,
         }
 
     def value(self, key: str) -> Any:

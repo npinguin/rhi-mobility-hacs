@@ -1,5 +1,7 @@
 from __future__ import annotations
+import json
 import logging
+from pathlib import Path
 from typing import Any
 
 _LOGGER=logging.getLogger(__name__)
@@ -259,6 +261,8 @@ def normalize(rule: str, integration_domain: str, value: Any, unit: str | None) 
     if rule=="pressure_bar": return {"value":pressure_bar(value,unit)}
     if rule=="duration_s": return {"value":duration_s(value,unit)}
     if rule=="days": return {"value":days(value,unit)}
+    if rule=="maintenance_due_days": return {"value":maintenance_due_days(integration_domain,value,unit)}
+    if rule=="maintenance_due_km": return {"value":maintenance_due_km(integration_domain,value,unit)}
     if rule=="timestamp": return {"value":timestamp(value,unit)}
     if rule=="locked_state": return locked_state(integration_domain,value)
     if rule=="open_closed_state": return open_closed_state(integration_domain,value)
@@ -329,6 +333,43 @@ def days(value: Any, unit: str | None) -> float | None:
     if u in {'d','day','days',''}: return n
     if u in {'h','hr','hrs','hour','hours'}: return n/24.0
     return None
+
+
+def _maintenance_source_multipliers() -> dict[str, float]:
+    path = Path(__file__).resolve().parents[1] / "contracts" / "runtime" / "maintenance_semantics.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        _LOGGER.error("Unable to load maintenance semantics contract: %s", exc)
+        return {}
+    result: dict[str, float] = {}
+    for domain, row in (data.get("source_conventions") or {}).items():
+        try:
+            result[str(domain).strip().lower()] = float(row["canonical_multiplier"])
+        except (KeyError, TypeError, ValueError):
+            _LOGGER.error("Invalid maintenance source convention for %s", domain)
+    return result
+
+_MAINTENANCE_CANONICAL_MULTIPLIER=_maintenance_source_multipliers()
+
+def maintenance_due_days(integration_domain: str, value: Any, unit: str | None) -> float | None:
+    """Canonical signed maintenance countdown in days.
+
+    Canonical Mobility semantics are integration-independent:
+      positive = remaining, zero = due now, negative = overdue.
+    Unknown source sign conventions fail closed.
+    """
+    n=days(value,unit)
+    if n is None:return None
+    factor=_MAINTENANCE_CANONICAL_MULTIPLIER.get(str(integration_domain or "").strip().lower())
+    return None if factor is None else n*factor
+
+def maintenance_due_km(integration_domain: str, value: Any, unit: str | None) -> float | None:
+    """Canonical signed maintenance countdown in kilometres."""
+    n=distance_km(value,unit)
+    if n is None:return None
+    factor=_MAINTENANCE_CANONICAL_MULTIPLIER.get(str(integration_domain or "").strip().lower())
+    return None if factor is None else n*factor
 
 def timestamp(value: Any, unit: str | None = None) -> str | None:
     return _text(value)

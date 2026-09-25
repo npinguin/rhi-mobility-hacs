@@ -759,11 +759,21 @@ class MobilityExperienceProvider:
         oil_km = due_fields.get("vehicle.oil_service_due_km") if due_fields.get("vehicle.oil_service_due_km") is not None else due_fields.get("vehicle.oil_change_due_distance_km")
         insp_days = due_fields.get("vehicle.inspection_due_days")
         insp_km = due_fields.get("vehicle.inspection_due_km")
+        def countdown_phrase(label, value, unit):
+            if not isinstance(value, (int, float)):
+                return None
+            n = int(value)
+            if n < 0:
+                return f"{label} {abs(n)} {unit} overdue"
+            if n == 0:
+                return f"{label} due now"
+            return f"{label} in {n} {unit}"
+
         summaries=[]
-        if oil_days is not None: summaries.append(f"Oil in {int(oil_days)} d")
-        elif oil_km is not None: summaries.append(f"Oil in {int(oil_km)} km")
-        if insp_days is not None: summaries.append(f"Inspection in {int(insp_days)} d")
-        elif insp_km is not None: summaries.append(f"Inspection in {int(insp_km)} km")
+        oil_summary = countdown_phrase("Oil", oil_days, "d") if oil_days is not None else countdown_phrase("Oil", oil_km, "km")
+        inspection_summary = countdown_phrase("Inspection", insp_days, "d") if insp_days is not None else countdown_phrase("Inspection", insp_km, "km")
+        if oil_summary: summaries.append(oil_summary)
+        if inspection_summary: summaries.append(inspection_summary)
         summary = "; ".join(summaries) if summaries else ("No maintenance data" if not present else maint_state.replace("_", " ").title())
 
         def service_state(days, km, extra_state=None):

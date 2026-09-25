@@ -21,6 +21,8 @@ class VehicleChargerRelationship:
     physically_connected_charger_id: str | None
     status: RelationshipStatus
     observed_identity_proven: bool = False
+    assigned_charger_connection_state: str | None = None
+    assigned_charger_occupied: bool | None = None
     reason: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
@@ -31,6 +33,8 @@ class VehicleChargerRelationship:
             "physically_connected_charger_id": self.physically_connected_charger_id,
             "relationship_status": self.status.value,
             "observed_identity_proven": self.observed_identity_proven,
+            "assigned_charger_connection_state": self.assigned_charger_connection_state,
+            "assigned_charger_occupied": self.assigned_charger_occupied,
             "reason": self.reason,
         }
 
@@ -63,12 +67,30 @@ def _explicit_observed_charger(manager: Any, vehicle_id: str) -> str | None:
     return None
 
 
+def _assigned_charger_connection(manager: Any, charger_id: str | None) -> tuple[str | None, bool | None]:
+    if not charger_id:
+        return None, None
+    snap = getattr(manager, "snapshots", {}).get(charger_id)
+    values = getattr(snap, "values", {}) if snap is not None else {}
+    state = values.get("charger.connection_state") if isinstance(values, dict) else None
+    if state in (None, "", "unknown"):
+        return None, None
+    state = str(state)
+    if state == "asset_connected":
+        return state, True
+    if state == "no_asset_connected":
+        return state, False
+    return state, None
+
+
 def resolve_vehicle_charger_relationship(manager: Any, vehicle_id: str) -> VehicleChargerRelationship:
     configured = _configured_charger(manager, vehicle_id)
     effective_fn = getattr(manager, "effective_charger_for_vehicle", None)
     effective = effective_fn(vehicle_id) if callable(effective_fn) else configured
     effective = None if effective in (None, "") else str(effective)
     observed = _explicit_observed_charger(manager, vehicle_id)
+    context_charger = effective or configured
+    assigned_connection_state, assigned_occupied = _assigned_charger_connection(manager, context_charger)
 
     if configured and observed and configured != observed:
         status = RelationshipStatus.CONFLICT
@@ -93,5 +115,7 @@ def resolve_vehicle_charger_relationship(manager: Any, vehicle_id: str) -> Vehic
         physically_connected_charger_id=observed,
         status=status,
         observed_identity_proven=observed is not None,
+        assigned_charger_connection_state=assigned_connection_state,
+        assigned_charger_occupied=assigned_occupied,
         reason=reason,
     )

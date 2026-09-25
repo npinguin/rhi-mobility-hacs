@@ -5767,7 +5767,7 @@
           "builder_id": "mobility.vehicle.connected_vehicle.v1",
           "input_id": "vehicle_inspection_due_days",
           "usage": "observation",
-          "normalizer": "days"
+          "normalizer": "maintenance_due_days"
         }
       ],
       "truth_precedence": [
@@ -5808,7 +5808,7 @@
           "builder_id": "mobility.vehicle.connected_vehicle.v1",
           "input_id": "vehicle_inspection_due_km",
           "usage": "observation",
-          "normalizer": "distance_km"
+          "normalizer": "maintenance_due_km"
         }
       ],
       "truth_precedence": [
@@ -6929,7 +6929,7 @@
           "builder_id": "mobility.vehicle.connected_vehicle.v1",
           "input_id": "vehicle_oil_service_due_days",
           "usage": "observation",
-          "normalizer": "days"
+          "normalizer": "maintenance_due_days"
         }
       ],
       "truth_precedence": [
@@ -6970,7 +6970,7 @@
           "builder_id": "mobility.vehicle.connected_vehicle.v1",
           "input_id": "vehicle_oil_service_due_km",
           "usage": "observation",
-          "normalizer": "distance_km"
+          "normalizer": "maintenance_due_km"
         }
       ],
       "truth_precedence": [

@@ -172,6 +172,13 @@ class RuntimeV2SummarySensor(RuntimeMonitoringSensor):
         return {
             "contract_id": snapshot.get("contract_id"),
             "canonical": True,
+            "release": {
+                "backend_release": RELEASE,
+                "release_name": RELEASE_NAME,
+                "shared_baseline_id": SHARED_BASELINE_ID,
+                "shared_baseline_version": SHARED_BASELINE_VERSION,
+                "shared_baseline_checksum": SHARED_BASELINE_CHECKSUM,
+            },
             "assets": snapshot.get("assets") or [],
             "fleet": snapshot.get("fleet") or {},
             "relationships": snapshot.get("relationships") or [],

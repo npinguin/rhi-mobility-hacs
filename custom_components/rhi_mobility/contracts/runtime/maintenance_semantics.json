@@ -1,0 +1,71 @@
+{
+  "kind": "RHI_MOBILITY_MAINTENANCE_SEMANTICS",
+  "contract_version": "1.0.0",
+  "canonical": {
+    "vehicle.inspection_due_days": {
+      "unit": "d",
+      "meaning": "signed time remaining until inspection",
+      "sign_convention": {
+        "positive": "remaining",
+        "zero": "due_now",
+        "negative": "overdue"
+      }
+    },
+    "vehicle.oil_service_due_days": {
+      "unit": "d",
+      "meaning": "signed time remaining until oil service",
+      "sign_convention": {
+        "positive": "remaining",
+        "zero": "due_now",
+        "negative": "overdue"
+      }
+    },
+    "vehicle.inspection_due_km": {
+      "unit": "km",
+      "meaning": "signed distance remaining until inspection",
+      "sign_convention": {
+        "positive": "remaining",
+        "zero": "due_now",
+        "negative": "overdue"
+      }
+    },
+    "vehicle.oil_service_due_km": {
+      "unit": "km",
+      "meaning": "signed distance remaining until oil service",
+      "sign_convention": {
+        "positive": "remaining",
+        "zero": "due_now",
+        "negative": "overdue"
+      }
+    }
+  },
+  "source_conventions": {
+    "audiconnect": {
+      "raw_sign": "positive_remaining",
+      "canonical_multiplier": 1,
+      "evidence_status": "target_observed",
+      "evidence_note": "Audi Connect Q8 target runtime shows positive remaining maintenance countdowns."
+    },
+    "cupra_eu_data_act": {
+      "raw_sign": "negative_remaining",
+      "canonical_multiplier": -1,
+      "evidence_status": "upstream_documented_and_target_observed",
+      "evidence_note": "EU Data Act portal semantics: negative=remaining, positive=overdue; target Q8 shows the inverse sign versus Audi Connect."
+    },
+    "mbapi2020": {
+      "raw_sign": "unverified",
+      "canonical_multiplier": null,
+      "evidence_status": "target_validation_required",
+      "evidence_note": "MBAPI exposes serviceintervaldays/serviceintervaldistance, but signed countdown semantics are not documented sufficiently; fail closed until proven."
+    }
+  },
+  "coverage_policy": {
+    "maintenance_inputs": [
+      "vehicle_inspection_due_days",
+      "vehicle_inspection_due_km",
+      "vehicle_oil_service_due_days",
+      "vehicle_oil_service_due_km"
+    ],
+    "rule": "Every integration adapter that maps a maintenance countdown input must declare source_conventions entry; unknown convention fails closed."
+  }
+}

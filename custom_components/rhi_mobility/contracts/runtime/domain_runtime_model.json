@@ -2017,7 +2017,7 @@
           "cardinality": "zero_or_one_per_group"
         },
         "vehicle_inspection_due_days": {
-          "normalizer": "days",
+          "normalizer": "maintenance_due_days",
           "outputs": [
             "vehicle.inspection_due_days"
           ],
@@ -2035,7 +2035,7 @@
           "cardinality": "zero_or_one_per_group"
         },
         "vehicle_inspection_due_km": {
-          "normalizer": "distance_km",
+          "normalizer": "maintenance_due_km",
           "outputs": [
             "vehicle.inspection_due_km"
           ],
@@ -2053,7 +2053,7 @@
           "cardinality": "zero_or_one_per_group"
         },
         "vehicle_oil_service_due_days": {
-          "normalizer": "days",
+          "normalizer": "maintenance_due_days",
           "outputs": [
             "vehicle.oil_service_due_days"
           ],
@@ -2071,7 +2071,7 @@
           "cardinality": "zero_or_one_per_group"
         },
         "vehicle_oil_service_due_km": {
-          "normalizer": "distance_km",
+          "normalizer": "maintenance_due_km",
           "outputs": [
             "vehicle.oil_service_due_km"
           ],
