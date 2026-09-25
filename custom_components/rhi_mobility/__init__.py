@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 import logging
+from time import perf_counter
 from typing import Any
 
 from .const import (
@@ -25,6 +26,26 @@ _LOGGER=logging.getLogger(__name__)
 def _selected_input_registry_present(hass: Any) -> bool:
     registry=hass.data.get(SELECTED_BUILD_INPUT_REGISTRY_KEY,{}) or {}
     return isinstance(registry,dict) and FOUNDATION_DOMAIN_ID in registry
+
+
+def _selected_input_revision_token(hass: Any) -> tuple:
+    """Return a cheap deterministic token for Foundation structural handoff identity."""
+    rows = _selected_input_payloads(hass)
+    token = []
+    for row in rows:
+        selection = row.get("selection") or {}
+        token.append((
+            str(row.get("builder_id") or ""),
+            str(selection.get("integration_domain") or ""),
+            tuple(sorted(str(value) for value in (selection.get("selected_device_ids") or []))),
+            int(row.get("configuration_revision") or 0),
+            int(row.get("candidate_revision") or 0),
+            int(row.get("build_input_revision") or 0),
+            int(selection.get("publication_revision") or 0),
+            str(selection.get("configured_specification_fingerprint") or ""),
+            str(selection.get("current_specification_fingerprint") or ""),
+        ))
+    return tuple(sorted(token))
 
 
 def _selected_input_payloads(hass: Any) -> list[dict]:
@@ -87,6 +108,7 @@ async def _async_import_existing_selected_inputs(hass: Any, manager: Any) -> boo
         return False
     try:
         await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
+        manager._last_selected_input_revision_token = _selected_input_revision_token(hass)
         return True
     except Exception as exc:
         _record_handoff_exception(manager,exc)
@@ -123,7 +145,11 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_re
                 return
             try:
                 payloads=_selected_input_payloads(hass) if registry_present else []
+                handoff_token=_selected_input_revision_token(hass)
+                if getattr(manager, "_last_selected_input_revision_token", None) == handoff_token:
+                    return
                 await manager.async_replace_selected_build_inputs(payloads)
+                manager._last_selected_input_revision_token = handoff_token
                 from .projection import async_reconcile_projection
                 await async_reconcile_projection(
                     hass,
@@ -244,6 +270,15 @@ def _call_registration_unsub(handle: Any) -> bool:
 
 
 async def async_setup_entry(hass: Any, entry: Any) -> bool:
+    setup_started = perf_counter()
+    setup_timings_ms: dict[str, float] = {}
+
+    def mark_timing(name: str, started: float) -> float:
+        duration = round((perf_counter() - started) * 1000.0, 3)
+        setup_timings_ms[name] = duration
+        return duration
+
+    imports_started = perf_counter()
     import voluptuous as vol
     from .commands.controller import MobilityControlController
     from .commands.interop import MobilityCommandProvider
@@ -259,12 +294,17 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     from .runtime.manager import MobilityRuntimeManager
     from .supervision import MobilityDomainSupervisoryStatusProvider, MobilityProductSupervisionProvider
     from .visual_catalog import MobilityVisualAssetCatalogProvider
+    mark_timing("runtime_imports", imports_started)
 
+    phase_started=perf_counter()
     foundation_api=_load_foundation_registry_api(hass)
     registry=MobilityModelRegistry(); provider=MobilityBuildSpecificationProvider(registry)
+    mark_timing("bootstrap_and_registry", phase_started)
     visual_catalog_provider=MobilityVisualAssetCatalogProvider()
     domain_config=MobilityDomainConfiguration(hass,entry)
+    phase_started=perf_counter()
     configuration_migrated=await domain_config.async_initialize()
+    mark_timing("domain_config_initialize", phase_started)
     manager=MobilityRuntimeManager(hass,registry,domain_config)
     controller=MobilityControlController(hass,manager,registry); public_provider=MobilityPublicRuntimeProvider(manager,controller,registry)
     profile_catalog_provider=MobilityProfileCatalogProvider(registry)
@@ -344,7 +384,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     async def set_policy(call: Any): return await policy_provider.async_set(call.data["policy_key"],call.data.get("value"))
 
     try:
-        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"visual_catalog_provider":visual_catalog_provider,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"unregister_visual":foundation_api.get("unregister_visual"),"build_registration_unsub":None,"supervision_registration_unsub":None,"visual_registration_unsub":None}
+        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"visual_catalog_provider":visual_catalog_provider,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"unregister_visual":foundation_api.get("unregister_visual"),"build_registration_unsub":None,"supervision_registration_unsub":None,"visual_registration_unsub":None,"setup_timings_ms":setup_timings_ms}
         hass.data.setdefault(DOMAIN,{})[entry.entry_id]=setup_data
         selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["selected_unsub"]=selected_unsub
         build_registration_attempted=True
@@ -356,9 +396,13 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
             visual_handle=register_visual(hass,publisher_domain=DOMAIN,provider=visual_catalog_provider,publication_revision=visual_catalog_provider.publication_revision)
             visual_registration_unsub=visual_handle if callable(visual_handle) else None
             setup_data["visual_registration_unsub"]=visual_registration_unsub
+        initial_handoff_token=_selected_input_revision_token(hass)
+        phase_started=perf_counter()
         imported=await _async_import_existing_selected_inputs(hass,manager)
+        mark_timing("initial_foundation_build", phase_started)
         from .projection import async_reconcile_projection
-        await async_reconcile_projection(
+        phase_started=perf_counter()
+        initial_projection=await async_reconcile_projection(
             hass,
             entry.entry_id,
             set(manager.assets),
@@ -368,6 +412,8 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
                 if str(manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active").lower() == "disabled"
             },
         )
+        mark_timing("initial_projection_sync", phase_started)
+        setup_data["projection_metrics"]=dict(initial_projection or {})
         if imported:
             sync_supervision_after_structural_build()
         config_unsub=_install_domain_configuration_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["config_unsub"]=config_unsub
@@ -385,10 +431,31 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
             vol.Required("value"):lambda value: value,
         }))
         from .entity_registry_migration import migrate_canonical_v2_entity_ids
+        phase_started=perf_counter()
         setup_data["v2_entity_id_migrations"] = migrate_canonical_v2_entity_ids(hass, entry.entry_id)
+        mark_timing("entity_registry_migration", phase_started)
+        phase_started=perf_counter()
         platforms_forward_started=True; await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)
-        converged=await _async_import_existing_selected_inputs(hass,manager)
-        await async_reconcile_projection(
+        mark_timing("platform_setup", phase_started)
+
+        # Foundation may legitimately republish during Mobility platform setup.
+        # created. Rebuild only when the structural handoff revision actually changed.
+        # M0.10.5 rebuilt unconditionally here, doubling semantic startup work.
+        post_platform_handoff_token=_selected_input_revision_token(hass)
+        applied_handoff_token=getattr(manager, "_last_selected_input_revision_token", None)
+        convergence_rebuild_required=applied_handoff_token != post_platform_handoff_token
+        if convergence_rebuild_required:
+            phase_started=perf_counter()
+            converged=await _async_import_existing_selected_inputs(hass,manager)
+            mark_timing("convergence_foundation_build", phase_started)
+        else:
+            converged=imported
+            setup_timings_ms["convergence_foundation_build"]=0.0
+        setup_data["startup_convergence_rebuild_required"]=convergence_rebuild_required
+        setup_data["startup_handoff_revision_changed"]=post_platform_handoff_token != initial_handoff_token
+
+        phase_started=perf_counter()
+        final_projection=await async_reconcile_projection(
             hass,
             entry.entry_id,
             set(manager.assets),
@@ -398,8 +465,15 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
                 if str(manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active").lower() == "disabled"
             },
         )
+        mark_timing("final_projection_sync", phase_started)
+        setup_data["projection_metrics"]=dict(final_projection or {})
         if converged:
             sync_supervision_after_structural_build()
+        setup_timings_ms["total_setup"]=round((perf_counter()-setup_started)*1000.0,3)
+        setup_data["setup_metrics"]={
+            "selected_input_count": len(_selected_input_payloads(hass)),
+            "asset_count": len(manager.assets),
+        }
         return True
     except Exception:
         if platforms_forward_started:
@@ -435,7 +509,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
 async def async_unload_entry(hass: Any, entry: Any) -> bool:
     data=hass.data.get(DOMAIN,{}).get(entry.entry_id)
     if data:
-        for key in ("config_unsub","selected_unsub"):
+        for key in ("projection_config_unsub","config_unsub","selected_unsub"):
             unsub=data.get(key)
             if unsub: unsub()
         if data.get("controller"): data["controller"].shutdown()

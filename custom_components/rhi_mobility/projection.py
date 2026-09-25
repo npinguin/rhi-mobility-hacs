@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from time import perf_counter
 from typing import Any
 
 from .const import DOMAIN, RELEASE
@@ -64,6 +65,7 @@ async def async_reconcile_projection(
     sources, candidates or bindings. The authoritative runtime asset set remains the
     manager output built from SelectedDomainBuildInput.
     """
+    started = perf_counter()
     removed_entities = 0
     removed_devices = 0
     disabled_asset_ids = set(disabled_asset_ids or set())
@@ -73,7 +75,12 @@ async def async_reconcile_projection(
         from homeassistant.helpers import device_registry as dr
         entity_registry = er.async_get(hass)
         device_registry = dr.async_get(hass)
-        entries = er.async_entries_for_config_entry(entity_registry, entry_id)
+        entries = list(er.async_entries_for_config_entry(entity_registry, entry_id))
+        entities_by_device: dict[str, list[Any]] = {}
+        for entity in entries:
+            device_id = getattr(entity, "device_id", None)
+            if device_id:
+                entities_by_device.setdefault(str(device_id), []).append(entity)
 
         # M0.10.5 in-place topology migration. Reuse existing canonical device
         # identities and move only Mobility-owned logical assets under the existing
@@ -110,7 +117,13 @@ async def async_reconcile_projection(
             }
             for entity in list(entries):
                 if str(getattr(entity, "unique_id", "") or "") in surface_uids and getattr(entity, "device_id", None) != root.id:
+                    previous_device_id = getattr(entity, "device_id", None)
                     entity_registry.async_update_entity(entity.entity_id, device_id=root.id)
+                    if previous_device_id:
+                        previous_rows = entities_by_device.get(str(previous_device_id), [])
+                        if entity in previous_rows:
+                            previous_rows.remove(entity)
+                    entities_by_device.setdefault(str(root.id), []).append(entity)
         for entity in list(entries):
             asset_id = _asset_id_from_unique_id(getattr(entity, "unique_id", None))
             if asset_id is None or asset_id in current_asset_ids:
@@ -141,7 +154,8 @@ async def async_reconcile_projection(
         # its source integration and receives the Mobility Binding Status entity directly;
         # Mobility must never retain an empty identifier-copy proxy.
         allowed_mobility_ids = set(current_asset_ids) | {entry_id}
-        for device in list(dr.async_entries_for_config_entry(device_registry, entry_id)):
+        entry_devices = list(dr.async_entries_for_config_entry(device_registry, entry_id))
+        for device in entry_devices:
             device_id = str(getattr(device, "id", "") or "")
             if not device_id:
                 continue
@@ -153,12 +167,7 @@ async def async_reconcile_projection(
             }
             if mobility_ids & allowed_mobility_ids:
                 continue
-            attached = er.async_entries_for_device(
-                entity_registry,
-                device_id,
-                include_disabled_entities=True,
-            )
-            if attached:
+            if entities_by_device.get(device_id):
                 continue
             device_registry.async_remove_device(device_id)
             removed_devices += 1
@@ -170,4 +179,20 @@ async def async_reconcile_projection(
             removed_entities,
             removed_devices,
         )
-    return {"removed_entities": removed_entities, "removed_devices": removed_devices}
+    metrics = {
+        "removed_entities": removed_entities,
+        "removed_devices": removed_devices,
+        "last_sync_duration_ms": round((perf_counter() - started) * 1000.0, 3),
+        "entry_entities_scanned": len(entries) if "entries" in locals() else 0,
+        "entry_devices_scanned": len(entry_devices) if "entry_devices" in locals() else 0,
+        "per_device_entity_registry_scans": 0,
+    }
+    try:
+        data = hass.data.get(DOMAIN, {}).get(entry_id)
+        if isinstance(data, dict):
+            previous = dict(data.get("projection_metrics") or {})
+            metrics["sync_count"] = int(previous.get("sync_count") or 0) + 1
+            data["projection_metrics"] = dict(metrics)
+    except Exception:
+        pass
+    return metrics

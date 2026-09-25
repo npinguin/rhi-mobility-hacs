@@ -1,3 +1,12 @@
+## M0.10.6 — BOOT_PERFORMANCE
+
+- replace the unconditional second Foundation semantic startup rebuild with revision-aware convergence;
+- keep a bounded second build only when Foundation handoff identity changed during platform setup or the initial handoff was unavailable;
+- index entity-registry rows once per projection/diagnostics pass instead of per-device lookups;
+- expose setup phase timings, convergence decision and projection scan metrics in diagnostics;
+- clean the lifecycle projection listener on normal unload to avoid reload-time listener accumulation;
+- preserve M0.10.5 topology/lifecycle semantics and defer normalized-property rationalisation.
+
 ## M0.10.5 — CANONICAL_DOMAIN_GOVERNANCE
 
 - establish a governed Vehicle/Charger-only domain definition and independently validate effective runtime semantics;

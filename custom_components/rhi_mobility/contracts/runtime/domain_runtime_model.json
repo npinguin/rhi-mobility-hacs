@@ -1,7 +1,7 @@
 {
   "kind": "mobility_domain_runtime_model",
   "contract_version": "1.6.0",
-  "model_version": "M0.10.5",
+  "model_version": "M0.10.6",
   "source_of_truth": "contracts/domain/domain_runtime_model.json + generated DomainBuildSpecification",
   "canonical_state_vocabularies": {
     "charger.operating_state": [

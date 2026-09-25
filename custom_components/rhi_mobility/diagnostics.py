@@ -63,7 +63,20 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
 
     root = device_registry.async_get_device(identifiers={(DOMAIN, entry_id)})
     root_id = None if root is None else str(root.id)
-    config_entries = er.async_entries_for_config_entry(entity_registry, entry_id)
+    config_entries = list(er.async_entries_for_config_entry(entity_registry, entry_id))
+    entities_by_device: dict[str, list[Any]] = {}
+    binding_entries_by_asset: dict[str, list[Any]] = {}
+    for row in config_entries:
+        device_id = getattr(row, "device_id", None)
+        if device_id:
+            entities_by_device.setdefault(str(device_id), []).append(row)
+        unique_id = str(getattr(row, "unique_id", "") or "")
+        prefix = f"{DOMAIN}:"
+        marker = ":source_binding:"
+        if unique_id.startswith(prefix) and marker in unique_id:
+            asset_id = unique_id[len(prefix):].split(marker, 1)[0]
+            binding_entries_by_asset.setdefault(asset_id, []).append(row)
+    device_entries = list(dr.async_entries_for_config_entry(device_registry, entry_id))
     rows = []
     source_reparenting = []
 
@@ -81,11 +94,7 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
             if source_device is not None and getattr(source_device, "via_device_id", None) == root_id:
                 source_reparenting.append(source_device_id)
 
-        binding_unique_prefix = f"{DOMAIN}:{asset_id}:source_binding:"
-        binding_entries = [
-            row for row in config_entries
-            if str(getattr(row, "unique_id", "") or "").startswith(binding_unique_prefix)
-        ]
+        binding_entries = list(binding_entries_by_asset.get(asset_id, ()))
         actual_binding_device_ids = sorted({
             str(row.device_id) for row in binding_entries if row.device_id
         })
@@ -115,13 +124,12 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
 
     allowed_ids = set(manager.assets) | {entry_id}
     orphan_ids = []
-    for device in dr.async_entries_for_config_entry(device_registry, entry_id):
+    for device in device_entries:
         identifiers = set(getattr(device, "identifiers", set()) or set())
         mobility_ids = {str(value) for domain, value in identifiers if domain == DOMAIN}
         if mobility_ids & allowed_ids:
             continue
-        attached = er.async_entries_for_device(entity_registry, device.id, include_disabled_entities=True)
-        if not attached:
+        if not entities_by_device.get(str(device.id)):
             orphan_ids.append(str(device.id))
 
     topology_mismatches = [row["asset_id"] for row in rows if not row["topology_match"]]
@@ -146,6 +154,9 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
         "asset_rows": rows,
         "orphan_proxy_device_count": len(orphan_ids),
         "orphan_proxy_device_ids": orphan_ids[:20],
+        "entry_entities_scanned": len(config_entries),
+        "entry_devices_scanned": len(device_entries),
+        "per_device_entity_registry_scans": 0,
     }
 
 
@@ -423,6 +434,13 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
         "configuration": {
             "foundation_handoff": handoff,
             "domain_configuration_available": domain_config is not None,
+        },
+        "performance": {
+            "setup_timings_ms": dict(data.get("setup_timings_ms") or {}),
+            "setup_metrics": dict(data.get("setup_metrics") or {}),
+            "startup_convergence_rebuild_required": bool(data.get("startup_convergence_rebuild_required")),
+            "startup_handoff_revision_changed": bool(data.get("startup_handoff_revision_changed")),
+            "projection": dict(data.get("projection_metrics") or {}),
         },
         "build_handoff": {} if manager is None else manager.diagnostics_snapshot(),
         "binding": {
