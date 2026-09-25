@@ -1,3 +1,14 @@
+## M0.10.4 — CANONICAL_DOMAIN_GOVERNANCE
+
+- establish a governed Vehicle/Charger-only domain definition and independently validate effective runtime semantics;
+- retire the Mobility-owned Person builder/properties/adapter and reference native Home Assistant `person.*` through `vehicle.person_entity_id`;
+- keep integration mappings single-authority in static adapters with deterministic generated DBS output;
+- formalize source provenance versus HA device topology and keep Vehicle↔Charger as a domain relationship;
+- remove exact Foundation release/baseline runtime coupling in favor of required public capabilities;
+- publish exact HA select transport labels separately from canonical persisted values;
+- split cheap check from full regressions, keep main as an identity gate and prevent stable approval from rebuilding candidate bytes;
+- keep zero accepted technical debt and zero accepted feature debt.
+
 ## M0.10.3 — VERIFIED_CHARGER_PRODUCT_CODES
 
 - populate exact manufacturer part numbers for Easee Charge Up, Peblar Business Socket and Zaptec Go 2 from manufacturer evidence;

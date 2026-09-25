@@ -158,17 +158,6 @@ def vehicle_charging_state(integration_domain: str, value: Any) -> dict[str, str
     else: state="unknown"
     return {"vehicle.charging_state":state}
 
-def person_presence(integration_domain: str, value: Any) -> dict[str, str | None]:
-    raw=_text(value)
-    if raw is None:
-        return {'person.location_state':None,'person.presence_state':None}
-    key=raw.strip().lower()
-    if key=='home': presence='home'
-    elif key=='not_home': presence='away'
-    elif key in {'unknown','unavailable',''}: presence='unknown'
-    else: presence='zone'
-    return {'person.location_state':raw,'person.presence_state':presence}
-
 
 def speed_kmh(value: Any, unit: str | None) -> float | None:
     n=_number(value); u=_unit(unit)
@@ -263,7 +252,6 @@ def normalize(rule: str, integration_domain: str, value: Any, unit: str | None) 
     if rule=="utility_charger_state": return utility_charger_state(integration_domain,value)
     if rule=="charger_connection": return charger_connection(integration_domain,value)
     if rule=="vehicle_charging_state": return vehicle_charging_state(integration_domain,value)
-    if rule=="person_presence": return person_presence(integration_domain,value)
     if rule=="none": return {}
     if rule=="vehicle_security_state": return vehicle_security_state(integration_domain,value)
     if rule=="vehicle_climate_state": return vehicle_climate_state(integration_domain,value)

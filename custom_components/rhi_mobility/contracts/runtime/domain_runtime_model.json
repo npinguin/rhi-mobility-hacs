@@ -1,7 +1,7 @@
 {
   "kind": "mobility_domain_runtime_model",
   "contract_version": "1.6.0",
-  "model_version": "M0.9.42",
+  "model_version": "M0.10.4",
   "source_of_truth": "contracts/domain/domain_runtime_model.json + generated DomainBuildSpecification",
   "canonical_state_vocabularies": {
     "charger.operating_state": [
@@ -4592,43 +4592,6 @@
         "maximum_groups": null
       }
     },
-    "mobility.person.presence.v1": {
-      "concept_id": "person",
-      "logical_asset_type": "person",
-      "source_role": "presence",
-      "source_precedence": 100,
-      "input_rules": {
-        "person_location_state": {
-          "usage": "observation",
-          "outputs": [
-            "person.location_state",
-            "person.presence_state"
-          ],
-          "normalizer": "person_presence",
-          "precedence": 100,
-          "technical_capabilities": {
-            "any_of": [
-              "state_observation"
-            ]
-          },
-          "allowed_source_kinds": [
-            "entity"
-          ],
-          "required": true,
-          "cardinality": "exactly_one"
-        }
-      },
-      "command_rules": {},
-      "input_order": [
-        "person_location_state"
-      ],
-      "topology": {
-        "candidate_scope": "entity",
-        "grouping": "person_entity",
-        "minimum_groups": 0,
-        "maximum_groups": null
-      }
-    },
     "mobility.vehicle.manual_profile.v1": {
       "concept_id": "vehicle",
       "logical_asset_type": "vehicle",
@@ -4666,9 +4629,27 @@
   },
   "relationship_contract": {
     "supported_types": [
-      "configured_assignment"
+      "configured_assignment",
+      "home_assistant_person_reference"
     ],
-    "physical_connection_inference": "forbidden_without_explicit_vehicle_identity_evidence"
+    "physical_connection_inference": "forbidden_without_explicit_vehicle_identity_evidence",
+    "home_assistant_person_reference": {
+      "property_key": "vehicle.person_entity_id",
+      "target_domain": "person",
+      "authority": "home_assistant",
+      "mobility_person_asset_forbidden": true
+    },
+    "source_provenance": {
+      "authority": "AcceptedSourceBinding",
+      "source_device_reference": "device_registry_id",
+      "via_device_for_source_provenance": false,
+      "source_device_reparenting": false
+    },
+    "canonical_topology": {
+      "via_device_usage": "canonical_composition_only",
+      "current_composition_edges": [],
+      "vehicle_charger_relation_is_topology": false
+    }
   },
   "energy_projection": {
     "contract_id": "MOBILITY_ENERGY_V2",
@@ -4730,7 +4711,7 @@
     "full_semantic_parity_required": true,
     "semantic_property_catalog": "semantic_property_catalog.json",
     "profile_catalog": "profile_catalog.json",
-    "canonical_property_count": 278,
+    "canonical_property_count": 277,
     "runtime_property_authority": "semantic_property_catalog.json"
   },
   "experience_contract": {

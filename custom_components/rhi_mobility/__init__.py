@@ -22,28 +22,6 @@ from .const import (
 
 PLATFORMS=["sensor","number","button","select","text","switch"]
 _LOGGER=logging.getLogger(__name__)
-_MIN_FOUNDATION_RELEASE="F1.8.1"
-_REQUIRED_FOUNDATION_BASELINE="1.8.1"
-
-
-def _foundation_release_tuple(release: str) -> tuple[int, ...] | None:
-    """Parse Foundation release identity without introducing a packaging dependency."""
-    value=str(release or "").strip()
-    if value.startswith("F"):
-        value=value[1:]
-    parts=value.split(".")
-    if not parts or any(not part.isdigit() for part in parts):
-        return None
-    return tuple(int(part) for part in parts)
-
-
-def _foundation_release_supported(release: str) -> bool:
-    """Accept current/future Foundation releases from the declared minimum onward."""
-    current=_foundation_release_tuple(release)
-    minimum=_foundation_release_tuple(_MIN_FOUNDATION_RELEASE)
-    return current is not None and minimum is not None and current >= minimum
-
-
 def _selected_input_registry_present(hass: Any) -> bool:
     registry=hass.data.get(SELECTED_BUILD_INPUT_REGISTRY_KEY,{}) or {}
     return isinstance(registry,dict) and FOUNDATION_DOMAIN_ID in registry
@@ -180,31 +158,53 @@ def _install_domain_configuration_lifecycle(hass: Any, manager: Any, entry: Any,
 
 
 def _load_foundation_registry_api(hass: Any) -> dict[str,Any]:
+    """Load the Foundation public registry by capability, never by exact release identity."""
     try:
-        from custom_components.rhi_foundation.const import RELEASE as foundation_release, SHARED_BASELINE_VERSION as foundation_baseline
         from custom_components.rhi_foundation import shared_registry as foundation_registry
+        try:
+            from custom_components.rhi_foundation.const import RELEASE as foundation_release
+        except (ImportError, ModuleNotFoundError):
+            foundation_release = "UNKNOWN"
+        try:
+            from custom_components.rhi_foundation.const import SHARED_BASELINE_VERSION as foundation_baseline
+        except (ImportError, ModuleNotFoundError):
+            foundation_baseline = "UNKNOWN"
         try:
             from custom_components.rhi_foundation import visual_asset_registry as foundation_visual_registry
         except (ImportError, ModuleNotFoundError):
             foundation_visual_registry = None
-    except (ImportError,ModuleNotFoundError) as exc:
+    except (ImportError, ModuleNotFoundError) as exc:
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
         except ImportError:
-            raise RuntimeError(f"RHI Mobility requires RHI Foundation {_MIN_FOUNDATION_RELEASE} or newer / Shared Baseline {_REQUIRED_FOUNDATION_BASELINE} before runtime setup") from exc
-        raise ConfigEntryNotReady(f"RHI Mobility requires RHI Foundation {_MIN_FOUNDATION_RELEASE} or newer / Shared Baseline {_REQUIRED_FOUNDATION_BASELINE}. Install/update Foundation and retry setup.") from exc
-    if not _foundation_release_supported(foundation_release) or foundation_baseline != _REQUIRED_FOUNDATION_BASELINE:
-        message=("RHI Mobility requires RHI Foundation " f"{_MIN_FOUNDATION_RELEASE} or newer with Shared Baseline {_REQUIRED_FOUNDATION_BASELINE}; " f"loaded Foundation is {foundation_release} / {foundation_baseline}. " "Bindings and supervision are intentionally not started against an incompatible shared contract.")
+            raise RuntimeError("RHI Mobility requires the RHI Foundation public shared-registry capability") from exc
+        raise ConfigEntryNotReady(
+            "RHI Mobility requires RHI Foundation with the public shared-registry capability. "
+            "Install/update Foundation and retry setup."
+        ) from exc
+
+    required = {
+        "register_build": getattr(foundation_registry, "register_domain_build_specification_provider", None),
+        "unregister_build": getattr(foundation_registry, "unregister_domain_build_specification_provider", None),
+        "register_supervision": getattr(foundation_registry, "register_domain_supervisory_status_provider", None),
+        "unregister_supervision": getattr(foundation_registry, "unregister_domain_supervisory_status_provider", None),
+    }
+    missing = sorted(name for name, value in required.items() if not callable(value))
+    if missing:
+        message = (
+            "RHI Foundation is present but does not expose the required public shared-registry "
+            f"capabilities: {', '.join(missing)}. Release/baseline identity is diagnostic only."
+        )
         try:
             from homeassistant.exceptions import ConfigEntryNotReady
-        except ImportError as exc: raise RuntimeError(message) from exc
+        except ImportError as exc:
+            raise RuntimeError(message) from exc
         raise ConfigEntryNotReady(message)
+
     return {
-        "release":foundation_release,
-        "register_build":foundation_registry.register_domain_build_specification_provider,
-        "unregister_build":foundation_registry.unregister_domain_build_specification_provider,
-        "register_supervision":foundation_registry.register_domain_supervisory_status_provider,
-        "unregister_supervision":foundation_registry.unregister_domain_supervisory_status_provider,
+        "release": str(foundation_release),
+        "shared_baseline": str(foundation_baseline),
+        **required,
         "remove_domain_configuration":getattr(foundation_registry,"async_remove_domain_configuration",None),
         "register_visual":getattr(foundation_visual_registry,"register_visual_asset_catalog_provider",None) if foundation_visual_registry else None,
         "unregister_visual":getattr(foundation_visual_registry,"unregister_visual_asset_catalog_provider",None) if foundation_visual_registry else None,

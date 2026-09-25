@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.10.3",
+  "release": "M0.10.4",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -19,7 +19,7 @@
     "applicability_explicit": true,
     "value_semantics_explicit": true
   },
-  "property_count": 280,
+  "property_count": 277,
   "properties": {
     "asset.availability_state": {
       "component_id": "identity",
@@ -36,8 +36,7 @@
       ],
       "applicable_asset_types": [
         "vehicle",
-        "charger",
-        "person"
+        "charger"
       ],
       "producer_types": [
         "DERIVED"
@@ -55,8 +54,7 @@
       "render_as": "text_input",
       "applicable_asset_types": [
         "charger",
-        "vehicle",
-        "person"
+        "vehicle"
       ],
       "placements": {
         "charger": {
@@ -80,17 +78,6 @@
           "unit": null,
           "empty_state_behavior": "hide_if_unavailable",
           "datatype": "state/value"
-        },
-        "person": {
-          "component_id": "identity",
-          "section_id": "controls",
-          "visibility": "product",
-          "render_as": "text_input",
-          "display_order": 10,
-          "friendly_name": "Display Name",
-          "unit": null,
-          "empty_state_behavior": "hide_if_unavailable",
-          "datatype": "state/value"
         }
       },
       "producer_types": [
@@ -109,8 +96,7 @@
         "write_kind": "configuration",
         "asset_types": [
           "vehicle",
-          "charger",
-          "person"
+          "charger"
         ],
         "name": "Display Name"
       },
@@ -329,8 +315,7 @@
       "render_as": "text_input",
       "applicable_asset_types": [
         "charger",
-        "vehicle",
-        "person"
+        "vehicle"
       ],
       "placements": {
         "charger": {
@@ -354,17 +339,6 @@
           "unit": null,
           "empty_state_behavior": "hide_if_unavailable",
           "datatype": "state/value"
-        },
-        "person": {
-          "component_id": "identity",
-          "section_id": "controls",
-          "visibility": "product",
-          "render_as": "text_input",
-          "display_order": 20,
-          "friendly_name": "Short Name",
-          "unit": null,
-          "empty_state_behavior": "hide_if_unavailable",
-          "datatype": "state/value"
         }
       },
       "producer_types": [
@@ -383,8 +357,7 @@
         "write_kind": "configuration",
         "asset_types": [
           "vehicle",
-          "charger",
-          "person"
+          "charger"
         ],
         "name": "Short Name"
       },
@@ -3169,94 +3142,6 @@
         "SOURCE"
       ],
       "value_type": "number"
-    },
-    "person.health": {
-      "component_id": "diagnostics",
-      "section_id": "health",
-      "visibility": "engineering",
-      "unit": null,
-      "entity_type": "sensor",
-      "derived": true,
-      "truth_precedence": [
-        "DERIVED"
-      ],
-      "applicable_asset_types": [
-        "person"
-      ],
-      "producer_types": [
-        "DERIVED"
-      ],
-      "value_type": "text"
-    },
-    "person.health_reason": {
-      "component_id": "diagnostics",
-      "section_id": "health",
-      "visibility": "engineering",
-      "unit": null,
-      "entity_type": "sensor",
-      "derived": true,
-      "truth_precedence": [
-        "DERIVED"
-      ],
-      "applicable_asset_types": [
-        "person"
-      ],
-      "producer_types": [
-        "DERIVED"
-      ],
-      "value_type": "text"
-    },
-    "person.location_state": {
-      "component_id": "location",
-      "section_id": "overview",
-      "visibility": "product",
-      "unit": null,
-      "entity_type": "sensor",
-      "derived": false,
-      "builder_sources": [
-        {
-          "builder_id": "mobility.person.presence.v1",
-          "input_id": "person_location_state",
-          "usage": "observation",
-          "normalizer": "person_presence"
-        }
-      ],
-      "truth_precedence": [
-        "SOURCE"
-      ],
-      "applicable_asset_types": [
-        "person"
-      ],
-      "producer_types": [
-        "SOURCE"
-      ],
-      "value_type": "text"
-    },
-    "person.presence_state": {
-      "component_id": "location",
-      "section_id": "overview",
-      "visibility": "product",
-      "unit": null,
-      "entity_type": "sensor",
-      "derived": true,
-      "builder_sources": [
-        {
-          "builder_id": "mobility.person.presence.v1",
-          "input_id": "person_location_state",
-          "usage": "observation",
-          "normalizer": "person_presence"
-        }
-      ],
-      "truth_precedence": [
-        "SOURCE"
-      ],
-      "applicable_asset_types": [
-        "person"
-      ],
-      "producer_types": [
-        "SOURCE"
-      ],
-      "value_type": "text"
     },
     "vehicle.additional_oil_level_pct": {
       "component_id": "maintenance",
@@ -11137,6 +11022,48 @@
         "max": 100,
         "step": 0.1
       }
+    },
+    "vehicle.person_entity_id": {
+      "component_id": "identity",
+      "section_id": "controls",
+      "visibility": "product",
+      "unit": null,
+      "entity_type": "sensor",
+      "derived": false,
+      "friendly_name": "Person",
+      "render_as": "select",
+      "applicable_asset_types": [
+        "vehicle"
+      ],
+      "placements": {
+        "vehicle": {
+          "component_id": "identity",
+          "section_id": "controls",
+          "visibility": "product",
+          "render_as": "select",
+          "display_order": 130,
+          "friendly_name": "Person",
+          "unit": null,
+          "empty_state_behavior": "show_unconfigured",
+          "datatype": "state/value"
+        }
+      },
+      "producer_types": [
+        "CONFIGURED"
+      ],
+      "truth_precedence": [
+        "CONFIGURED"
+      ],
+      "editable": {
+        "platform": "select",
+        "write_kind": "ha_person",
+        "asset_types": [
+          "vehicle"
+        ],
+        "name": "Person"
+      },
+      "reference_target": "homeassistant.person",
+      "value_type": "text"
     }
   },
   "compatibility": {

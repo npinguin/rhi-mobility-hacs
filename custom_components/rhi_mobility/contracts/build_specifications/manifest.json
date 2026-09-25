@@ -3,7 +3,7 @@
   "contract_version": "1.2.0",
   "publisher": "rhi_mobility",
   "domain_id": "mobility",
-  "specification_count": 5,
+  "specification_count": 4,
   "builders": [
     {
       "builder_id": "mobility.charger.full_evse.v1",
@@ -14,11 +14,6 @@
       "builder_id": "mobility.charger.utility_surface.v1",
       "builder_version": "1.5.2",
       "file": "mobility_charger_utility_surface_v1.json"
-    },
-    {
-      "builder_id": "mobility.person.presence.v1",
-      "builder_version": "1.5.1",
-      "file": "mobility_person_presence_v1.json"
     },
     {
       "builder_id": "mobility.vehicle.connected_vehicle.v1",
@@ -34,7 +29,7 @@
   "legacy_reference": {
     "release": "R43.2.65",
     "legacy_adapter_count": 11,
-    "migration": "11 legacy integration adapters consolidated into 3 physical source families plus person presence and manual-profile configuration builders"
+    "migration": "Legacy integration adapters consolidated into physical source families plus manual-profile configuration; Home Assistant person remains external/native."
   },
   "safety": {
     "creates_binding": false,
@@ -42,20 +37,20 @@
     "creates_public_contract": false,
     "executes_commands": false
   },
-  "release": "M0.10.3",
+  "release": "M0.10.4",
   "closure": {
     "step": 3,
     "full_feature_migration": true,
     "public_runtime_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
     "energy_contract": "MOBILITY_ENERGY_V2",
-    "legacy_compatibility": "exact_public_entity_facade",
+    "legacy_compatibility": "retired",
     "legacy_computation_migrated": true,
     "commands_declared": true,
     "editable_properties_declared": true,
     "queueing": "none",
     "automatic_retry": false,
     "restart_replay": false,
-    "entity_id_drop_in": true,
+    "entity_id_drop_in": false,
     "old_ux_modification_required": false,
     "runtime_feature_parity_proven": false,
     "runtime_convergence_release": "M0.5.7",
@@ -63,18 +58,17 @@
   },
   "builder_version": "1.9.0",
   "specification_versions": {
-    "mobility.charger.full_evse.v1": "1.7.0",
+    "mobility.charger.full_evse.v1": "1.8.0",
     "mobility.charger.utility_surface.v1": "1.5.2",
-    "mobility.person.presence.v1": "1.5.0",
     "mobility.vehicle.connected_vehicle.v1": "1.9.0",
-    "mobility.vehicle.manual_profile.v1": "1.5.0"
+    "mobility.vehicle.manual_profile.v1": "1.5.1"
   },
   "legacy_adapter_consolidation": {
-    "migration": "11 integration observer adapters consolidated into 3 physical builder families plus person presence and manual-profile product builders"
+    "migration": "Integration observer adapters consolidated into physical builder families plus manual-profile product builders; person presence is Home Assistant-owned."
   },
   "step3_closure": {
-    "legacy_compatibility": "exact_public_entity_facade",
-    "entity_id_drop_in": true
+    "legacy_compatibility": "retired",
+    "entity_id_drop_in": false
   },
   "shared_baseline": "1.8.1",
   "selected_domain_build_input_contract": "1.2.0",

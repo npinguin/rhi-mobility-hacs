@@ -8,6 +8,7 @@ from .editable_projection import choice_rows as editable_choice_rows
 from .editable_projection import is_available as editable_is_available
 from .editable_projection import NO_SELECTION
 from .editable_projection import options as editable_options
+from .editable_projection import select_choices as editable_select_choices
 from .property_resolution import PropertyResolutionStatus
 from .property_resolver import PropertyResolver
 
@@ -97,16 +98,21 @@ class MobilityPropertyProjection:
         # Existing R43.2.65 configuration controls (profile/assignment) remain usable even
         # when their current value is unset. Runtime execution controls still fail closed
         # through editable_is_available above.
-        if editable.get("write_kind") in {"profile","selected_charger"} and platform=="select":
+        if editable.get("write_kind") in {"profile","selected_charger","ha_person"} and platform=="select":
             out["editable"]=True
             out["write_supported"]=bool(out["write_target_entity"])
         if platform=="number":
             minimum,maximum,step=editable_bounds(self.manager,self.controller,asset_id,key,editable); out.update({"min":minimum,"max":maximum,"step":step})
         if platform=="select":
             out["options"]=editable_options(self.manager,self.registry,asset_id,key,editable)
-            out["choices"]=editable_choice_rows(self.manager,self.registry,asset_id,key,editable)
-            out["value_field"]="value"; out["label_field"]="label"; out["secondary_label_field"]="secondary_label"
-            if editable.get("write_kind") in {"profile","selected_charger"}:
+            choices=editable_choice_rows(self.manager,self.registry,asset_id,key,editable)
+            transport_by_value=dict(editable_select_choices(self.manager,self.registry,asset_id,key,editable))
+            out["choices"]=[
+                {**row,"transport_value":transport_by_value.get(str(row.get("value")),str(row.get("label") or row.get("value") or ""))}
+                for row in choices
+            ]
+            out["value_field"]="value"; out["label_field"]="label"; out["secondary_label_field"]="secondary_label"; out["transport_value_field"]="transport_value"
+            if editable.get("write_kind") in {"profile","selected_charger","ha_person"}:
                 out["allow_none"]=True; out["none_value"]=NO_SELECTION
         if available and not out["write_target_entity"]:
             out["write_supported"]=False; out["write_blocked_reason"]="editor_entity_not_registered"

@@ -31,7 +31,7 @@ class MobilitySelect(SelectEntity):
         suffix=property_key.replace('.','_')
         self._attr_unique_id=f'{DOMAIN}:{asset_id}:select:{property_key}'; self._attr_suggested_object_id=f'{DOMAIN}_{asset_id}_{suffix}'
         self._attr_name=editable.get('name') or property_key.split('.')[-1].replace('_',' ').title()
-        if editable.get('write_kind') in {"configuration", "profile", "selected_charger", "lifecycle_status_alias", "lifecycle_enabled_alias", "manual_vehicle_configuration"}:
+        if editable.get('write_kind') in {"configuration", "profile", "selected_charger", "ha_person", "lifecycle_status_alias", "lifecycle_enabled_alias", "manual_vehicle_configuration"}:
             self._attr_entity_category=EntityCategory.CONFIG
         self._attr_device_info=logical_device_info(manager.hass,entry_id,manager,asset_id)
     async def async_added_to_hass(self) -> None:
@@ -54,7 +54,7 @@ class MobilitySelect(SelectEntity):
     def current_option(self):
         current=value(self.manager,self.controller,self.asset_id,self.property_key,self.editable)
         kind=self.editable.get('write_kind')
-        if kind in {'profile','selected_charger'}:
+        if kind in {'profile','selected_charger','ha_person'}:
             return display_option(
                 self.manager,self.registry,self.asset_id,self.property_key,self.editable,current
             )
@@ -76,7 +76,7 @@ class MobilitySelect(SelectEntity):
         kind=self.editable.get('write_kind')
         persisted=(
             persisted_option(self.manager,self.registry,self.asset_id,self.property_key,self.editable,option)
-            if kind in {'profile','selected_charger'}
+            if kind in {'profile','selected_charger','ha_person'}
             else option
         )
         await async_write(self.manager,self.controller,self.asset_id,self.property_key,self.editable,persisted)

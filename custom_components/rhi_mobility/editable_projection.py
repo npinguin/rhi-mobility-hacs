@@ -46,6 +46,8 @@ def is_available(manager, controller, asset_id: str, property_key: str, editable
         return any(a.concept_id=="charger" for a in manager.assets.values())
     if write_kind=="profile":
         return bool(getattr(manager.registry,"profiles_for_type",lambda _type: [])(asset.concept_id))
+    if write_kind=="ha_person":
+        return True
     if write_kind=="charger_requested_power":
         return controller.requested_power_descriptor(asset_id) is not None
     if write_kind=="vehicle_requested_power":
@@ -100,6 +102,15 @@ def choice_rows(manager, registry, asset_id: str, property_key: str, editable: d
             for aid,row in sorted(manager.assets.items())
             if row.concept_id=="charger"
         ]
+    if kind=="ha_person":
+        states=getattr(getattr(manager,"hass",None),"states",None)
+        entity_ids=[] if states is None else list(states.async_entity_ids("person"))
+        rows=[]
+        for entity_id in sorted(entity_ids):
+            state=states.get(entity_id)
+            label=str(getattr(state,"name",None) or (getattr(state,"attributes",{}) or {}).get("friendly_name") or entity_id)
+            rows.append({"value":str(entity_id),"label":label,"entity_id":str(entity_id),"external_authority":"homeassistant.person"})
+        return rows
     return [{"value":str(value),"label":str(value)} for value in editable.get("options") or []]
 
 
@@ -131,6 +142,10 @@ def select_choices(manager, registry, asset_id: str, property_key: str, editable
         raw=[(NO_SELECTION,"Automatic / not explicitly selected")]
         rows=[(str(row["value"]),str(row.get("label") or row["value"])) for row in choice_rows(manager,registry,asset_id,property_key,editable)]
         return raw + rows
+    if kind=="ha_person":
+        raw=[(NO_SELECTION,"Not assigned")]
+        rows=[(str(row["value"]),str(row.get("label") or row["value"])) for row in choice_rows(manager,registry,asset_id,property_key,editable)]
+        return raw + rows
     return [(str(value),str(value)) for value in editable.get("options") or []]
 
 
@@ -155,6 +170,8 @@ def options(manager, registry, asset_id: str, property_key: str, editable: dict[
         return [NO_SELECTION,*rows]
     if kind=="selected_charger":
         return [NO_SELECTION,*sorted(aid for aid,a in manager.assets.items() if a.concept_id=="charger")]
+    if kind=="ha_person":
+        return [NO_SELECTION,*[str(row["value"]) for row in choice_rows(manager,registry,asset_id,property_key,editable)]]
     return [str(x) for x in editable.get("options") or []]
 
 
@@ -171,6 +188,8 @@ def value(manager, controller, asset_id: str, property_key: str, editable: dict[
         # This editor owns configured intent only.  Effective/physical relationships are
         # separate canonical truths and must never substitute for configured selection.
         return manager.configuration_value(asset_id,"vehicle.selected_charger",None) or NO_SELECTION
+    if kind=="ha_person":
+        return manager.configuration_value(asset_id,"vehicle.person_entity_id",None) or NO_SELECTION
     if kind=="charger_requested_power":
         return controller.requested_power_readback(asset_id)
     if kind=="vehicle_requested_power":
@@ -246,6 +265,9 @@ async def async_write(manager, controller, asset_id: str, property_key: str, edi
         return
     if kind=="selected_charger":
         await _write_structural_configuration(manager,asset_id,"vehicle.selected_charger",new_value)
+        return
+    if kind=="ha_person":
+        await _write_structural_configuration(manager,asset_id,"vehicle.person_entity_id",new_value)
         return
     if kind=="charger_requested_power":
         result=await controller.async_set_requested_power(asset_id,float(new_value))

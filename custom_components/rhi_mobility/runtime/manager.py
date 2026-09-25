@@ -301,7 +301,7 @@ class MobilityRuntimeManager:
         semantic_properties=semantic_catalog.get('properties') or {}
         definition=semantic_properties.get(property_key) or {}
         editable=definition.get('editable') if isinstance(definition,dict) else None
-        manager_write_kinds={'configuration','profile','selected_charger','manual_vehicle_configuration'}
+        manager_write_kinds={'configuration','profile','selected_charger','ha_person','manual_vehicle_configuration'}
         internal_canonical_write = property_key == 'asset.lifecycle_status' and asset.concept_id in {'vehicle','charger'}
         if semantic_properties:
             if not internal_canonical_write and (not isinstance(editable,dict) or editable.get('write_kind') not in manager_write_kinds):
@@ -326,6 +326,17 @@ class MobilityRuntimeManager:
             if value not in (None,'') and (value not in self.assets or self.assets[value].concept_id!='charger'):
                 raise ValueError('selected charger must reference a current charger asset')
             value=None if value in (None,'') else value
+        if property_key=='vehicle.person_entity_id':
+            if asset.concept_id!='vehicle':
+                raise ValueError('person reference is vehicle-only')
+            value=None if value in (None,'') else str(value)
+            if value is not None:
+                if not value.startswith('person.'):
+                    raise ValueError('person reference must be a Home Assistant person entity')
+                states=getattr(self.hass,'states',None)
+                state=states.get(value) if states is not None else None
+                if state is None:
+                    raise ValueError(f'unknown Home Assistant person entity: {value}')
         if property_key=='vehicle.target_soc_pct':
             value=float(value)
             if not 0 <= value <= 100: raise ValueError('target_soc_pct must be between 0 and 100')
