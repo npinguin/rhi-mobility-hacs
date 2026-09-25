@@ -40,6 +40,12 @@ class MobilityText(TextEntity):
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
         if self.editable.get('write_kind')=='vehicle_charge_mode': self.async_on_remove(self.controller.add_listener(self._changed))
+        # V2 property sensors resolve write_target_entity through the HA entity registry.
+        # The first sensor publication may happen before this TextEntity is registered.
+        # Republish topology once the editor exists so vehicle/charger image_key is not
+        # left permanently read-only because of platform setup ordering.
+        notify=getattr(self.manager,'_notify_topology',None)
+        if callable(notify): notify()
     @callback
     def _changed(self): self.async_write_ha_state()
     @property

@@ -1,3 +1,10 @@
+## M0.10.7 — EDITOR_METADATA_REPUBLISH
+
+- republish canonical property write metadata after Home Assistant text editor registration;
+- close setup-order read-only drift for `vehicle.image_key` and `charger.image_key` while preserving existing select/profile convergence;
+- keep Mobility-owned configuration editors and canonical V2 readback as the only write authority;
+- preserve M0.10.6 semantics, topology, commands, Foundation capability dependency and zero accepted technical/feature debt.
+
 ## M0.10.6 — BOOT_PERFORMANCE
 
 - replace the unconditional second Foundation semantic startup rebuild with revision-aware convergence;
