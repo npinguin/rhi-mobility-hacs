@@ -368,6 +368,91 @@ class MobilityEnergyV2Provider:
             "health": snap.health, "health_reason": getattr(snap, "health_reason", "none"),
         }
 
+    def _unassigned_charger_consumer(self, connection: dict[str, Any]) -> dict[str, Any]:
+        """Expose an unassigned controllable charger as a flexible Energy consumer.
+
+        Vehicle assets remain the preferred semantic consumer. When no vehicle is
+        configured, the charger itself is still a real controllable electrical load
+        and must not disappear from Energy merely because attribution is unavailable.
+        """
+        asset_id = str(connection.get("asset_id") or "")
+        limits = dict(connection.get("limits") or {})
+        capabilities = dict(connection.get("capabilities") or {})
+        lifecycle = str(connection.get("lifecycle_status") or "active")
+        connected = str(connection.get("connection_state") or "") == "asset_connected"
+        adjustable = bool(capabilities.get("adjust_power_supported"))
+        executable = bool(limits.get("requested_power_execution_ready"))
+        return {
+            "asset_id": asset_id,
+            "display_name": connection.get("display_name") or asset_id,
+            "visual_ref": connection.get("visual_ref"),
+            "source_domain": "mobility",
+            "source_asset_kind": "charger",
+            "asset_type": "charger",
+            "energy_asset_role": "flexible_load",
+            "cluster_role": "standalone",
+            "lifecycle_status": lifecycle,
+            "lifecycle_reason": connection.get("lifecycle_reason"),
+            "availability_state": connection.get("availability_state"),
+            "availability_reason": connection.get("availability_reason"),
+            "energy_control_mode": "disabled" if lifecycle == "disabled" else "automatic",
+            "energy_control_hold_state": "none",
+            "energy_control_priority": "normal",
+            "connection_state": connection.get("connection_state"),
+            "assigned_connection_id": asset_id,
+            "effective_connection_id": asset_id,
+            "physical_connection_id": asset_id if connected else None,
+            "operating_state": connection.get("operating_state"),
+            "power_kw": connection.get("power_kw"),
+            "energy_flow_direction": connection.get("energy_flow_direction"),
+            "capacity_kwh": None,
+            "soc_pct": None,
+            "target_soc_pct": None,
+            "stored_energy_kwh": None,
+            "target_energy_kwh": None,
+            "energy_to_target_kwh": None,
+            "required_energy_kwh": None,
+            "ready_by": None,
+            "energy_need_source": None,
+            "energy_need_resolution_state": "vehicle_assignment_required",
+            "planning_input_ready": False,
+            "available_export_energy_kwh": None,
+            "limits": limits,
+            "readiness": dict(connection.get("readiness") or {}),
+            "capabilities": capabilities,
+            "automation": {
+                "allowed": bool(lifecycle != "disabled" and connected and adjustable and executable),
+                "blocked_reason": (
+                    "none"
+                    if lifecycle != "disabled" and connected and adjustable and executable
+                    else "lifecycle_disabled"
+                    if lifecycle == "disabled"
+                    else "physical_connection_missing"
+                    if not connected
+                    else "execution_not_ready"
+                ),
+            },
+            "command_refs": dict(connection.get("command_refs") or {}),
+            "command_resolution": {},
+            "command_feedback": {
+                "command_target_asset_id": asset_id,
+                "command_target_connection_id": asset_id,
+                "physical_connection_id": asset_id if connected else None,
+                "feedback_property": "power_kw",
+                "feedback_timeout_s": 120,
+            },
+            "source_context": {
+                "mobility": {
+                    "consumer_fallback": "unassigned_charger",
+                    "vehicle_assignment_available": False,
+                    "charger_available_for_control": adjustable,
+                }
+            },
+            "source_provenance": dict(connection.get("source_provenance") or {}),
+            "health": connection.get("health"),
+            "health_reason": connection.get("health_reason"),
+        }
+
     def _base_snapshot(self) -> dict[str, Any]:
         consumer_assets = []
         connection_assets = []
@@ -377,7 +462,10 @@ class MobilityEnergyV2Provider:
             if snap.concept_id == "vehicle":
                 consumer_assets.append(self._consumer(aid, snap))
             elif snap.concept_id == "charger":
-                connection_assets.append(self._connection(aid, snap))
+                connection = self._connection(aid, snap)
+                connection_assets.append(connection)
+                if not self.manager.configured_vehicle_for_charger(aid):
+                    consumer_assets.append(self._unassigned_charger_consumer(connection))
         for rel in sorted(self.manager.effective_relationships.values(), key=lambda x: x.relationship_id):
             if rel.relationship_type != "configured_assignment":
                 continue

@@ -1,3 +1,10 @@
+## M0.10.8 — Unassigned charger Energy consumer
+
+- publish an unassigned controllable charger as a Mobility-owned flexible Energy consumer;
+- retain the charger connection asset for physical power accounting;
+- suppress charger fallback when a vehicle consumer is assigned;
+- do not invent vehicle planning facts.
+
 ## M0.10.7 — EDITOR_METADATA_REPUBLISH
 
 - republish canonical property write metadata after Home Assistant text editor registration;
