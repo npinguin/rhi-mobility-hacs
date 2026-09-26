@@ -28,7 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for key in list(created):
             if key not in wanted:
                 entity=created.pop(key); hass.async_create_task(entity.async_remove(force_remove=True))
-        if new: async_add_entities(new,True)
+        if new: async_add_entities(new,False)
 
     sync()
     entry.async_on_unload(manager.add_topology_listener(sync))

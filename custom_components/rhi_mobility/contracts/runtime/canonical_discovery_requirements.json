@@ -2,7 +2,7 @@
   "contract_id": "RHI_DOMAIN_DISCOVERY_REQUIREMENTS_V1",
   "source_authority": "governance/DOMAIN_MODEL.json#foundation_publication",
   "generated_from_model_version": "1.2.0",
-  "release": "M0.10.13",
+  "release": "M0.10.14",
   "runtime_code_generation": false,
   "foundation_role": "technical_discovery_and_selection_only",
   "adapter_match_rules": "integration-specific match evidence may narrow discovery but cannot redefine canonical properties",

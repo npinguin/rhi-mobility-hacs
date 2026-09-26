@@ -66,7 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             BroadDeviceSurfaceSensor("vehicle_intelligence", "Vehicle Intelligence", "Vehicle Intelligence", device_surfaces, manager, controller, device_identifier=entry.entry_id),
             BroadDeviceSurfaceSensor("charger_intelligence", "Charger Intelligence", "Charger Intelligence", device_surfaces, manager, controller, device_identifier=entry.entry_id),
         ],
-        True,
+        False,
     )
 
     created: dict[tuple[str, str], MobilityPropertySensor] = {}
@@ -122,7 +122,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             created_source_children[key] = entity
             new.append(entity)
         if new:
-            async_add_entities(new, True)
+            async_add_entities(new, False)
 
     sync_properties()
     entry.async_on_unload(manager.add_topology_listener(sync_properties))

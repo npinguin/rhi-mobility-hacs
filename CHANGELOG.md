@@ -1,3 +1,11 @@
+## M0.10.14 — Platform materialization
+
+- remove redundant Home Assistant eager `update_before_add` work from Mobility sensor/number/select/switch/text/button materialization;
+- preserve callback-driven current-state projection, canonical Vehicle/Charger semantics and all V2 contracts;
+- add regression coverage that forbids eager platform materialization from returning;
+- publish governed release notes directly in the public HACS release;
+- preserve Shared Baseline 1.8.1 and zero accepted technical/feature debt.
+
 ## M0.10.13 — Domain architecture cleanup
 
 - add aggregate Mobility V2 product contract for UX composition without duplicating semantics;

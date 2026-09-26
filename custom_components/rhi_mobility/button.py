@@ -18,7 +18,7 @@ async def async_setup_entry(hass: HomeAssistant,entry: ConfigEntry,async_add_ent
         for cid in list(created):
             if cid not in wanted:
                 entity=created.pop(cid); hass.async_create_task(entity.async_remove(force_remove=True))
-        if new: async_add_entities(new,True)
+        if new: async_add_entities(new,False)
     sync(); entry.async_on_unload(controller.add_listener(sync))
 
 class MobilityCommandButton(ButtonEntity):
