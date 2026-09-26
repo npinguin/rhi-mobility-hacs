@@ -1,3 +1,11 @@
+## M0.10.16 — Bounded boot lifecycle
+
+- remove unconditional HA registry reconciliation from ordinary Mobility boot;
+- suppress Foundation-handoff-driven registry reconciliation while bootstrapping;
+- retain registry reconciliation only for genuine post-boot structural asset lifecycle changes;
+- preserve flat Vehicle/Charger projection, exact source provenance and non-eager entity materialization;
+- bump governed Mobility model to 1.2.2; Shared Baseline remains 1.8.1.
+
 ## M0.10.15 — Stable HA projection
 
 - keep Mobility → Vehicle/Charger composition authoritative in the RHI semantic graph;

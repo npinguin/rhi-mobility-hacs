@@ -150,23 +150,25 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_re
                     return
                 await manager.async_replace_selected_build_inputs(payloads)
                 manager._last_selected_input_revision_token = handoff_token
-                from .projection import async_reconcile_projection
-                await async_reconcile_projection(
-                    hass,
-                    entry.entry_id,
-                    set(manager.assets),
-                    {
-                        asset_id
-                        for asset_id in manager.assets
-                        if str(
-                            manager.configuration_value(
-                                asset_id, "asset.lifecycle_status", "active"
-                            )
-                            or "active"
-                        ).lower()
-                        == "disabled"
-                    },
-                )
+                state = (hass.data.get(DOMAIN) or {}).get(entry.entry_id) or {}
+                if not state.get("bootstrapping", False):
+                    from .projection import async_reconcile_projection
+                    await async_reconcile_projection(
+                        hass,
+                        entry.entry_id,
+                        set(manager.assets),
+                        {
+                            asset_id
+                            for asset_id in manager.assets
+                            if str(
+                                manager.configuration_value(
+                                    asset_id, "asset.lifecycle_status", "active"
+                                )
+                                or "active"
+                            ).lower()
+                            == "disabled"
+                        },
+                    )
                 if callable(on_rebuilt): on_rebuilt()
             except Exception as exc:
                 _record_handoff_exception(manager,exc)
@@ -416,7 +418,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     async def set_policy(call: Any): return await policy_provider.async_set(call.data["policy_key"],call.data.get("value"))
 
     try:
-        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"product_contract_provider":product_contract_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"visual_catalog_provider":visual_catalog_provider,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"unregister_visual":foundation_api.get("unregister_visual"),"build_registration_unsub":None,"supervision_registration_unsub":None,"visual_registration_unsub":None,"setup_timings_ms":setup_timings_ms}
+        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"command_provider":command_provider,"public_provider":public_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"product_contract_provider":product_contract_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"visual_catalog_provider":visual_catalog_provider,"bootstrapping":True,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"unregister_visual":foundation_api.get("unregister_visual"),"build_registration_unsub":None,"supervision_registration_unsub":None,"visual_registration_unsub":None,"setup_timings_ms":setup_timings_ms}
         hass.data.setdefault(DOMAIN,{})[entry.entry_id]=setup_data
         selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["selected_unsub"]=selected_unsub
         build_registration_attempted=True
@@ -469,6 +471,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         phase_started=perf_counter()
         platforms_forward_started=True; await hass.config_entries.async_forward_entry_setups(entry,PLATFORMS)
         mark_timing("platform_setup", phase_started)
+        setup_data["bootstrapping"]=False
 
         # Foundation may legitimately republish during Mobility platform setup.
         # created. Rebuild only when the structural handoff revision actually changed.
@@ -486,19 +489,13 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         setup_data["startup_convergence_rebuild_required"]=convergence_rebuild_required
         setup_data["startup_handoff_revision_changed"]=post_platform_handoff_token != initial_handoff_token
 
-        phase_started=perf_counter()
-        final_projection=await async_reconcile_projection(
-            hass,
-            entry.entry_id,
-            set(manager.assets),
-            {
-                asset_id
-                for asset_id in manager.assets
-                if str(manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active").lower() == "disabled"
-            },
-        )
-        mark_timing("final_projection_sync", phase_started)
-        setup_data["projection_metrics"]=dict(final_projection or {})
+        # Initial HA devices/entities are materialized by platform DeviceInfo.
+        # Registry reconciliation is lifecycle-only and must not run as a second boot pass.
+        setup_timings_ms["final_projection_sync"]=0.0
+        setup_data["projection_metrics"]={
+            "sync_count": 0,
+            "boot_registry_reconcile_skipped": True,
+        }
         if converged:
             sync_supervision_after_structural_build()
         setup_timings_ms["total_setup"]=round((perf_counter()-setup_started)*1000.0,3)
