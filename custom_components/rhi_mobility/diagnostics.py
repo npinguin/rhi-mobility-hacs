@@ -49,7 +49,7 @@ def _asset_lifecycle(manager: Any, asset_id: str) -> str:
     try:
         return str(manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active")
     except Exception:
-        return "active"
+        return "unknown"
 
 
 def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[str, Any]:
@@ -100,14 +100,14 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
         })
         expected_set = set(expected_source_device_ids)
         actual_set = set(actual_binding_device_ids)
-        topology_match = logical is not None and root_id is not None and actual_parent_id == root_id
+        topology_match = logical is not None and actual_parent_id is None
         rows.append({
             "asset_id": asset_id,
             "asset_type": getattr(asset, "concept_id", None),
             "lifecycle_status": _asset_lifecycle(manager, asset_id),
             "logical_device_id": None if logical is None else str(logical.id),
             "canonical_parent_asset_id": "mobility",
-            "expected_parent_device_id": root_id,
+            "expected_parent_device_id": None,
             "actual_parent_device_id": actual_parent_id,
             "topology_match": topology_match,
             "expected_source_device_ids": expected_source_device_ids,

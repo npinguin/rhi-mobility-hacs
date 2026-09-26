@@ -332,6 +332,8 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     selected_unsub=None; config_unsub=None; projection_config_unsub=None; setup_data=None
     build_registration_attempted=False; supervision_registered=False; platforms_forward_started=False
     build_registration_unsub=None; supervision_registration_unsub=None; visual_registration_unsub=None
+    projection_reconcile_task=None
+    projection_reconcile_dirty=False
 
     def close_supervision_registration() -> None:
         nonlocal supervision_registered, supervision_registration_unsub
@@ -366,28 +368,47 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         sync_supervision_after_structural_build()
 
     def sync_projection_after_lifecycle_change(asset_id: str, property_key: str) -> None:
-        """Reconcile HA device visibility when Mobility lifecycle configuration changes."""
+        """Coalesce lifecycle projection changes into one tracked reconciliation task."""
+        nonlocal projection_reconcile_task, projection_reconcile_dirty
         if property_key != "asset.lifecycle_status":
             return
-        from .projection import async_reconcile_projection
-        hass.async_create_task(
-            async_reconcile_projection(
-                hass,
-                entry.entry_id,
-                set(manager.assets),
-                {
-                    current_id
-                    for current_id in manager.assets
-                    if str(
-                        manager.configuration_value(
-                            current_id, "asset.lifecycle_status", "active"
-                        )
-                        or "active"
-                    ).lower()
-                    == "disabled"
-                },
-            )
+        projection_reconcile_dirty=True
+        if projection_reconcile_task is not None and not projection_reconcile_task.done():
+            return
+
+        async def _run_projection_reconcile() -> None:
+            nonlocal projection_reconcile_task, projection_reconcile_dirty
+            from .projection import async_reconcile_projection
+            try:
+                while projection_reconcile_dirty:
+                    projection_reconcile_dirty=False
+                    await async_reconcile_projection(
+                        hass,
+                        entry.entry_id,
+                        set(manager.assets),
+                        {
+                            current_id
+                            for current_id in manager.assets
+                            if str(
+                                manager.configuration_value(
+                                    current_id, "asset.lifecycle_status", "active"
+                                )
+                                or "active"
+                            ).lower()
+                            == "disabled"
+                        },
+                    )
+            finally:
+                projection_reconcile_task=None
+                if setup_data is not None:
+                    setup_data["projection_reconcile_task"]=None
+
+        projection_reconcile_task=hass.async_create_task(
+            _run_projection_reconcile(),
+            "rhi_mobility_projection_reconcile",
         )
+        if setup_data is not None:
+            setup_data["projection_reconcile_task"]=projection_reconcile_task
 
     async def execute_command(call: Any): return await command_provider.async_execute({"asset_id":call.data["asset_id"],"command_key":call.data["command_key"],"request_id":call.data.get("request_id")})
     async def set_requested_power(call: Any): return await command_provider.async_set_requested_power({"asset_id":call.data["asset_id"],"power_kw":call.data["power_kw"],"request_id":call.data.get("request_id")})
@@ -523,6 +544,13 @@ async def async_unload_entry(hass: Any, entry: Any) -> bool:
         for key in ("projection_config_unsub","config_unsub","selected_unsub"):
             unsub=data.get(key)
             if unsub: unsub()
+        projection_task=data.get("projection_reconcile_task")
+        if projection_task is not None and not projection_task.done():
+            projection_task.cancel()
+            try:
+                await projection_task
+            except asyncio.CancelledError:
+                pass
         if data.get("controller"): data["controller"].shutdown()
         if data.get("runtime"): data["runtime"].clear_all()
 

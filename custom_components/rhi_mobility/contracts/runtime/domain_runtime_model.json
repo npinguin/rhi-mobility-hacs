@@ -4646,15 +4646,17 @@
       "source_device_reparenting": false
     },
     "canonical_topology": {
-      "via_device_usage": "canonical_composition_only",
-      "root_device": "mobility",
+      "via_device_usage": "forbidden_for_semantic_composition",
+      "semantic_root": "mobility",
       "current_composition_edges": [
         "mobility->vehicle",
         "mobility->charger"
       ],
-      "maximum_ha_depth": 1,
+      "maximum_ha_depth": 0,
       "presentation_groups_are_devices": false,
-      "vehicle_charger_relation_is_topology": false
+      "vehicle_charger_relation_is_topology": false,
+      "semantic_composition_authority": "rhi_canonical_graph",
+      "home_assistant_parent_child_adoption": "deferred_until_ha_mature"
     }
   },
   "energy_projection": {

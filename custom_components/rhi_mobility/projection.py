@@ -38,9 +38,8 @@ def logical_device_info(hass: Any, entry_id: str, manager: Any, asset_id: str, *
         "manufacturer": str(manufacturer),
         "model": str(profile_model),
         "sw_version": RELEASE,
-        # Canonical composition only: every Mobility Vehicle/Charger lives one
-        # level below the existing Mobility module/root device.
-        "via_device": (DOMAIN, entry_id),
+        # Semantic Mobility composition is owned by the canonical RHI graph.
+        # Do not project Vehicle/Charger parentage into HA via_device/parent_device.
     }
 
 
@@ -82,31 +81,32 @@ async def async_reconcile_projection(
             if device_id:
                 entities_by_device.setdefault(str(device_id), []).append(entity)
 
-        # M0.10.5 in-place topology migration. Reuse existing canonical device
-        # identities and move only Mobility-owned logical assets under the existing
-        # Mobility module/root device.
+        # M0.10.15 in-place topology migration. Canonical Vehicle/Charger
+        # composition belongs to the RHI semantic graph, not HA Device Registry
+        # parentage. Reuse device identities and actively remove historical
+        # Mobility-root via_device links without waiting for the root to exist.
         root = device_registry.async_get_device(identifiers={(DOMAIN, entry_id)})
-        if root is not None:
-            for asset_id in sorted(current_asset_ids):
-                logical = device_registry.async_get_device(identifiers={(DOMAIN, asset_id)})
-                if logical is None:
-                    continue
-                changes = {}
-                if getattr(logical, "via_device_id", None) != root.id:
-                    changes["via_device_id"] = root.id
-                integration_disabler = getattr(
-                    getattr(dr, "DeviceEntryDisabler", None),
-                    "INTEGRATION",
-                    "integration",
-                )
-                disabled_by = getattr(logical, "disabled_by", None)
-                if asset_id in disabled_asset_ids and disabled_by is None:
-                    changes["disabled_by"] = integration_disabler
-                elif asset_id not in disabled_asset_ids and disabled_by == integration_disabler:
-                    changes["disabled_by"] = None
-                if changes:
-                    device_registry.async_update_device(logical.id, **changes)
+        for asset_id in sorted(current_asset_ids):
+            logical = device_registry.async_get_device(identifiers={(DOMAIN, asset_id)})
+            if logical is None:
+                continue
+            changes = {}
+            if getattr(logical, "via_device_id", None) is not None:
+                changes["via_device_id"] = None
+            integration_disabler = getattr(
+                getattr(dr, "DeviceEntryDisabler", None),
+                "INTEGRATION",
+                "integration",
+            )
+            disabled_by = getattr(logical, "disabled_by", None)
+            if asset_id in disabled_asset_ids and disabled_by is None:
+                changes["disabled_by"] = integration_disabler
+            elif asset_id not in disabled_asset_ids and disabled_by == integration_disabler:
+                changes["disabled_by"] = None
+            if changes:
+                device_registry.async_update_device(logical.id, **changes)
 
+        if root is not None:
             # Previous releases materialised three intelligence summary devices.
             # Their entities now belong on the Mobility root; move the existing
             # registry rows in-place so no duplicate entity identity is created.

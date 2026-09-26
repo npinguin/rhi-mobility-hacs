@@ -1,3 +1,14 @@
+## M0.10.15 — Stable HA projection
+
+- keep Mobility → Vehicle/Charger composition authoritative in the RHI semantic graph;
+- project Vehicle/Charger as independent Home Assistant devices;
+- clear historical semantic `via_device_id` links in-place without changing device identity;
+- make late source materialization non-blocking for canonical topology;
+- coalesce and track lifecycle projection reconciliation across reload/unload;
+- fail lifecycle diagnostics closed to `unknown`;
+- retain M0.10.14 callback-driven non-eager entity materialization;
+- bump governed Mobility model to 1.2.1; Shared Baseline remains 1.8.1.
+
 ## M0.10.14 — Platform materialization
 
 - remove redundant Home Assistant eager `update_before_add` work from Mobility sensor/number/select/switch/text/button materialization;

@@ -37,7 +37,7 @@
     "creates_public_contract": false,
     "executes_commands": false
   },
-  "release": "M0.10.14",
+  "release": "M0.10.15",
   "closure": {
     "step": 3,
     "full_feature_migration": true,
