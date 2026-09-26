@@ -1,11 +1,11 @@
-## M0.10.12 — Domain architecture cleanup
+## M0.10.13 — Domain architecture cleanup
 
 - add aggregate Mobility V2 product contract for UX composition without duplicating semantics;
 - codify HA-native/RHI semantic ownership and retain typed property resolution as canonical grammar;
 - separate build/publication evidence from runtime pilot evidence;
 - preserve Vehicle/Charger model 1.1.1 and zero accepted technical/feature debt.
 
-## M0.10.12 — V2 pilot and maintenance closure
+## M0.10.13 — V2 pilot and maintenance closure
 
 - normalize maintenance/service sign semantics across supported vehicle providers and fail closed on unknown sign conventions;
 - publish backend-owned canonical maintenance summaries for the V2 Overview surface;
