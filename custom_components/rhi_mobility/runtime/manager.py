@@ -962,9 +962,16 @@ class MobilityRuntimeManager:
                 snap=self.snapshots.get(asset_id)
                 if entity_id:
                     state=self.hass.states.get(entity_id)
-                    if state is None or state.state in (None,'unknown','unavailable',''):
+                    is_stateless_button = row.get('technical_capability') == 'button_write_surface'
+                    if state is None:
+                        row['status']='STALE'
+                        row['reason']='matched source entity is currently unavailable'
+                    elif state.state in (None,'unknown','unavailable','') and not is_stateless_button:
                         row['status']='STALE'
                         row['reason']='matched source is currently unavailable/unknown'
+                    elif is_stateless_button:
+                        row['status']='MATCHED'
+                        row['reason']='stateless command surface is invokable; state value is not telemetry'
                     else:
                         props=row.get('normalized_properties') or []
                         normalized=[key for key in props if snap is not None and snap.quality.get(key)==f'candidate:{candidate_id}']

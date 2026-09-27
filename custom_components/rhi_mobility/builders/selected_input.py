@@ -562,10 +562,14 @@ def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedB
                 continue
             existing = asset_inputs[technical_key].get(input_id)
             if existing is not None:
-                # Never choose arbitrarily between equal candidates.
+                # Duplicate publication evidence for the same immutable candidate is
+                # not a second physical source and must not create false ambiguity.
+                if str(existing.get("candidate_id") or "") == candidate_id:
+                    continue
+                # Distinct physical candidates remain fail-closed.
                 asset_inputs[technical_key].pop(input_id, None)
                 ambiguous_inputs.add((technical_key, input_id))
-                reject("AMBIGUOUS", "multiple candidates violate Mobility cardinality")
+                reject("AMBIGUOUS", "multiple distinct candidates violate Mobility cardinality")
                 continue
             selected_candidate = dict(candidate)
             selected_candidate["_rhi_candidate_match"] = candidate_match

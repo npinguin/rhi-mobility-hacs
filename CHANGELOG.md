@@ -1,3 +1,11 @@
+## M0.10.18 — Cross-house normalization
+
+- normalize explicit Cardata phase-count enum variants without guessing;
+- deduplicate repeated evidence for the same immutable selected candidate while retaining fail-closed ambiguity for distinct sources;
+- treat stateless HA button write surfaces by invocability rather than telemetry state;
+- preserve exact physical target-scope guards for MQTT/OCPP and other command sources;
+- preserve canonical Mobility model 1.2.2, Shared Baseline 1.8.1 and zero accepted technical/feature debt.
+
 ## M0.10.17 — Deterministic startup convergence
 
 - define Mobility rebuild identity from selected logical-source structure rather than Foundation revision/generation counters;

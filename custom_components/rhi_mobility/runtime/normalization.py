@@ -192,10 +192,21 @@ def currency_value(value: Any, unit: str | None = None) -> float | None:
     return _number(value)
 
 def phase_count(value: Any, unit: str | None = None) -> int | None:
+    """Normalize explicit 1/2/3-phase source values without guessing."""
     n=_number(value)
-    if n is None: return None
-    i=int(round(n))
-    return i if 1 <= i <= 3 and abs(n-i) < 1e-9 else None
+    if n is not None:
+        i=int(round(n))
+        return i if 1 <= i <= 3 and abs(n-i) < 1e-9 else None
+    raw=_text(value)
+    if raw is None:
+        return None
+    token=raw.lower().replace("-","_").replace(" ","_")
+    aliases={
+        "one_phase":1,"single_phase":1,"1_phase":1,"phase_1":1,
+        "two_phase":2,"2_phase":2,"phase_2":2,
+        "three_phase":3,"threephase":3,"3_phase":3,"phase_3":3,
+    }
+    return aliases.get(token)
 
 def integer_count(value: Any, unit: str | None = None) -> int | None:
     n=_number(value)

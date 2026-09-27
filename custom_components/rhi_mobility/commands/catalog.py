@@ -116,6 +116,10 @@ class MobilityControlCatalog:
             state=self.hass.states.get(source.entity_id)
             if state is None:
                 return False,'source_temporarily_unavailable'
+            # HA buttons are stateless command surfaces: state is not command
+            # readiness. Presence of the accepted entity proves invocability.
+            if getattr(source, 'technical_capability', None)=='button_write_surface':
+                return True,'available'
             if str(getattr(state,'state','')).lower() in {'unknown','unavailable',''}:
                 return False,'source_temporarily_unavailable'
             return True,'available'
