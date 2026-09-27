@@ -6,6 +6,9 @@ local to async_setup_entry so config-flow loading never depends on runtime readi
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
+import hashlib
+import json
 from datetime import datetime, timezone
 import logging
 from time import perf_counter
@@ -28,24 +31,63 @@ def _selected_input_registry_present(hass: Any) -> bool:
     return isinstance(registry,dict) and FOUNDATION_DOMAIN_ID in registry
 
 
-def _selected_input_revision_token(hass: Any) -> tuple:
-    """Return a cheap deterministic token for Foundation structural handoff identity."""
-    rows = _selected_input_payloads(hass)
-    token = []
-    for row in rows:
-        selection = row.get("selection") or {}
-        token.append((
-            str(row.get("builder_id") or ""),
-            str(selection.get("integration_domain") or ""),
-            tuple(sorted(str(value) for value in (selection.get("selected_device_ids") or []))),
-            int(row.get("configuration_revision") or 0),
-            int(row.get("candidate_revision") or 0),
-            int(row.get("build_input_revision") or 0),
-            int(selection.get("publication_revision") or 0),
-            str(selection.get("configured_specification_fingerprint") or ""),
-            str(selection.get("current_specification_fingerprint") or ""),
-        ))
-    return tuple(sorted(token))
+def _selected_input_structural_token(hass: Any) -> str | None:
+    """Mirror Foundation F1.8.22 structural handoff normalization exactly."""
+    if not _selected_input_registry_present(hass):
+        return None
+    normalized: list[dict[str, Any]] = []
+    for raw in _selected_input_payloads(hass):
+        item = deepcopy(raw)
+        item.pop("configuration_revision", None)
+        item.pop("candidate_revision", None)
+        item.pop("build_input_revision", None)
+        selection = dict(item.get("selection") or {})
+        selection.pop("publication_revision", None)
+        item["selection"] = selection
+        for evidence in item.get("candidate_evidence", []) or []:
+            if not isinstance(evidence, dict):
+                continue
+            quality = dict(evidence.get("quality") or {})
+            quality.pop("availability", None)
+            evidence["quality"] = quality
+        for group in item.get("candidate_groups", []) or []:
+            if not isinstance(group, dict):
+                continue
+            for candidate in group.get("candidates", []) or []:
+                if not isinstance(candidate, dict):
+                    continue
+                quality = dict(candidate.get("quality") or {})
+                quality.pop("availability", None)
+                candidate["quality"] = quality
+        normalized.append(item)
+    payload = json.dumps(normalized, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+async def _async_apply_selected_inputs_if_changed(
+    hass: Any,
+    manager: Any,
+    *,
+    reason: str,
+    payloads: list[dict] | None = None,
+    force: bool = False,
+) -> bool:
+    """Apply the authoritative Foundation handoff exactly once per structure."""
+    lock = getattr(manager, "_selected_input_apply_lock", None)
+    if lock is None:
+        lock = asyncio.Lock()
+        manager._selected_input_apply_lock = lock
+    async with lock:
+        token = _selected_input_structural_token(hass)
+        if not force and getattr(manager, "_last_selected_input_structural_token", None) == token:
+            return False
+        authoritative_payloads = _selected_input_payloads(hass) if payloads is None else payloads
+        await manager.async_replace_selected_build_inputs(authoritative_payloads)
+        manager._last_selected_input_structural_token = token
+        manager._semantic_build_count = int(getattr(manager, "_semantic_build_count", 0)) + 1
+        reasons = list(getattr(manager, "_semantic_build_reasons", ()) or ())
+        reasons.append(str(reason))
+        manager._semantic_build_reasons = reasons[-20:]
+        return True
 
 
 def _selected_input_payloads(hass: Any) -> list[dict]:
@@ -107,8 +149,9 @@ async def _async_import_existing_selected_inputs(hass: Any, manager: Any) -> boo
         if callable(notify): notify()
         return False
     try:
-        await manager.async_replace_selected_build_inputs(_selected_input_payloads(hass))
-        manager._last_selected_input_revision_token = _selected_input_revision_token(hass)
+        await _async_apply_selected_inputs_if_changed(
+            hass, manager, reason="startup"
+        )
         return True
     except Exception as exc:
         _record_handoff_exception(manager,exc)
@@ -145,11 +188,17 @@ def _install_selected_input_lifecycle(hass: Any, manager: Any, entry: Any, on_re
                 return
             try:
                 payloads=_selected_input_payloads(hass) if registry_present else []
-                handoff_token=_selected_input_revision_token(hass)
-                if getattr(manager, "_last_selected_input_revision_token", None) == handoff_token:
+                handoff_token=_selected_input_structural_token(hass)
+                force_removed = reason == "removed" and not registry_present
+                if not force_removed and getattr(manager, "_last_selected_input_structural_token", None) == handoff_token:
                     return
-                await manager.async_replace_selected_build_inputs(payloads)
-                manager._last_selected_input_revision_token = handoff_token
+                await _async_apply_selected_inputs_if_changed(
+                    hass,
+                    manager,
+                    reason=f"foundation_event:{reason}",
+                    payloads=payloads,
+                    force=force_removed,
+                )
                 state = (hass.data.get(DOMAIN) or {}).get(entry.entry_id) or {}
                 if not state.get("bootstrapping", False):
                     from .projection import async_reconcile_projection
@@ -430,24 +479,19 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
             visual_handle=register_visual(hass,publisher_domain=DOMAIN,provider=visual_catalog_provider,publication_revision=visual_catalog_provider.publication_revision)
             visual_registration_unsub=visual_handle if callable(visual_handle) else None
             setup_data["visual_registration_unsub"]=visual_registration_unsub
-        initial_handoff_token=_selected_input_revision_token(hass)
+        initial_handoff_token=_selected_input_structural_token(hass)
         phase_started=perf_counter()
         imported=await _async_import_existing_selected_inputs(hass,manager)
         mark_timing("initial_foundation_build", phase_started)
-        from .projection import async_reconcile_projection
-        phase_started=perf_counter()
-        initial_projection=await async_reconcile_projection(
-            hass,
-            entry.entry_id,
-            set(manager.assets),
-            {
-                asset_id
-                for asset_id in manager.assets
-                if str(manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active").lower() == "disabled"
-            },
-        )
-        mark_timing("initial_projection_sync", phase_started)
-        setup_data["projection_metrics"]=dict(initial_projection or {})
+        # Ordinary boot never scans or mutates HA registries. Initial devices and
+        # entities are materialized declaratively by the platform DeviceInfo surface.
+        # Projection reconciliation is reserved for genuine post-boot lifecycle changes.
+        setup_timings_ms["initial_projection_sync"]=0.0
+        setup_data["projection_metrics"]={
+            "sync_count": 0,
+            "boot_registry_reconcile_skipped": True,
+            "initial_registry_reconcile_skipped": True,
+        }
         if imported:
             sync_supervision_after_structural_build()
         config_unsub=_install_domain_configuration_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["config_unsub"]=config_unsub
@@ -476,18 +520,28 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         # Foundation may legitimately republish during Mobility platform setup.
         # created. Rebuild only when the structural handoff revision actually changed.
         # M0.10.5 rebuilt unconditionally here, doubling semantic startup work.
-        post_platform_handoff_token=_selected_input_revision_token(hass)
-        applied_handoff_token=getattr(manager, "_last_selected_input_revision_token", None)
+        post_platform_handoff_token=_selected_input_structural_token(hass)
+        applied_handoff_token=getattr(manager, "_last_selected_input_structural_token", None)
         convergence_rebuild_required=applied_handoff_token != post_platform_handoff_token
         if convergence_rebuild_required:
             phase_started=perf_counter()
-            converged=await _async_import_existing_selected_inputs(hass,manager)
+            rebuilt=await _async_apply_selected_inputs_if_changed(
+                hass, manager, reason="startup_convergence"
+            )
+            converged=rebuilt or imported
             mark_timing("convergence_foundation_build", phase_started)
         else:
             converged=imported
             setup_timings_ms["convergence_foundation_build"]=0.0
         setup_data["startup_convergence_rebuild_required"]=convergence_rebuild_required
-        setup_data["startup_handoff_revision_changed"]=post_platform_handoff_token != initial_handoff_token
+        setup_data["startup_handoff_structural_changed"]=post_platform_handoff_token != initial_handoff_token
+        # Backward-compatible diagnostic name; semantics are now structural, not revision-based.
+        setup_data["startup_handoff_revision_changed"]=setup_data["startup_handoff_structural_changed"]
+        setup_data["initial_structural_token"]=initial_handoff_token
+        setup_data["applied_structural_token"]=getattr(manager, "_last_selected_input_structural_token", None)
+        setup_data["post_platform_structural_token"]=post_platform_handoff_token
+        setup_data["semantic_build_count"]=int(getattr(manager, "_semantic_build_count", 0))
+        setup_data["semantic_build_reasons"]=list(getattr(manager, "_semantic_build_reasons", ()) or ())
 
         # Initial HA devices/entities are materialized by platform DeviceInfo.
         # Registry reconciliation is lifecycle-only and must not run as a second boot pass.
@@ -499,9 +553,10 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         if converged:
             sync_supervision_after_structural_build()
         setup_timings_ms["total_setup"]=round((perf_counter()-setup_started)*1000.0,3)
+        last_build=dict(getattr(manager, "last_build_attempt", {}) or {})
         setup_data["setup_metrics"]={
-            "selected_input_count": len(_selected_input_payloads(hass)),
-            "asset_count": len(manager.assets),
+            "selected_input_count": int(last_build.get("selected_input_count") or len(_selected_input_payloads(hass))),
+            "asset_count": int(last_build.get("asset_count") or len(manager.assets)),
         }
         return True
     except Exception:

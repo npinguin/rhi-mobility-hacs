@@ -1,3 +1,11 @@
+## M0.10.17 — Deterministic startup convergence
+
+- define Mobility rebuild identity from selected logical-source structure rather than Foundation revision/generation counters;
+- apply Foundation selected inputs through one idempotent structural gate for startup, handoff events and post-platform convergence;
+- preserve flat Home Assistant projection and lifecycle-only registry reconciliation;
+- expose initial/applied/post-platform structural tokens plus semantic build count/reasons in diagnostics;
+- retain existing AcceptedSourceBinding semantics: logical Mobility objects remain RHI-owned and source physical devices remain source-integration-owned.
+
 ## M0.10.16 — Bounded boot lifecycle
 
 - remove unconditional HA registry reconciliation from ordinary Mobility boot;
