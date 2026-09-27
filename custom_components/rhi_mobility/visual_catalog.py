@@ -30,6 +30,22 @@ _CHARGER_REFS = (
     "fibaro.wall-plug-2.zwave-plus.be-fr.white",
 )
 
+_PRESENTATION_PATHS: dict[str, str] = {
+    "audi.q8.4m.2024-2026.tfsi-e": "assets/vehicles/vehicle_audi_q8.webp",
+    "bmw.x1.u11.2025-2026.phev": "assets/vehicles/vehicle_bmw_x1_phev.webp",
+    "mercedes.gla.h247.2023-2026.phev": "assets/vehicles/vehicle_mercedes_gla.webp",
+    "renault.scenic.e-tech.2024-2026.techno": "assets/vehicles/vehicle_renault_scenic_techno_ev.webp",
+    "volkswagen.id4.2024-2026.ev": "assets/vehicles/vehicle_vw_id4.webp",
+    "generic.guest.current.phev-1phase": "assets/vehicles/vehicle_guest.webp",
+    "generic.guest.current.ev-3phase": "assets/vehicles/vehicle_guest.webp",
+    "generic.fallback": "assets/vehicles/vehicle_fallback.png",
+    "wallbox.commander2.white": "assets/chargers/charger_wallbox_white.webp",
+    "wallbox.commander2.black": "assets/chargers/charger_wallbox_black.webp",
+    "peblar.business.socket.factory": "assets/chargers/charger_peblar.webp",
+    "fibaro.wall-plug-2.zwave-plus.be-fr.white": "assets/chargers/charger_utility_plug.webp",
+    "charger.generic.fallback": "assets/chargers/charger_fallback.png",
+}
+
 _PROFILE_DEFAULTS: dict[str, str] = {
     "audi_q8_55_tfsi_e_quattro_my2025": _PREFIX_VEHICLE + "audi.q8.4m.2024-2026.tfsi-e.daytona-grey",
     "audi_q8_tfsi_55e_2025_phev": _PREFIX_VEHICLE + "audi.q8.4m.2024-2026.tfsi-e.daytona-grey",
@@ -103,19 +119,39 @@ def resolve_visual_ref(asset_type: str, image_key: Any = None, profile_id: Any =
         return profile_ref
     return (_PREFIX_CHARGER if kind == "charger" else _PREFIX_VEHICLE) + "generic.fallback"
 
+def _presentation_path(visual_ref: str) -> str:
+    if visual_ref == _PREFIX_VEHICLE + "generic.fallback":
+        return _PRESENTATION_PATHS["generic.fallback"]
+    if visual_ref == _PREFIX_CHARGER + "generic.fallback":
+        return _PRESENTATION_PATHS["charger.generic.fallback"]
+    prefix = _PREFIX_CHARGER if visual_ref.startswith(_PREFIX_CHARGER) else _PREFIX_VEHICLE
+    body = visual_ref.removeprefix(prefix)
+    for key, path in _PRESENTATION_PATHS.items():
+        if key in {"generic.fallback", "charger.generic.fallback"}:
+            continue
+        if body == key or body.startswith(key + "."):
+            return path
+    raise ValueError(f"missing_presentation_path:{visual_ref}")
+
+
 class MobilityVisualAssetCatalogProvider:
     """Bounded startup catalog registered once with Foundation."""
 
-    publication_revision = 1
+    publication_revision = 2
 
     def get_visual_assets(self) -> list[dict[str, Any]]:
         rows = []
         for visual_ref in sorted(_VISUAL_REFS):
+            package_path = _presentation_path(visual_ref)
             rows.append({
                 "visual_ref": visual_ref,
                 "asset_type": "charger" if visual_ref.startswith(_PREFIX_CHARGER) else "vehicle",
                 "owner_domain": "rhi_mobility",
-                "revision": 1,
+                "revision": 2,
                 "variant_keys": list(_VARIANTS),
+                "presentation": {
+                    "package_id": "rhi-mobility-ux",
+                    "variants": {variant: package_path for variant in _VARIANTS},
+                },
             })
         return deepcopy(rows)

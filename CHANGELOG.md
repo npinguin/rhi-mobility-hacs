@@ -1,3 +1,10 @@
+## M0.10.19 — VISUAL_REGISTRY_PRESENTATION
+
+- register package-relative Mobility visual presentation locators with Foundation at boot;
+- keep visual_ref semantic ownership in Mobility and rendering generic for consumers;
+- require zero Energy-specific model mapping for new Mobility visuals;
+- preserve existing V2 runtime semantics and Shared Baseline 1.8.1.
+
 ## M0.10.18 — Cross-house normalization
 
 - normalize explicit Cardata phase-count enum variants without guessing;
