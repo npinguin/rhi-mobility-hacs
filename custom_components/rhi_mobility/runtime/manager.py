@@ -39,6 +39,7 @@ class MobilityRuntimeManager:
         self.last_build_attempt: dict[str,Any] = {'status':'WAITING_FOR_FOUNDATION','observed_at':None}
         self._health_cache: dict[str,tuple[str,str]] = {}
         self._binding_plans: dict[str, Any] = {}
+        self._runtime_revision: int = 0
 
     @property
     def bindings(self):
@@ -937,7 +938,9 @@ class MobilityRuntimeManager:
                 snap.values['charger.assigned_vehicle_id']=rel.from_asset_id; snap.quality['charger.assigned_vehicle_id']='configured_assignment'
         self._reconcile_relationship_health()
         after=(dict(snap.values),dict(snap.quality),snap.health,snap.health_reason,snap.source_configuration_revision,snap.build_input_revision)
-        if after!=before: self._notify_asset(asset_id)
+        if after!=before:
+            self._runtime_revision += 1
+            self._notify_asset(asset_id)
 
     def supported_property_keys(self, asset_id: str) -> set[str]:
         keys: set[str] = set()

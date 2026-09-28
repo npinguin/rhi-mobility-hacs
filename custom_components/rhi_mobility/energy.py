@@ -207,7 +207,7 @@ class MobilityEnergyV2Provider:
         charger_id = self._configured_charger(aid)
         charger = self.manager.snapshots.get(charger_id) if charger_id else None
         cvals = {} if charger is None else charger.values
-        lifecycle = self._v(aid, "lifecycle_status") or "active"
+        lifecycle = self._v(aid, "asset.lifecycle_status") or self._v(aid, "lifecycle_status") or "active"
         availability = self._v(aid, "asset.availability_state") or "unknown"
         profile_id = self._v(aid, "asset.profile_id")
         cap = self._v(aid, "vehicle.battery_capacity_kwh")
@@ -229,7 +229,13 @@ class MobilityEnergyV2Provider:
         if power is None and physical_connection:
             power = cvals.get("charger.power_kw")
         flow = "unknown" if power is None else ("charging" if float(power) > 0.05 else "idle")
-        planning_ready = lifecycle != "disabled" and soc is not None and target is not None and cap is not None
+        planning_blockers = []
+        if soc is None: planning_blockers.append("current_soc_unavailable")
+        if target is None: planning_blockers.append("target_soc_not_configured")
+        if cap is None: planning_blockers.append("battery_capacity_unavailable")
+        if ready_by is None: planning_blockers.append("ready_by_not_configured")
+        if charger_id is None: planning_blockers.append("charger_not_assigned")
+        planning_ready = lifecycle != "disabled" and not planning_blockers
         profile_resolved = self._profile_exists(profile_id)
         energy_need_resolution = self._energy_need_resolution(lifecycle, snap, soc, target, cap, profile_id, profile_resolved)
         desc = self.controller.requested_power_descriptor(charger_id) if charger_id else None
@@ -329,6 +335,10 @@ class MobilityEnergyV2Provider:
             "profile_resolution_state": "resolved" if profile_resolved else "unresolved",
             "capacity_source": ("configuration" if self.manager.configuration_value(aid, "vehicle.battery_capacity_kwh", None) is not None else ("profile" if cap is not None and profile_resolved else ("source" if cap is not None else "unavailable"))),
             "planning_input_ready": planning_ready,
+            "planning_blockers": planning_blockers,
+            "planning_readiness": {"state": "READY" if planning_ready else "INCOMPLETE", "blockers": planning_blockers},
+            "runtime_revision": int(getattr(self.manager, "_runtime_revision", 0) or 0),
+            "source_observed_at": self.public._source_observed_at(aid) if self.public is not None else None,
             "available_export_energy_kwh": None,
             "limits": limits,
             "readiness": readiness,
