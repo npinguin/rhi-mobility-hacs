@@ -1,4 +1,4 @@
-## M0.10.20 — LIVE_PLANNING_FRESHNESS
+## M0.10.21 — LIVE_PLANNING_FRESHNESS
 
 - register package-relative Mobility visual presentation locators with Foundation at boot;
 - keep visual_ref semantic ownership in Mobility and rendering generic for consumers;

@@ -345,6 +345,28 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             key=lambda row: (self._PRODUCT_FIELD_ORDER.get(row[0], 999), row[0]),
         )
 
+    def _profile_owned_product_keys(self, asset_id: str) -> set[str]:
+        """Return product fields whose inherited value is owned by a profile."""
+        asset = self._product_assets().get(asset_id)
+        registry = self._registry()
+        if asset is None or registry is None:
+            return set()
+        asset_type = str(getattr(asset, "concept_id", ""))
+        properties = dict((getattr(registry, "semantic_catalog", {}) or {}).get("properties") or {})
+        return {
+            str(property_key)
+            for property_key, definition in properties.items()
+            if isinstance(definition, dict)
+            and definition.get("profile_field")
+            and (
+                not definition.get("applicable_asset_types")
+                or asset_type in set(definition.get("applicable_asset_types") or [])
+            )
+        }
+
+    def _has_effective_profile(self, asset_id: str) -> bool:
+        return self._resolved_product_value(asset_id, "asset.profile_id") not in (None, "")
+
     def _profile_options(self, asset_id: str) -> dict[str, str]:
         asset = self._product_assets().get(asset_id)
         if asset is None:
@@ -364,13 +386,26 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         snapshot = getattr(runtime, "snapshots", {}).get(asset_id)
         return None if snapshot is None else snapshot.values.get(property_key)
 
-    def _product_schema(self, asset_id: str):
+    def _product_schema(self, asset_id: str, *, advanced: bool = False):
         runtime = self._runtime()
         fields: dict = {}
         if runtime is None:
             return vol.Schema(fields)
+        profile_owned = self._profile_owned_product_keys(asset_id)
+        profile_active = self._has_effective_profile(asset_id)
         for property_key, editable in self._product_editables(asset_id):
-            current = self._resolved_product_value(asset_id, property_key)
+            if profile_active:
+                if advanced and property_key not in profile_owned:
+                    continue
+                if not advanced and property_key in profile_owned:
+                    continue
+            elif advanced:
+                continue
+            current = (
+                runtime.configuration_value(asset_id, property_key, None)
+                if advanced
+                else self._resolved_product_value(asset_id, property_key)
+            )
             platform = editable.get("platform")
             write_kind = editable.get("write_kind")
             if platform == "text":
@@ -441,12 +476,12 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 fields[vol.Optional(property_key, default=bool(current) if current is not None else False)] = bool
         return vol.Schema(fields)
 
-    def _product_form(self, asset_id: str, *, user_input: dict | None = None, error: str | None = None):
+    def _product_form(self, asset_id: str, *, advanced: bool = False, user_input: dict | None = None, error: str | None = None):
         asset = self._product_assets().get(asset_id)
         display = asset_id if asset is None else str(getattr(asset, "display_name", None) or asset_id)
         return self.async_show_form(
-            step_id="edit_product_asset",
-            data_schema=self._product_schema(asset_id),
+            step_id="edit_product_asset_advanced" if advanced else "edit_product_asset",
+            data_schema=self._product_schema(asset_id, advanced=advanced),
             errors={"base": error} if error else {},
             description_placeholders={"asset": display},
         )
@@ -631,6 +666,8 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                     errors={"base": "unknown_product_asset"},
                 )
             self._target_product_asset = asset_id
+            if self._has_effective_profile(asset_id):
+                return await self.async_step_product_configuration_mode()
             return await self.async_step_edit_product_asset()
         return self.async_show_form(
             step_id=step_id,
@@ -647,16 +684,34 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     async def async_step_configure_product_asset(self, user_input=None):
         return await self.async_step_vehicle_config(user_input)
 
-    async def async_step_edit_product_asset(self, user_input=None):
+    async def async_step_product_configuration_mode(self, user_input=None):
+        asset_id = str(self._target_product_asset or "")
+        if asset_id not in self._product_assets():
+            return await self.async_step_init()
+        if not self._has_effective_profile(asset_id):
+            return await self.async_step_edit_product_asset()
+        return self.async_show_menu(
+            step_id="product_configuration_mode",
+            menu_options=["edit_product_asset", "edit_product_asset_advanced"],
+        )
+
+    async def _edit_product_asset(self, *, advanced: bool, user_input=None):
         asset_id = str(self._target_product_asset or "")
         runtime = self._runtime()
         if runtime is None or asset_id not in self._product_assets():
             return await self.async_step_init()
         editables = dict(self._product_editables(asset_id))
+        allowed = (
+            self._profile_owned_product_keys(asset_id)
+            if advanced
+            else set(editables) - (self._profile_owned_product_keys(asset_id) if self._has_effective_profile(asset_id) else set())
+        )
         if user_input is None:
-            return self._product_form(asset_id)
+            return self._product_form(asset_id, advanced=advanced)
         try:
             for property_key, editable in editables.items():
+                if property_key not in allowed or property_key not in user_input:
+                    continue
                 value = self._normalized_product_value(editable, user_input.get(property_key))
                 configured = runtime.configuration_value(asset_id, property_key, None)
                 resolved = self._resolved_product_value(asset_id, property_key)
@@ -665,11 +720,14 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 canonical_key = "asset.lifecycle_status" if property_key == "lifecycle_status" else property_key
                 await runtime.async_set_configuration_property(asset_id, canonical_key, value)
         except (TypeError, ValueError):
-            return self._product_form(asset_id, user_input=user_input, error="invalid_product_configuration")
-        asset = self._product_assets().get(asset_id)
-        if str(getattr(asset, "concept_id", "")) == "charger":
-            return await self.async_step_charger_config()
-        return await self.async_step_vehicle_config()
+            return self._product_form(asset_id, advanced=advanced, user_input=user_input, error="invalid_product_configuration")
+        return await self.async_step_product_configuration_mode() if self._has_effective_profile(asset_id) else await self.async_step_edit_product_asset()
+
+    async def async_step_edit_product_asset(self, user_input=None):
+        return await self._edit_product_asset(advanced=False, user_input=user_input)
+
+    async def async_step_edit_product_asset_advanced(self, user_input=None):
+        return await self._edit_product_asset(advanced=True, user_input=user_input)
 
     async def _profile_config(self, profile_type: str, step_id: str, user_input=None):
         profiles = self._profiles_for_type(profile_type)

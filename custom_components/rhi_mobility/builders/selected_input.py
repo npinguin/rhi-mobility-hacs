@@ -646,7 +646,7 @@ def prepare_selected_build_input(payload: dict[str, Any], registry) -> PreparedB
                 writable=bool(tech.get("writable", False)), identity=dict(ident),
                 raw_capability_id=str(cm["raw_capability_id"]), published_match=dict(cm["published_match"]),
                 native_unit=tech.get("native_unit"), technical_match_confidence=quality.get("technical_match_confidence"),
-                availability=quality.get("availability"),
+                availability=quality.get("availability"), evidence=dict(candidate.get("evidence") or {}),
             )
             capability_diagnostics.append(_capability_diag(
                 builder_id=builder_id, integration_domain=integration_domain, selection_id=selection_id,

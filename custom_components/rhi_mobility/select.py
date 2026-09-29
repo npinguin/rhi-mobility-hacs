@@ -41,7 +41,7 @@ class MobilitySelect(SelectEntity):
         # so explicitly republish topology once registration is complete. This keeps the
         # canonical editor owner in Mobility while preventing a permanent read-only
         # "Profile: Unknown" projection caused solely by setup ordering.
-        notify=getattr(self.manager,'_notify_topology',None)
+        notify=getattr(self.manager,'_schedule_topology_notify',None)
         if callable(notify): notify()
     @callback
     def _changed(self): self.async_write_ha_state()

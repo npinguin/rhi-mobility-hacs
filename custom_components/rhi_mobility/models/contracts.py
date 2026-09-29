@@ -15,6 +15,9 @@ class SourceRef:
     native_unit: str | None = None
     technical_match_confidence: str | None = None
     availability: str | None = None
+    # Immutable Foundation candidate evidence used only for provenance/identity
+    # validation. Mobility never mutates or rediscovers this evidence at runtime.
+    evidence: dict[str, Any] = field(default_factory=dict)
 
     @property
     def entity_id(self) -> str | None:

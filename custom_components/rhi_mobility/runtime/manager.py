@@ -36,6 +36,7 @@ class MobilityRuntimeManager:
         self._asset_listeners: dict[str,list[Callable[[],None]]]=defaultdict(list)
         self._pending_refresh_assets: set[str]=set()
         self._refresh_flush_scheduled=False
+        self._topology_notify_scheduled=False
         self.last_build_attempt: dict[str,Any] = {'status':'WAITING_FOR_FOUNDATION','observed_at':None}
         self._health_cache: dict[str,tuple[str,str]] = {}
         self._binding_plans: dict[str, Any] = {}
@@ -58,27 +59,90 @@ class MobilityRuntimeManager:
             return None
         return profile
 
+    @staticmethod
+    def _identity_token(value: Any) -> str:
+        if value in (None, ""):
+            return ""
+        return " ".join(str(value).strip().casefold().replace("-", " ").split())
+
+    def _source_product_identity(self, asset_id: str) -> dict[str, Any]:
+        """Return immutable product identity explicitly carried by Foundation evidence.
+
+        Device manufacturer/model metadata is provenance, not a fuzzy naming hint.  It
+        may veto a conflicting profile but never manufactures variant/model-year facts.
+        """
+        asset = self.assets.get(asset_id)
+        if asset is None:
+            return {}
+        manufacturers: set[str] = set()
+        models: set[str] = set()
+        for binding in getattr(asset, "source_bindings", {}).values():
+            for source in binding.inputs.values():
+                evidence = getattr(source, "evidence", None)
+                if not isinstance(evidence, dict):
+                    continue
+                manufacturer = evidence.get("device_manufacturer")
+                model = evidence.get("device_model")
+                if isinstance(manufacturer, str) and manufacturer.strip():
+                    manufacturers.add(manufacturer.strip())
+                if isinstance(model, str) and model.strip():
+                    models.add(model.strip())
+        return {
+            "brand": next(iter(manufacturers)) if len(manufacturers) == 1 else None,
+            "model": next(iter(models)) if len(models) == 1 else None,
+        }
+
+    def _profile_conflicts_with_source(self, asset_id: str, profile: dict[str, Any]) -> bool:
+        source = self._source_product_identity(asset_id)
+        source_brand = self._identity_token(source.get("brand"))
+        profile_brand = self._identity_token(profile.get("brand") or profile.get("manufacturer") or profile.get("vendor"))
+        if source_brand and profile_brand and source_brand != profile_brand:
+            return True
+
+        source_model = self._identity_token(source.get("model"))
+        if not source_model:
+            return False
+        model = self._identity_token(profile.get("model"))
+        variant = self._identity_token(profile.get("variant"))
+        display = self._identity_token(profile.get("display_name"))
+        accepted = {token for token in (
+            model,
+            " ".join(x for x in (model, variant) if x),
+            " ".join(x for x in (profile_brand, model) if x),
+            " ".join(x for x in (profile_brand, model, variant) if x),
+            display,
+        ) if token}
+        return source_model not in accepted
+
     def _profile_resolution_identity(self, asset_id: str) -> dict[str, Any]:
         asset = self.assets.get(asset_id)
         snap = self.snapshots.get(asset_id)
         if asset is None:
             return {}
         prefix = asset.concept_id
+        source_identity = self._source_product_identity(asset_id)
         legacy_brand_key = "vehicle.manufacturer" if prefix == "vehicle" else "charger.vendor"
-        def configured_or_snapshot(key: str, fallback_key: str | None = None):
+        def configured_or_snapshot(key: str, fallback_key: str | None = None, source_key: str | None = None):
             sentinel = object()
             configured = self.configuration_value(asset_id, key, sentinel)
             if configured is not sentinel and configured not in (None, ""):
                 return configured
-            if snap is None:
-                return None
-            value = snap.values.get(key)
-            if value in (None, "") and fallback_key:
-                value = snap.values.get(fallback_key)
-            return value
+            if snap is not None:
+                value = snap.values.get(key)
+                quality = str(snap.quality.get(key) or "")
+                # A previously applied profile can never become evidence for resolving
+                # that same profile on a later refresh.
+                if value not in (None, "") and not quality.startswith("mobility_profile:"):
+                    return value
+                if fallback_key:
+                    value = snap.values.get(fallback_key)
+                    quality = str(snap.quality.get(fallback_key) or "")
+                    if value not in (None, "") and not quality.startswith("mobility_profile:"):
+                        return value
+            return source_identity.get(source_key) if source_key else None
         return {
-            "brand": configured_or_snapshot(f"{prefix}.brand", legacy_brand_key),
-            "model": configured_or_snapshot(f"{prefix}.model"),
+            "brand": configured_or_snapshot(f"{prefix}.brand", legacy_brand_key, "brand"),
+            "model": configured_or_snapshot(f"{prefix}.model", source_key="model"),
             "variant": configured_or_snapshot(f"{prefix}.variant"),
             "model_year": configured_or_snapshot(f"{prefix}.model_year"),
         }
@@ -92,12 +156,20 @@ class MobilityRuntimeManager:
             profile_id = str(configured)
             getter = getattr(self.registry, "profile", None)
             profile = getter(profile_id) if callable(getter) else None
-            if isinstance(profile, dict) and profile.get("profile_type") == asset.concept_id:
+            if (
+                isinstance(profile, dict)
+                and profile.get("profile_type") == asset.concept_id
+                and not self._profile_conflicts_with_source(asset_id, profile)
+            ):
                 return profile_id
             return None
         resolver = getattr(self.registry, "resolve_profile", None)
         resolved = resolver(asset.concept_id, self._profile_resolution_identity(asset_id)) if callable(resolver) else None
-        return str(resolved.get("profile_id")) if isinstance(resolved, dict) and resolved.get("profile_id") else None
+        if not isinstance(resolved, dict) or not resolved.get("profile_id"):
+            return None
+        if self._profile_conflicts_with_source(asset_id, resolved):
+            return None
+        return str(resolved["profile_id"])
 
     @property
     def control_profiles(self) -> dict[str, AssetControlProfile]:
@@ -294,6 +366,35 @@ class MobilityRuntimeManager:
                 return rel.to_asset_id
         return None
 
+    def _configuration_refresh_assets(self, asset_id: str, property_key: str, value) -> set[str]:
+        """Return the bounded semantic refresh scope for one configuration write."""
+        affected={asset_id}
+        asset=self.assets.get(asset_id)
+        if asset is None:
+            return affected
+
+        if property_key=="vehicle.selected_charger":
+            previous=self.configuration_value(asset_id,"vehicle.selected_charger",None)
+            for charger_id in (previous,value):
+                if charger_id in self.assets and self.assets[charger_id].concept_id=="charger":
+                    affected.add(charger_id)
+            return affected
+
+        vehicle_electrical={"asset.profile_id","vehicle.max_ac_power_kw","vehicle.phase_capability"}
+        charger_electrical={
+            "asset.profile_id","charger.min_current_a","charger.max_current_a","charger.max_power_kw",
+            "charger.phase_capability","charger.nominal_voltage_v","charger.current_step_a",
+        }
+        if asset.concept_id=="vehicle" and property_key in vehicle_electrical:
+            charger_id=self.effective_charger_for_vehicle(asset_id)
+            if charger_id:
+                affected.add(charger_id)
+        elif asset.concept_id=="charger" and property_key in charger_electrical:
+            vehicle_id=self.configured_vehicle_for_charger(asset_id)
+            if vehicle_id:
+                affected.add(vehicle_id)
+        return affected
+
     async def async_set_configuration_property(self, asset_id: str, property_key: str, value) -> None:
         if asset_id not in self.assets:
             raise ValueError(f'unknown Mobility asset: {asset_id}')
@@ -378,13 +479,8 @@ class MobilityRuntimeManager:
             raise ValueError('unsupported mobility charge policy')
         if self.domain_config is None:
             raise RuntimeError('Mobility semantic configuration store unavailable')
+        affected=self._configuration_refresh_assets(asset_id,property_key,value)
         await self.domain_config.async_set(asset_id,property_key,value)
-        affected=set(self.assets) if property_key in {
-            'vehicle.selected_charger','vehicle.target_soc_pct','vehicle.battery_capacity_kwh',
-            'vehicle.max_ac_power_kw','vehicle.phase_capability',
-            'charger.min_current_a','charger.max_current_a','charger.max_power_kw',
-            'charger.phase_capability','charger.nominal_voltage_v','charger.current_step_a'
-        } else {asset_id}
         for aid in affected:
             if aid in self.snapshots: self._refresh(aid)
 
@@ -406,13 +502,16 @@ class MobilityRuntimeManager:
         if phases<=0 or voltage<=0: return None
         if vehicle and vehicle.max_ac_power_kw and max_a:
             max_a=min(float(max_a),float(vehicle.max_ac_power_kw)*1000.0/(voltage*phases))
-        if min_a is None or max_a is None or step_a is None or min_a<=0 or max_a<min_a or step_a<=0: return None
+        if min_a is None or max_a is None or min_a<=0 or max_a<min_a: return None
+        # Step size is a writable-surface characteristic. A product profile may
+        # legitimately omit it; the physical Number entity can still provide the
+        # authoritative step used by requested-power mapping.
         return {
             'nominal_voltage_v':voltage,'phase_count':float(phases),'min_current_a':float(min_a),
-            'max_current_a':float(max_a),'current_step_a':float(step_a),
+            'max_current_a':float(max_a),'current_step_a':None if step_a is None else float(step_a),
             'min_power_kw':float(min_a)*voltage*phases/1000.0,
             'max_power_kw':float(max_a)*voltage*phases/1000.0,
-            'step_power_kw':float(step_a)*voltage*phases/1000.0,
+            'step_power_kw':None if step_a is None else float(step_a)*voltage*phases/1000.0,
         }
 
     def add_listener(self, cb: Callable[[],None]) -> Callable[[],None]:
@@ -450,6 +549,28 @@ class MobilityRuntimeManager:
         for cb in tuple(self._runtime_listeners): cb()
         self._notify()
 
+    def _schedule_topology_notify(self) -> None:
+        """Coalesce setup-order publication nudges into one event-loop callback.
+
+        Editor entities register independently during HA platform setup. Calling the
+        full topology fan-out once per entity amplifies work quadratically across
+        platform listeners. Structural changes still call _notify_topology directly;
+        this scheduler is only for equivalent same-tick republish requests.
+        """
+        if self._topology_notify_scheduled:
+            return
+        loop=getattr(self.hass, "loop", None)
+        call_soon=getattr(loop, "call_soon", None)
+        if callable(call_soon):
+            self._topology_notify_scheduled=True
+            call_soon(self._flush_scheduled_topology_notify)
+        else:
+            self._notify_topology()
+
+    def _flush_scheduled_topology_notify(self) -> None:
+        self._topology_notify_scheduled=False
+        self._notify_topology()
+
     def _notify_asset(self, asset_id: str) -> None:
         for cb in tuple(self._asset_listeners.get(str(asset_id),())): cb()
         for cb in tuple(self._runtime_listeners): cb()
@@ -481,7 +602,7 @@ class MobilityRuntimeManager:
         self._binding_plans.clear()
         for asset_id in list(self._unsubs): self._clear_asset_listener(asset_id)
         self.assets.clear(); self.snapshots.clear(); self.relationships.clear()
-        self._selection_asset_roles.clear(); self._selection_asset_ids.clear(); self._selection_diagnostics.clear(); self._capability_diagnostics.clear(); self._selection_relationship_ids.clear(); self._health_cache.clear(); self._pending_refresh_assets.clear(); self._notify_topology()
+        self._selection_asset_roles.clear(); self._selection_asset_ids.clear(); self._selection_diagnostics.clear(); self._capability_diagnostics.clear(); self._selection_relationship_ids.clear(); self._health_cache.clear(); self._pending_refresh_assets.clear(); self._topology_notify_scheduled=False; self._notify_topology()
 
     async def async_replace_selected_build_inputs(self, payloads: list[dict[str,Any]] | tuple[dict[str,Any], ...]) -> dict[str,Any]:
         rows=[apply_semantic_input_policy(row,self.registry) for row in list(payloads or [])]
@@ -803,6 +924,17 @@ class MobilityRuntimeManager:
             snap.values["charger.brand"] = snap.values["charger.vendor"]
             snap.quality["charger.brand"] = "derived_from:charger.vendor"
 
+        # Preserve immutable Foundation product identity when the integration exposes
+        # it on the accepted technical device. This is exact provenance, not name
+        # inference: it can prevent a conflicting profile from rewriting the product.
+        source_product_identity = self._source_product_identity(asset_id)
+        for identity_key in ("brand", "model"):
+            property_key = f"{asset.concept_id}.{identity_key}"
+            value = source_product_identity.get(identity_key)
+            if value not in (None, "") and snap.values.get(property_key) in (None, ""):
+                snap.values[property_key] = value
+                snap.quality[property_key] = "foundation_device_identity"
+
         selected_profile=self._selected_profile(asset_id)
         if selected_profile:
             pid=str(selected_profile["profile_id"])
@@ -829,7 +961,7 @@ class MobilityRuntimeManager:
                 if property_key in snap.values:
                     quality = str(snap.quality.get(property_key) or "")
                     existing_kind = None
-                    if quality.startswith("candidate:") or quality in {"source_device_identity", "logical_asset_identity"}:
+                    if quality.startswith("candidate:") or quality in {"source_device_identity", "logical_asset_identity", "foundation_device_identity"}:
                         existing_kind = "SOURCE"
                     elif quality.startswith("derived_from:") or quality.startswith("derived_"):
                         existing_kind = "DERIVED"

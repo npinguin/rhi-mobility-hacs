@@ -319,6 +319,24 @@ class MobilityPublicRuntimeProvider:
         if callable(asset_values):
             supported.update(asset_values(asset_id).keys())
 
+        # Persistent reference editors are product configuration, not observed
+        # capabilities. They must remain materialised while unset, otherwise the
+        # canonical V2 property row (and therefore its write metadata) disappears and
+        # consumers can only render a read-only/absent control. This uses the existing
+        # write-kind vocabulary; it does not introduce a second readiness concept.
+        for key, definition in self.properties.items():
+            editable = definition.get("editable")
+            if not isinstance(editable, dict):
+                continue
+            if editable.get("write_kind") not in {"profile", "selected_charger", "ha_person"}:
+                continue
+            types = set(editable.get("asset_types") or definition.get("applicable_asset_types") or [])
+            if types and typ not in types:
+                continue
+            if editable.get("ui_exposed") is False:
+                continue
+            supported.add(key)
+
         # Compatibility aliases materialise only when their canonical fact does.
         for alias, canonical in self.aliases.items():
             definition = self.properties.get(alias) or {}
@@ -506,7 +524,7 @@ class MobilityExperienceProvider:
     # Vehicle access security only. The charging-plug lock belongs to connector/
     # charging semantics and must never make an otherwise secured vehicle unsafe.
     _ACCESS_KEYS = (
-        "vehicle.security_state", "vehicle.lock_state", "vehicle.opening_state",
+        "vehicle.security_state", "vehicle.lock_state",
         "vehicle.doors_locked", "vehicle.windows_locked", "vehicle.trunk_state", "vehicle.hood_state",
         "vehicle.door_front_left_state", "vehicle.door_front_right_state", "vehicle.door_rear_left_state", "vehicle.door_rear_right_state",
         "vehicle.window_fl_state", "vehicle.window_fr_state", "vehicle.window_rl_state", "vehicle.window_rr_state",
@@ -681,8 +699,11 @@ class MobilityExperienceProvider:
         )
         window_keys = ("vehicle.window_fl_state", "vehicle.window_fr_state", "vehicle.window_rl_state", "vehicle.window_rr_state")
         lock_proven = any(k in access and str(access[k]).lower() not in self.unsafe for k in lock_keys)
+        # Generic opening aggregates are deliberately excluded from occupant/access
+        # security. Integrations may fold charging-port/flap state into such an
+        # aggregate; only explicit lock/door/hood/trunk evidence is authoritative.
         doors_closed = (
-            ("vehicle.opening_state" in access and str(access["vehicle.opening_state"]).lower() not in self.unsafe)
+            ("vehicle.doors_locked" in access and str(access["vehicle.doors_locked"]).lower() not in self.unsafe)
             or all(k in access and str(access[k]).lower() not in self.unsafe for k in door_keys)
         )
         windows_closed = (

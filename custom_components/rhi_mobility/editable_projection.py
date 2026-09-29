@@ -229,24 +229,16 @@ def bounds(manager, controller, asset_id: str, property_key: str, editable: dict
 async def _write_structural_configuration(manager, asset_id: str, property_key: str, new_value) -> None:
     """Persist a Mobility-owned structural association and republish its topology.
 
-    Clearing a profile/charger association is valid product configuration.  Older
-    manager validation rejected an empty charger reference before reaching the config
-    owner, so the compatibility editor normalizes the explicit no-selection token here
-    and uses the same MobilityDomainConfiguration owner directly for the clear case.
-    Foundation technical selection is deliberately untouched.
+    Clearing a profile/charger association is valid product configuration. The
+    compatibility editor normalizes the explicit no-selection token and delegates both
+    set and clear to the single Mobility runtime/configuration owner. Foundation
+    technical selection is deliberately untouched.
     """
     normalized=None if new_value in (None,"",NO_SELECTION) else new_value
-    if normalized is None:
-        domain_config=getattr(manager,"domain_config",None)
-        if domain_config is None:
-            raise RuntimeError("Mobility semantic configuration store unavailable")
-        await domain_config.async_set(asset_id,property_key,None)
-        affected=set(manager.assets) if property_key=="vehicle.selected_charger" else {asset_id}
-        for aid in affected:
-            if aid in getattr(manager,"snapshots",{}):
-                manager._refresh(aid)
-    else:
-        await manager.async_set_configuration_property(asset_id,property_key,normalized)
+    # The manager is the single configuration/refresh authority for both set and
+    # clear. Empty structural references are valid canonical values; bypassing the
+    # manager here previously created a second refresh policy and whole-domain fan-out.
+    await manager.async_set_configuration_property(asset_id,property_key,normalized)
     notify=getattr(manager,"_notify_topology",None)
     if callable(notify):
         notify()

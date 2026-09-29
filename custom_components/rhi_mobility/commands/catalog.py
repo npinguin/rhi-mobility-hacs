@@ -225,7 +225,8 @@ class MobilityControlCatalog:
             if current_desc is None or profile is None: return None
             min_a=max(float(profile['min_current_a']),current_desc.min_current_a)
             max_a=min(float(profile['max_current_a']),current_desc.max_current_a)
-            step_a=max(float(profile['current_step_a']),current_desc.current_step_a)
+            profile_step=profile.get('current_step_a')
+            step_a=current_desc.current_step_a if profile_step is None else max(float(profile_step),current_desc.current_step_a)
             if max_a<min_a or step_a<=0: return None
             v=profile['nominal_voltage_v']; phases=int(profile['phase_count'])
             return RequestedPowerDescriptor(

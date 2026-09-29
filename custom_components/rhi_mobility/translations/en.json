@@ -32,7 +32,7 @@
       },
       "edit_product_asset": {
         "title": "Configure {asset}",
-        "description": "Profile = product default. Values entered here are explicit overrides for this concrete asset. Clear an optional override to fall back to profile/source truth where supported.",
+        "description": "Profile-owned product facts are inherited automatically. Configure only this concrete asset: profile selection, name, owner/location, colour, relationships, planning intent and lifecycle.",
         "data": {
           "asset.profile_id": "Profile",
           "asset.display_name": "Display name",
@@ -317,6 +317,36 @@
           "present": "Present",
           "selected_charger": "Assigned charger",
           "lifecycle_status": "Lifecycle"
+        }
+      },
+      "product_configuration_mode": {
+        "title": "Configure {asset}",
+        "menu_options": {
+          "edit_product_asset": "Instance configuration",
+          "edit_product_asset_advanced": "Advanced profile overrides"
+        }
+      },
+      "edit_product_asset_advanced": {
+        "title": "Advanced overrides for {asset}",
+        "description": "Optional explicit deviations from the selected product profile. Blank means inherit the profile value; clearing an existing override returns to profile truth.",
+        "data": {
+          "vehicle.brand": "Brand override",
+          "vehicle.model": "Model override",
+          "vehicle.variant": "Variant override",
+          "vehicle.model_year": "Model year override",
+          "vehicle.battery_capacity_kwh": "Battery capacity override (kWh)",
+          "vehicle.max_ac_power_kw": "Maximum AC power override (kW)",
+          "vehicle.phase_capability": "AC phase capability override",
+          "charger.brand": "Brand override",
+          "charger.model": "Model override",
+          "charger.variant": "Variant override",
+          "charger.model_year": "Model year override",
+          "charger.min_current_a": "Minimum current override (A)",
+          "charger.max_current_a": "Maximum current override (A)",
+          "charger.max_power_kw": "Maximum power override (kW)",
+          "charger.phase_capability": "Phase capability override",
+          "charger.nominal_voltage_v": "Nominal voltage override (V)",
+          "charger.current_step_a": "Current adjustment step override (A)"
         }
       }
     },

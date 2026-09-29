@@ -44,7 +44,7 @@ class MobilityText(TextEntity):
         # The first sensor publication may happen before this TextEntity is registered.
         # Republish topology once the editor exists so vehicle/charger image_key is not
         # left permanently read-only because of platform setup ordering.
-        notify=getattr(self.manager,'_notify_topology',None)
+        notify=getattr(self.manager,'_schedule_topology_notify',None)
         if callable(notify): notify()
     @callback
     def _changed(self): self.async_write_ha_state()
