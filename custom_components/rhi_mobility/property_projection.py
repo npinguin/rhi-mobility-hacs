@@ -95,6 +95,18 @@ class MobilityPropertyProjection:
         key=str(editable["_write_property_key"]); platform=str(editable.get("platform") or ""); available=self.editable(asset_id,property_key)
         action={"number":"set_value","text":"set_value","select":"select_option","switch":"turn_on_off_by_value"}.get(platform,"")
         out={**base,"editable":available,"write_supported":available,"write_binding_type":platform,"write_service_domain":platform,"write_service_action":action,"write_target_entity":self.editor_entity_id(asset_id,property_key),"write_property_key":key}
+        if not available:
+            kind=str(editable.get("write_kind") or "")
+            if kind=="vehicle_requested_power" and not self.manager.effective_charger_for_vehicle(asset_id):
+                out["write_blocked_reason"]="effective_charger_unavailable"
+            elif kind in {"charger_requested_power","vehicle_requested_power"}:
+                out["write_blocked_reason"]="requested_power_capability_unavailable"
+            elif kind=="charger_requested_current":
+                out["write_blocked_reason"]="requested_current_capability_unavailable"
+            elif kind=="vehicle_charge_mode":
+                out["write_blocked_reason"]="vehicle_charge_mode_control_unavailable"
+            else:
+                out["write_blocked_reason"]="write_capability_unavailable"
         # Existing R43.2.65 configuration controls (profile/assignment) remain usable even
         # when their current value is unset. Runtime execution controls still fail closed
         # through editable_is_available above.

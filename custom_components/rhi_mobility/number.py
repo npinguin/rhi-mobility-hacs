@@ -55,6 +55,11 @@ class MobilityNumber(NumberEntity):
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
         if self.editable.get('write_kind') in {'charger_requested_power','vehicle_requested_power','charger_requested_current'}:
             self.async_on_remove(self.controller.add_listener(self._changed))
+        # Canonical property sensors publish the registered HA editor entity id as
+        # write metadata. Registration can complete after the first property snapshot,
+        # so republish topology once, coalesced with the existing runtime mechanism.
+        notify=getattr(self.manager,'_schedule_topology_notify',None)
+        if callable(notify): notify()
 
     @callback
     def _changed(self) -> None:

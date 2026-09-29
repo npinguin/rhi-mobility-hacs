@@ -156,9 +156,29 @@ class MobilityEnergyV2Provider:
     def _lifecycle_reason(lifecycle: str) -> str:
         return "mobility_disabled" if lifecycle == "disabled" else "none"
 
-    def _command_resolution(self, vehicle_id: str, charger_id: str | None, operation: str) -> dict[str, Any]:
+    def _command_resolution(
+        self,
+        vehicle_id: str,
+        charger_id: str | None,
+        operation: str,
+        *,
+        physical_connection_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Publish command capability without pretending assignment is physical truth."""
         key = f"charger.command.{operation}"
         desc = self.controller.command_descriptors().get(f"{charger_id}:{key}") if charger_id else None
+        binding_ready = desc is not None
+        physical_ready = physical_connection_id is not None
+        execution_allowed = bool(desc and desc.execution_allowed and physical_ready)
+        blocked_reason = (
+            "binding_missing"
+            if desc is None
+            else "physical_vehicle_identity_unproven"
+            if not physical_ready
+            else desc.blocked_reason
+            if not desc.execution_allowed
+            else "none"
+        )
         return {
             "provider_id": "mobility.command.v2",
             "command_id": f"{vehicle_id}:vehicle.command.{operation}_charging",
@@ -168,14 +188,14 @@ class MobilityEnergyV2Provider:
             "command_owner_asset_id": vehicle_id,
             "physical_executor_asset_id": charger_id,
             "command_key": f"vehicle.command.{operation}_charging",
-            "binding_available": desc is not None,
-            "action_available": bool(desc and desc.execution_allowed),
-            "action_reason": desc.blocked_reason if desc and not desc.execution_allowed else ("binding_ready" if desc else "binding_missing"),
-            "frontend_allowed": desc is not None,
-            "execution_allowed": bool(desc and desc.execution_allowed),
-            "blocked_reason": desc.blocked_reason if desc and not desc.execution_allowed else ("none" if desc else "binding_missing"),
+            "binding_available": binding_ready,
+            "action_available": execution_allowed,
+            "action_reason": "binding_ready" if execution_allowed else blocked_reason,
+            "frontend_allowed": binding_ready,
+            "execution_allowed": execution_allowed,
+            "blocked_reason": blocked_reason,
             "effective_connection_id": charger_id,
-            "physical_connection_id": charger_id if desc is not None else None,
+            "physical_connection_id": physical_connection_id,
             "proxy_target_connection_id": charger_id,
         }
 
@@ -204,7 +224,10 @@ class MobilityEnergyV2Provider:
         }
 
     def _consumer(self, aid: str, snap) -> dict[str, Any]:
-        charger_id = self._configured_charger(aid)
+        relationship = resolve_vehicle_charger_relationship(self.manager, aid)
+        configured_charger_id = relationship.configured_charger_id
+        effective_charger_id = relationship.effective_charger_id
+        charger_id = effective_charger_id or configured_charger_id
         charger = self.manager.snapshots.get(charger_id) if charger_id else None
         cvals = {} if charger is None else charger.values
         lifecycle = self._v(aid, "asset.lifecycle_status") or self._v(aid, "lifecycle_status") or "active"
@@ -220,8 +243,8 @@ class MobilityEnergyV2Provider:
             need = self._v(aid, "vehicle.required_energy_kwh")
         ready_by = self._v(aid, "vehicle.ready_by")
         present = self._v(aid, "vehicle.present")
-        connection_state = cvals.get("charger.connection_state") if charger_id else None
-        physical_connection = charger_id if connection_state == "asset_connected" else None
+        connection_state = relationship.assigned_charger_connection_state
+        physical_connection = relationship.physically_connected_charger_id
         operating = self._v(aid, "vehicle.charging_state")
         if operating is None and physical_connection:
             operating = cvals.get("charger.operating_state")
@@ -247,8 +270,8 @@ class MobilityEnergyV2Provider:
         readback_ready = requested_power is not None
         mapping_ready = desc is not None
         execution_ready = bool(desc and physical_connection and lifecycle != "disabled")
-        start = self._command_resolution(aid, charger_id, "start")
-        stop = self._command_resolution(aid, charger_id, "stop")
+        start = self._command_resolution(aid, charger_id, "start", physical_connection_id=physical_connection)
+        stop = self._command_resolution(aid, charger_id, "stop", physical_connection_id=physical_connection)
         policy = self._v(aid, "vehicle.mobility_charge_policy") or "Automatic"
         mode = "disabled" if lifecycle == "disabled" else {"Automatic":"automatic","Forced":"forced","Paused":"paused"}.get(str(policy), "automatic")
         automation_allowed = bool(lifecycle != "disabled" and planning_ready and physical_connection and execution_ready)
@@ -312,9 +335,14 @@ class MobilityEnergyV2Provider:
             "energy_control_hold_state": "none",
             "energy_control_priority": "normal",
             "connection_state": connection_state or ("disconnected" if present is False else "unknown"),
-            "assigned_connection_id": charger_id,
-            "effective_connection_id": charger_id,
+            "assigned_connection_id": configured_charger_id,
+            "effective_connection_id": effective_charger_id,
             "physical_connection_id": physical_connection,
+            "physical_identity_proven": relationship.observed_identity_proven,
+            "assigned_connection_state": relationship.assigned_charger_connection_state,
+            "assigned_connection_occupied": relationship.assigned_charger_occupied,
+            "relationship_status": relationship.status.value,
+            "relationship_reason": relationship.reason,
             "operating_state": operating or "unknown",
             "power_kw": power,
             "energy_flow_direction": flow,
@@ -337,6 +365,16 @@ class MobilityEnergyV2Provider:
             "planning_input_ready": planning_ready,
             "planning_blockers": planning_blockers,
             "planning_readiness": {"state": "READY" if planning_ready else "INCOMPLETE", "blockers": planning_blockers},
+            "planning_preferences": {
+                "owner_domain": "rhi_mobility",
+                "battery_capacity_kwh": cap,
+                "current_soc_pct": soc,
+                "target_soc_pct": target,
+                "ready_by": ready_by,
+                "required_energy_kwh": need,
+                "availability": "READY" if planning_ready else "INCOMPLETE",
+                "blockers": list(planning_blockers),
+            },
             "runtime_revision": int(getattr(self.manager, "_runtime_revision", 0) or 0),
             "source_observed_at": self.public._source_observed_at(aid) if self.public is not None else None,
             "available_export_energy_kwh": None,
@@ -362,6 +400,17 @@ class MobilityEnergyV2Provider:
         write_contract = self._requested_power_write_contract(aid, desc)
         profile = self.manager.effective_charging_profile(aid)
         assigned = self.manager.configured_vehicle_for_charger(aid)
+        assigned_relationship = (
+            resolve_vehicle_charger_relationship(self.manager, assigned)
+            if assigned else None
+        )
+        connected_vehicle = (
+            assigned
+            if assigned_relationship is not None
+            and assigned_relationship.observed_identity_proven
+            and assigned_relationship.physically_connected_charger_id == aid
+            else None
+        )
         commands = self.controller.command_descriptors()
         start = commands.get(f"{aid}:charger.command.start")
         stop = commands.get(f"{aid}:charger.command.stop")
@@ -374,7 +423,11 @@ class MobilityEnergyV2Provider:
             "availability_state": self._v(aid, "asset.availability_state") or "unknown",
             "availability_reason": getattr(snap, "health_reason", "none"),
             "connection_state": vals.get("charger.connection_state") or "unknown",
-            "connected_asset_id": assigned,
+            "assigned_asset_id": assigned,
+            "connected_asset_id": connected_vehicle,
+            "connected_identity_proven": connected_vehicle is not None,
+            "relationship_status": None if assigned_relationship is None else assigned_relationship.status.value,
+            "relationship_reason": None if assigned_relationship is None else assigned_relationship.reason,
             "operating_state": vals.get("charger.operating_state") or "unknown",
             "power_kw": vals.get("charger.power_kw"),
             "energy_flow_direction": "unknown" if vals.get("charger.power_kw") is None else ("to_connected_asset" if float(vals.get("charger.power_kw")) > 0.05 else "idle"),

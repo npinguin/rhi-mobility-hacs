@@ -644,6 +644,7 @@ class MobilityPropertySensor(SensorEntity):
             "write_service_action": write.get("write_service_action") or "",
             "write_target_entity": write.get("write_target_entity") or "",
             "write_property_key": write.get("write_property_key") or self.property_key,
+            "write_blocked_reason": write.get("write_blocked_reason") or "",
             "write_service_data": write.get("write_service_data") or {},
             "write_value_field": write.get("write_value_field") or "",
             "min": write.get("min"),

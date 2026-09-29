@@ -3059,6 +3059,7 @@
         "platform": "select",
         "write_kind": "lifecycle_status_alias",
         "asset_types": [
+          "vehicle",
           "charger"
         ],
         "options": [

@@ -1,3 +1,13 @@
+## M0.10.22 — STABILIZATION_RUNTIME_UX
+
+- publish writable canonical lifecycle controls for Vehicle and Charger while retaining one `asset.lifecycle_status` authority;
+- keep requested-kW controls materialized with explicit availability/block reasons and authoritative physical readback separate from requested intent;
+- separate configured charger assignment/occupancy from explicitly proven vehicle physical identity in `MOBILITY_ENERGY_V2`;
+- fail vehicle charging commands closed when exact physical vehicle identity is unproven;
+- publish Mobility-owned planning preferences/readiness for Energy without moving planning or physical execution ownership;
+- preserve the measured startup improvement and require target proof for freshness, bounded refresh and listener quiescence;
+- harden release preparation so candidate identity is complete and historical releases remain immutable.
+
 ## M0.10.21 — LIVE_PLANNING_FRESHNESS
 
 - register package-relative Mobility visual presentation locators with Foundation at boot;

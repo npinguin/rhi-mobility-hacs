@@ -92,27 +92,59 @@ class MobilityRuntimeManager:
             "model": next(iter(models)) if len(models) == 1 else None,
         }
 
-    def _profile_conflicts_with_source(self, asset_id: str, profile: dict[str, Any]) -> bool:
-        source = self._source_product_identity(asset_id)
-        source_brand = self._identity_token(source.get("brand"))
-        profile_brand = self._identity_token(profile.get("brand") or profile.get("manufacturer") or profile.get("vendor"))
-        if source_brand and profile_brand and source_brand != profile_brand:
-            return True
+    @staticmethod
+    def _identity_compact(value: Any) -> str:
+        if value in (None, ""):
+            return ""
+        return "".join(ch for ch in str(value).casefold() if ch.isalnum())
 
-        source_model = self._identity_token(source.get("model"))
-        if not source_model:
+    def _profile_conflicts_with_source(self, asset_id: str, profile: dict[str, Any]) -> bool:
+        """Use technical device metadata only as a narrow conflict veto.
+
+        Foundation device manufacturer/model are provenance. They are not canonical
+        Mobility product identity and may contain reseller names or hardware SKUs
+        (for example Wallbox CMX2-* or Peblar WLAC2-*). Such technical identifiers
+        must never invalidate an explicitly selected product profile merely because
+        their text differs.
+
+        The one safe veto available from this evidence is an exact model-family +
+        conflicting-variant proof: when the technical model explicitly contains the
+        catalog model family and also carries additional product text, a configured
+        profile variant must be present in that same technical model. This preserves
+        the xDrive30e -> xDrive25e protection without treating unrelated hardware
+        model codes as product conflicts.
+        """
+        source = self._source_product_identity(asset_id)
+        source_model = self._identity_compact(source.get("model"))
+        source_brand = self._identity_compact(source.get("brand"))
+        profile_brand = self._identity_compact(
+            profile.get("brand") or profile.get("manufacturer") or profile.get("vendor")
+        )
+        profile_model = self._identity_compact(profile.get("model"))
+        profile_variant = self._identity_compact(profile.get("variant"))
+
+        if not source_model or not profile_model:
             return False
-        model = self._identity_token(profile.get("model"))
-        variant = self._identity_token(profile.get("variant"))
-        display = self._identity_token(profile.get("display_name"))
-        accepted = {token for token in (
-            model,
-            " ".join(x for x in (model, variant) if x),
-            " ".join(x for x in (profile_brand, model) if x),
-            " ".join(x for x in (profile_brand, model, variant) if x),
-            display,
-        ) if token}
-        return source_model not in accepted
+
+        # Remove only an exact full brand prefix. Abbreviations/reseller labels are
+        # technical provenance and must not be interpreted as product identity.
+        product_tail = source_model
+        for brand in (source_brand, profile_brand):
+            if brand and product_tail.startswith(brand):
+                product_tail = product_tail[len(brand):]
+                break
+
+        # A conflict veto requires the source model to *begin* with the catalog model
+        # family after optional exact-brand removal. Merely containing a model token
+        # (or carrying a hardware SKU) is not enough evidence to reject a selection.
+        if not product_tail.startswith(profile_model):
+            return False
+
+        variant_tail = product_tail[len(profile_model):]
+        if not variant_tail or not profile_variant:
+            return False
+
+        return profile_variant not in variant_tail
 
     def _profile_resolution_identity(self, asset_id: str) -> dict[str, Any]:
         asset = self.assets.get(asset_id)
@@ -924,16 +956,11 @@ class MobilityRuntimeManager:
             snap.values["charger.brand"] = snap.values["charger.vendor"]
             snap.quality["charger.brand"] = "derived_from:charger.vendor"
 
-        # Preserve immutable Foundation product identity when the integration exposes
-        # it on the accepted technical device. This is exact provenance, not name
-        # inference: it can prevent a conflicting profile from rewriting the product.
-        source_product_identity = self._source_product_identity(asset_id)
-        for identity_key in ("brand", "model"):
-            property_key = f"{asset.concept_id}.{identity_key}"
-            value = source_product_identity.get(identity_key)
-            if value not in (None, "") and snap.values.get(property_key) in (None, ""):
-                snap.values[property_key] = value
-                snap.quality[property_key] = "foundation_device_identity"
+        # Foundation device manufacturer/model remain provenance only. They are
+        # intentionally not copied into canonical Mobility brand/model properties:
+        # technical SKUs and reseller labels are not product identity. They can still
+        # participate in the narrow conflict veto above and remain visible in
+        # diagnostics/source metadata.
 
         selected_profile=self._selected_profile(asset_id)
         if selected_profile:
@@ -961,7 +988,7 @@ class MobilityRuntimeManager:
                 if property_key in snap.values:
                     quality = str(snap.quality.get(property_key) or "")
                     existing_kind = None
-                    if quality.startswith("candidate:") or quality in {"source_device_identity", "logical_asset_identity", "foundation_device_identity"}:
+                    if quality.startswith("candidate:") or quality in {"source_device_identity", "logical_asset_identity"}:
                         existing_kind = "SOURCE"
                     elif quality.startswith("derived_from:") or quality.startswith("derived_"):
                         existing_kind = "DERIVED"

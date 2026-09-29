@@ -319,16 +319,14 @@ class MobilityPublicRuntimeProvider:
         if callable(asset_values):
             supported.update(asset_values(asset_id).keys())
 
-        # Persistent reference editors are product configuration, not observed
-        # capabilities. They must remain materialised while unset, otherwise the
-        # canonical V2 property row (and therefore its write metadata) disappears and
-        # consumers can only render a read-only/absent control. This uses the existing
-        # write-kind vocabulary; it does not introduce a second readiness concept.
+        # Product editables are contract surfaces, not observed capabilities.
+        # They must remain materialised while their current capability is unavailable
+        # so the canonical V2 row can publish write_supported=false + an explicit
+        # reason instead of disappearing from first-party consumers. HA editor entity
+        # existence follows the same catalog-driven rule in number/select/text/switch.
         for key, definition in self.properties.items():
             editable = definition.get("editable")
             if not isinstance(editable, dict):
-                continue
-            if editable.get("write_kind") not in {"profile", "selected_charger", "ha_person"}:
                 continue
             types = set(editable.get("asset_types") or definition.get("applicable_asset_types") or [])
             if types and typ not in types:
@@ -337,14 +335,19 @@ class MobilityPublicRuntimeProvider:
                 continue
             supported.add(key)
 
-        # Compatibility aliases materialise only when their canonical fact does.
+        # Canonical lifecycle/health facts exist for every materialized asset.
+        # Add them before alias expansion so lifecycle aliases and their HA editor
+        # metadata can materialize on first publication rather than only after a
+        # configured value happens to exist.
+        supported.update({"asset.lifecycle_status", "asset.availability_state", f"{typ}.health", f"{typ}.health_reason"})
+
+        # Compatibility/product aliases materialise only when their canonical fact does.
         for alias, canonical in self.aliases.items():
             definition = self.properties.get(alias) or {}
             types = set(definition.get("applicable_asset_types") or [])
             if (not types or typ in types) and canonical in supported:
                 supported.add(alias)
 
-        supported.update({"asset.lifecycle_status", "asset.availability_state", f"{typ}.health", f"{typ}.health_reason"})
         return sorted(
             key
             for key in supported
