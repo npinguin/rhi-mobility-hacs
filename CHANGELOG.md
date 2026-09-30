@@ -1,3 +1,12 @@
+## M0.10.23 — Target Ha Product Closure
+
+- republish existing canonical property write metadata after HA editor registration so lifecycle, profile/image and requested-kW controls do not remain stuck read-only;
+- refresh requested-power/current/charge-mode metadata when controller capability changes;
+- make lifecycle switch registration participate in the same convergence path;
+- treat generic vehicle security summaries as advisory so they cannot independently assert Unsafe without explicit access evidence;
+- preserve configured/effective/physical charger separation and all existing entity identities;
+- keep Shared Baseline 1.8.1 and zero accepted technical/feature debt.
+
 ## M0.10.22 — STABILIZATION_RUNTIME_UX
 
 - publish writable canonical lifecycle controls for Vehicle and Charger while retaining one `asset.lifecycle_status` authority;

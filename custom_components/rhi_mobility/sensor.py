@@ -86,6 +86,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for row in rows:
             key = (row["asset_id"], row["property_key"])
             if key in created:
+                # Topology notifications are also the convergence signal after
+                # number/select/text/switch editor registration. Existing property
+                # entities must republish their write metadata; merely keeping the
+                # same entity object leaves early read-only metadata stale forever.
+                created[key]._changed()
                 continue
             entity = MobilityPropertySensor(entry.entry_id, row["asset_id"], row["property_key"], public, manager, projection)
             created[key] = entity
@@ -605,6 +610,17 @@ class MobilityPropertySensor(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
+        if self.property_key in {
+            "charger.requested_power_kw",
+            "charger.requested_charge_power_kw",
+            "vehicle.requested_charge_power_kw",
+            "charger.current_limit_a",
+            "limits.requested_current_limit_a",
+            "vehicle.charge_mode",
+        }:
+            add_control = getattr(self.projection.controller, "add_listener", None)
+            if callable(add_control):
+                self.async_on_remove(add_control(self._changed))
 
     @callback
     def _changed(self) -> None:

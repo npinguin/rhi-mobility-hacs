@@ -38,6 +38,11 @@ class MobilityCompatibilitySwitch(SwitchEntity):
         self._attr_device_info=logical_device_info(manager.hass,entry_id,manager,asset_id)
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
+        # The canonical property projection resolves the registered HA editor
+        # entity id. Republish once registration has completed so asset.enabled
+        # does not retain an early read-only binding.
+        notify=getattr(self.manager,'_schedule_topology_notify',None)
+        if callable(notify): notify()
     @callback
     def _changed(self): self.async_write_ha_state()
     @property

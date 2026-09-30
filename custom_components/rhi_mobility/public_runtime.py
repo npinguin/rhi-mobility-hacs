@@ -526,8 +526,9 @@ class MobilityExperienceProvider:
 
     # Vehicle access security only. The charging-plug lock belongs to connector/
     # charging semantics and must never make an otherwise secured vehicle unsafe.
+    _SECURITY_SUMMARY_KEYS = ("vehicle.security_state",)
     _ACCESS_KEYS = (
-        "vehicle.security_state", "vehicle.lock_state",
+        "vehicle.lock_state",
         "vehicle.doors_locked", "vehicle.windows_locked", "vehicle.trunk_state", "vehicle.hood_state",
         "vehicle.door_front_left_state", "vehicle.door_front_right_state", "vehicle.door_rear_left_state", "vehicle.door_rear_right_state",
         "vehicle.window_fl_state", "vehicle.window_fr_state", "vehicle.window_rl_state", "vehicle.window_rr_state",
@@ -692,9 +693,15 @@ class MobilityExperienceProvider:
 
         access = {k: self._v(asset_id, k) for k in self._ACCESS_KEYS}
         access = {k: v for k, v in access.items() if v is not None}
+        summary_access = {k: self._v(asset_id, k) for k in self._SECURITY_SUMMARY_KEYS}
+        summary_access = {k: v for k, v in summary_access.items() if v is not None}
+        # Only explicit access/opening evidence may assert an unsafe vehicle.
+        # Generic integration security summaries are advisory: some providers fold
+        # charge-port/flap state into them. Treating such an aggregate as proof of
+        # an unlocked cabin creates false security alarms (observed on VW ID.4).
         unsafe = sorted(k for k, v in access.items() if str(v).lower() in self.unsafe)
 
-        lock_keys = ("vehicle.security_state", "vehicle.lock_state", "vehicle.doors_locked")
+        lock_keys = ("vehicle.lock_state", "vehicle.doors_locked")
         door_keys = (
             "vehicle.door_front_left_state", "vehicle.door_front_right_state",
             "vehicle.door_rear_left_state", "vehicle.door_rear_right_state",
@@ -718,14 +725,17 @@ class MobilityExperienceProvider:
         missing_coverage = [name for name in required_coverage if not coverage.get(name, False)]
         secure_proven = not missing_coverage
 
+        security_inputs = [*self._ACCESS_KEYS, *self._SECURITY_SUMMARY_KEYS]
         if unsafe:
-            security_i = self._intel("unsafe", "warning", "Unsafe", "Unsafe/open state: " + ", ".join(unsafe), "property_backed_security", "measured", list(self._ACCESS_KEYS), unsafe_properties=unsafe, missing_coverage=missing_coverage, required_coverage=required_coverage, policy_revision=self.policy_revision)
+            security_i = self._intel("unsafe", "warning", "Unsafe", "Unsafe/open state: " + ", ".join(unsafe), "property_backed_security", "measured", security_inputs, unsafe_properties=unsafe, missing_coverage=missing_coverage, required_coverage=required_coverage, advisory_summary=summary_access, policy_revision=self.policy_revision)
         elif access and secure_proven:
-            security_i = self._intel("secure", "normal", "Secure", "Required security coverage confirms the vehicle is secured", "property_backed_security", "derived", list(self._ACCESS_KEYS), unsafe_properties=[], missing_coverage=[], required_coverage=required_coverage, policy_revision=self.policy_revision)
+            security_i = self._intel("secure", "normal", "Secure", "Required security coverage confirms the vehicle is secured", "property_backed_security", "derived", security_inputs, unsafe_properties=[], missing_coverage=[], required_coverage=required_coverage, advisory_summary=summary_access, policy_revision=self.policy_revision)
         elif access:
-            security_i = self._intel("incomplete", "unknown", "Security incomplete", "Missing authoritative coverage: " + ", ".join(missing_coverage), "partial_security_coverage", "partial", list(self._ACCESS_KEYS), unsafe_properties=[], missing_coverage=missing_coverage, required_coverage=required_coverage, policy_revision=self.policy_revision)
+            security_i = self._intel("incomplete", "unknown", "Security incomplete", "Missing authoritative coverage: " + ", ".join(missing_coverage), "partial_security_coverage", "partial", security_inputs, unsafe_properties=[], missing_coverage=missing_coverage, required_coverage=required_coverage, advisory_summary=summary_access, policy_revision=self.policy_revision)
+        elif summary_access:
+            security_i = self._intel("incomplete", "unknown", "Security incomplete", "Only a generic security summary is available; explicit access evidence is required", "generic_security_summary_not_authoritative", "partial", security_inputs, unsafe_properties=[], missing_coverage=required_coverage, required_coverage=required_coverage, advisory_summary=summary_access, policy_revision=self.policy_revision)
         else:
-            security_i = self._intel("unknown", "unknown", "No security data", "No security data", "no_security_data", "missing", list(self._ACCESS_KEYS), unsafe_properties=[], missing_coverage=required_coverage, required_coverage=required_coverage, policy_revision=self.policy_revision)
+            security_i = self._intel("unknown", "unknown", "No security data", "No security data", "no_security_data", "missing", security_inputs, unsafe_properties=[], missing_coverage=required_coverage, required_coverage=required_coverage, advisory_summary={}, policy_revision=self.policy_revision)
 
         climate = self._v(asset_id, "vehicle.climate_state")
         remaining = self._v(asset_id, "vehicle.remaining_climate_time_s")
