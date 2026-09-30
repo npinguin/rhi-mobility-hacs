@@ -187,11 +187,16 @@ def _publication_diagnostics(hass: Any, energy_provider: Any = None) -> dict[str
 
     rows = []
     publication_match = True
+    authoritative_entity_id = "sensor.rhi_mobility_energy_v2"
+    authoritative_present = False
+    authoritative_match = False
     for entity_id in entity_ids:
         state = hass.states.get(entity_id)
         attrs = {} if state is None else dict(state.attributes or {})
         row = {
             "entity_id": entity_id,
+            "authority": "current_v2" if entity_id == authoritative_entity_id else "legacy_informational",
+            "required_for_current_health": entity_id == authoritative_entity_id,
             "live_state_present": state is not None,
             "state": None if state is None else state.state,
             "publication_revision": None if state is None else attrs.get("publication_revision"),
@@ -214,7 +219,10 @@ def _publication_diagnostics(hass: Any, energy_provider: Any = None) -> dict[str
                 live_consumer_ids == expected_consumer_ids
                 and live_connection_ids == expected_connection_ids
             )
-            publication_match = publication_match and match
+            if entity_id == authoritative_entity_id:
+                authoritative_present = state is not None
+                authoritative_match = match
+                publication_match = publication_match and match
             row.update({
                 "direct_consumer_asset_count": len(expected_consumers),
                 "direct_connection_asset_count": len(expected_connections),
@@ -228,7 +236,9 @@ def _publication_diagnostics(hass: Any, energy_provider: Any = None) -> dict[str
             })
         rows.append(row)
     return {
-        "status": "OK" if all(row["live_state_present"] for row in rows) and publication_match else "DEGRADED",
+        "status": "OK" if authoritative_present and authoritative_match and publication_match else "DEGRADED",
+        "authority": authoritative_entity_id,
+        "legacy_surfaces_health_semantics": "informational_only",
         "entities": rows,
     }
 

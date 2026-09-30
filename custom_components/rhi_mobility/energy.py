@@ -181,13 +181,14 @@ class MobilityEnergyV2Provider:
         )
         return {
             "provider_id": "mobility.command.v2",
-            "command_id": f"{vehicle_id}:vehicle.command.{operation}_charging",
+            "command_id": None if desc is None else desc.command_id,
             "consumer_asset_id": vehicle_id,
             "command_source_asset_id": charger_id,
             "logical_command_owner_asset_id": vehicle_id,
-            "command_owner_asset_id": vehicle_id,
+            "command_owner_asset_id": charger_id,
             "physical_executor_asset_id": charger_id,
             "command_key": f"vehicle.command.{operation}_charging",
+            "producer_command_key": key,
             "binding_available": binding_ready,
             "action_available": execution_allowed,
             "action_reason": "binding_ready" if execution_allowed else blocked_reason,
@@ -230,6 +231,9 @@ class MobilityEnergyV2Provider:
         charger_id = effective_charger_id or configured_charger_id
         charger = self.manager.snapshots.get(charger_id) if charger_id else None
         cvals = {} if charger is None else charger.values
+        configured_charger_name = self._v(configured_charger_id, "asset.display_name") if configured_charger_id else None
+        effective_charger_name = self._v(effective_charger_id, "asset.display_name") if effective_charger_id else None
+        physical_charger_name = self._v(relationship.physically_connected_charger_id, "asset.display_name") if relationship.physically_connected_charger_id else None
         lifecycle = self._v(aid, "asset.lifecycle_status") or self._v(aid, "lifecycle_status") or "active"
         availability = self._v(aid, "asset.availability_state") or "unknown"
         profile_id = self._v(aid, "asset.profile_id")
@@ -336,8 +340,11 @@ class MobilityEnergyV2Provider:
             "energy_control_priority": "normal",
             "connection_state": connection_state or ("disconnected" if present is False else "unknown"),
             "assigned_connection_id": configured_charger_id,
+            "assigned_connection_display_name": configured_charger_name,
             "effective_connection_id": effective_charger_id,
+            "effective_connection_display_name": effective_charger_name or configured_charger_name,
             "physical_connection_id": physical_connection,
+            "physical_connection_display_name": physical_charger_name,
             "physical_identity_proven": relationship.observed_identity_proven,
             "assigned_connection_state": relationship.assigned_charger_connection_state,
             "assigned_connection_occupied": relationship.assigned_charger_occupied,
@@ -382,7 +389,16 @@ class MobilityEnergyV2Provider:
             "readiness": readiness,
             "capabilities": {"start_supported": start["binding_available"], "stop_supported": stop["binding_available"], "adjust_power_supported": desc is not None},
             "automation": {"allowed": automation_allowed, "blocked_reason": blocked},
-            "command_refs": {"start": "vehicle.command.start_charging", "stop": "vehicle.command.stop_charging"},
+            "command_refs": {"start": start.get("command_id"), "stop": stop.get("command_id")},
+            "command_support": {
+                "start": {"supported": start["binding_available"], "execution_allowed": start["execution_allowed"], "reason": start["blocked_reason"]},
+                "stop": {"supported": stop["binding_available"], "execution_allowed": stop["execution_allowed"], "reason": stop["blocked_reason"]},
+                "requested_power": {
+                    "supported": bool(write_contract.get("requested_power_kw_write_supported")),
+                    "execution_allowed": bool(limits["requested_power_execution_ready"]),
+                    "reason": "none" if limits["requested_power_execution_ready"] else ("binding_missing" if not write_contract.get("requested_power_kw_write_supported") else "physical_connection_missing" if not physical_connection else "execution_not_ready"),
+                },
+            },
             "command_resolution": {"start": start, "stop": stop},
             "command_feedback": {"command_target_asset_id": aid, "command_target_connection_id": charger_id, "physical_connection_id": physical_connection, "feedback_property": "power_kw", "feedback_timeout_s": 120},
             "source_context": {"mobility": {"vehicle_present_at_home": present, "vehicle_physically_connected_to_charger": physical_connection is not None, "vehicle_can_receive_energy_now": automation_allowed, "legacy_energy_needed_kwh": need, "selected_charger": charger_id, "effective_charger": charger_id, "charger_available_for_control": self._v(charger_id, "charger.available_for_control") if charger_id else None}},
@@ -449,7 +465,11 @@ class MobilityEnergyV2Provider:
             },
             "readiness": {"requested_power_edit_ready": desc is not None and lifecycle != "disabled", "requested_power_physical_mapping_ready": desc is not None, "requested_power_physical_readback_ready": requested is not None, "requested_power_feedback_mode": "physical_setpoint_readback" if requested is not None else "unavailable", "requested_power_execution_ready": desc is not None and lifecycle != "disabled"},
             "capabilities": {"start_supported": start is not None, "stop_supported": stop is not None, "adjust_power_supported": desc is not None},
-            "command_refs": {"start": "charger.command.start_charging", "stop": "charger.command.stop_charging"},
+            "command_refs": {"start": None if start is None else start.command_id, "stop": None if stop is None else stop.command_id},
+            "command_resolution": {
+                "start": self._charger_command_resolution(aid, aid, "start"),
+                "stop": self._charger_command_resolution(aid, aid, "stop"),
+            },
             "metering": {"lifetime_energy_kwh": self._v(aid, "charger.lifetime_energy_kwh"), "session_energy_kwh": self._v(aid, "charger.session_energy_kwh")},
             "source_provenance": self._source_metadata(aid),
             "health": snap.health, "health_reason": getattr(snap, "health_reason", "none"),

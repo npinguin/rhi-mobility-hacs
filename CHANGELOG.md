@@ -1,3 +1,11 @@
+## M0.10.24 — Energy Command Authority Closure
+
+- publish exact producer command authority and display-ready Energy relationships;
+- make current V2 publication the Mobility diagnostics health authority;
+- preserve assignment, physical identity and execution ownership as distinct facts;
+- target Home Assistant acceptance remains required before production approval;
+- historical release entries below remain immutable.
+
 ## M0.10.23 — Target Ha Product Closure
 
 - republish existing canonical property write metadata after HA editor registration so lifecycle, profile/image and requested-kW controls do not remain stuck read-only;
