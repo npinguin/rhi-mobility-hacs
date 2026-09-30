@@ -1,3 +1,11 @@
+## M0.10.25 — Product Truth Closure
+
+- publish exact producer-owned command invocation metadata for Energy consumers;
+- publish requested-power command authority and readback mapping without source reconstruction;
+- publish charger relationship display identity separately from internal ids;
+- preserve assignment, occupancy and proven physical vehicle identity as distinct facts;
+- keep target Home Assistant acceptance mandatory before stable approval.
+
 ## M0.10.24 — Energy Command Authority Closure
 
 - publish exact producer command authority and display-ready Energy relationships;

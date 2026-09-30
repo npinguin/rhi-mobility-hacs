@@ -15,8 +15,15 @@ class MobilityCommandProvider:
         for row in self.controller.command_descriptors().values():
             rows.append({
                 'command_id':row.command_id,'asset_id':row.asset_id,'command_key':row.command_key,
+                'provider_id':'mobility.command.v2',
+                'command_owner_asset_id':row.asset_id,
+                'physical_executor_asset_id':row.asset_id,
                 'supported':row.supported,'execution_allowed':row.execution_allowed,'blocked_reason':row.blocked_reason,
                 'placement':row.placement,'protective':row.protective,
+                'invoke': {
+                    'service':'rhi_mobility.execute_command',
+                    'data': {'asset_id':row.asset_id,'command_key':row.command_key},
+                },
             })
         return {'contract_id':self.CONTRACT_ID,'publisher':'rhi_mobility','commands':rows,'raw_service_bindings_exposed':False}
 

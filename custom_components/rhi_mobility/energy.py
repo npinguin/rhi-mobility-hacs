@@ -112,6 +112,14 @@ class MobilityEnergyV2Provider:
                 "current_limit_a_write_min": None if current_desc is None else float(current_desc.min_current_a),
                 "current_limit_a_write_max": None if current_desc is None else float(current_desc.max_current_a),
                 "current_limit_a_write_step": None if current_desc is None else float(current_desc.current_step_a),
+                "requested_power_command": {
+                    "provider_id": "mobility.command.v2",
+                    "command_key": "charger.requested_charge_power_kw",
+                    "physical_executor_asset_id": asset_id,
+                    "supported": False,
+                    "invoke": None,
+                    "parameter_map": {"requested_power_kw": "power_kw"},
+                },
             }
         return {
             "requested_power_kw_write_owner": "rhi_mobility",
@@ -137,6 +145,17 @@ class MobilityEnergyV2Provider:
             "current_limit_a_write_min": None if current_desc is None else float(current_desc.min_current_a),
             "current_limit_a_write_max": None if current_desc is None else float(current_desc.max_current_a),
             "current_limit_a_write_step": None if current_desc is None else float(current_desc.current_step_a),
+            "requested_power_command": {
+                "provider_id": "mobility.command.v2",
+                "command_key": "charger.requested_charge_power_kw",
+                "physical_executor_asset_id": asset_id,
+                "supported": True,
+                "invoke": {
+                    "service": "rhi_mobility.set_requested_power",
+                    "data": {"asset_id": asset_id},
+                },
+                "parameter_map": {"requested_power_kw": "power_kw"},
+            },
         }
 
     def _energy_need_resolution(self, lifecycle: str, snap: Any, soc: Any, target: Any, cap: Any, profile_id: Any, profile_resolved: bool) -> str:
@@ -198,6 +217,16 @@ class MobilityEnergyV2Provider:
             "effective_connection_id": charger_id,
             "physical_connection_id": physical_connection_id,
             "proxy_target_connection_id": charger_id,
+            "producer_command_ref": {
+                "provider_id": "mobility.command.v2",
+                "command_id": None if desc is None else desc.command_id,
+                "command_key": key,
+                "physical_executor_asset_id": charger_id,
+                "invoke": (
+                    {"service": "rhi_mobility.execute_command", "data": {"asset_id": charger_id, "command_key": key}}
+                    if desc is not None and charger_id else None
+                ),
+            },
         }
 
     def _charger_command_resolution(self, consumer_asset_id: str, charger_id: str, operation: str) -> dict[str, Any]:
@@ -222,6 +251,16 @@ class MobilityEnergyV2Provider:
             "effective_connection_id": charger_id,
             "physical_connection_id": charger_id if desc is not None else None,
             "proxy_target_connection_id": charger_id,
+            "producer_command_ref": {
+                "provider_id": "mobility.command.v2",
+                "command_id": None if desc is None else desc.command_id,
+                "command_key": key,
+                "physical_executor_asset_id": charger_id,
+                "invoke": (
+                    {"service": "rhi_mobility.execute_command", "data": {"asset_id": charger_id, "command_key": key}}
+                    if desc is not None else None
+                ),
+            },
         }
 
     def _consumer(self, aid: str, snap) -> dict[str, Any]:
@@ -427,6 +466,8 @@ class MobilityEnergyV2Provider:
             and assigned_relationship.physically_connected_charger_id == aid
             else None
         )
+        assigned_name = self._v(assigned, "asset.display_name") if assigned else None
+        connected_name = self._v(connected_vehicle, "asset.display_name") if connected_vehicle else None
         commands = self.controller.command_descriptors()
         start = commands.get(f"{aid}:charger.command.start")
         stop = commands.get(f"{aid}:charger.command.stop")
@@ -440,7 +481,9 @@ class MobilityEnergyV2Provider:
             "availability_reason": getattr(snap, "health_reason", "none"),
             "connection_state": vals.get("charger.connection_state") or "unknown",
             "assigned_asset_id": assigned,
+            "assigned_asset_display_name": assigned_name,
             "connected_asset_id": connected_vehicle,
+            "connected_asset_display_name": connected_name,
             "connected_identity_proven": connected_vehicle is not None,
             "relationship_status": None if assigned_relationship is None else assigned_relationship.status.value,
             "relationship_reason": None if assigned_relationship is None else assigned_relationship.reason,
