@@ -1,3 +1,11 @@
+## M0.10.26 — Backend Truth Closure
+
+- distinguish configuration/acceptance gaps from genuine runtime materialization failures;
+- reserve `RUNTIME_MATERIALIZATION_EMPTY` for accepted runtime material that disappears before projection;
+- preserve bounded V2 supervision and configuration semantics;
+- add regression coverage for configuration-required versus blocked runtime states;
+- exact target Home Assistant acceptance remains required before production approval.
+
 ## M0.10.25 — Product Truth Closure
 
 - publish exact producer-owned command invocation metadata for Energy consumers;

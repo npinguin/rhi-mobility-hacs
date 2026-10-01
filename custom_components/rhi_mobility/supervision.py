@@ -115,6 +115,19 @@ class MobilityDomainSupervisoryStatusProvider:
         snapshots = dict(getattr(self.manager, "snapshots", {}) or {})
 
         if selected > 0 and not assets:
+            accepted = int(attempt.get("accepted_binding_count", 0) or 0)
+            build_state = str(attempt.get("status") or "UNKNOWN").upper()
+            # If selection/acceptance produced no executable domain object, the
+            # runtime is not broken: configuration still needs correction/review.
+            # Reserve BLOCKED for the true invariant violation where accepted
+            # runtime material exists but disappeared before materialization.
+            if accepted == 0 or build_state in {
+                "REMOVED",
+                "EMPTY",
+                "WAITING_FOR_FOUNDATION",
+                "WAITING_FOR_FOUNDATION_REFRESH",
+            }:
+                return "CONFIGURATION_REQUIRED", issues
             issues.append(self._issue(
                 "mobility:runtime:materialization",
                 severity="CRITICAL",
