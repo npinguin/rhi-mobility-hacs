@@ -1,3 +1,11 @@
+## M0.10.27 — Shared Baseline Integrity
+
+- restore the embedded Shared Baseline 1.8.1 snapshot byte-for-byte to the Foundation authority;
+- add authoritative ADR-013 and framework_resource contract support to the consumer snapshot;
+- pin the Foundation-owned aggregate checksum instead of a consumer-local 1.8.1 checksum;
+- preserve Mobility runtime semantics, zero accepted technical debt and zero accepted feature debt;
+- retain exact target Home Assistant qualification as a separate production gate.
+
 ## M0.10.26 — Backend Truth Closure
 
 - distinguish configuration/acceptance gaps from genuine runtime materialization failures;
