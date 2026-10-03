@@ -11,6 +11,8 @@ from ..eligibility import broad_all_matching_selection
 from ..models.contracts import AssetControlProfile, LogicalAssetBinding, RelationshipSnapshot, RuntimeSnapshot, VehiclePlanningProfile
 from .derived import apply_vehicle_derivations, apply_charger_derivations
 from .prebound import build_active_binding_plan, materialize_observations
+from .semantic_authority import begin_source_paths, write_canonical, apply_derived_candidates
+from .electrical_truth import resolve_effective_charging_profile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +43,8 @@ class MobilityRuntimeManager:
         self._health_cache: dict[str,tuple[str,str]] = {}
         self._binding_plans: dict[str, Any] = {}
         self._runtime_revision: int = 0
+        self._semantic_paths: dict[str, dict[str, dict[str, Any]]] = {}
+        self._semantic_conflicts: dict[str, list[dict[str, Any]]] = {}
 
     @property
     def bindings(self):
@@ -350,13 +354,19 @@ class MobilityRuntimeManager:
         elif quality == "mobility_domain_configuration":
             out["producer_kind"] = "CONFIGURED"
             out["configuration_revision"] = int(getattr(self.domain_config, "revision", 0) or 0)
+        path = (self._semantic_paths.get(asset_id) or {}).get(property_key) or {}
+        if path.get("selected_producer"):
+            out["producer_kind"] = path.get("selected_producer")
+            out["semantic_owner"] = path.get("semantic_owner")
+            out["selected_owner"] = path.get("selected_owner")
+            out["resolution_owner"] = path.get("resolution_owner")
+            out["candidate_producers"] = list(path.get("candidate_producers") or [])
+            out["semantic_conflicts"] = list(path.get("conflicts") or [])
         definition = (getattr(self.registry, "semantic_catalog", {}).get("properties") or {}).get(property_key) or {}
         dependencies = definition.get("derived_dependencies") or []
-        if dependencies:
-            out["producer_kind"] = "DERIVED"
+        if out.get("producer_kind") == "DERIVED" and dependencies:
             out["derived_from"] = list(dependencies)
-        elif property_key == "asset.availability_state":
-            out["producer_kind"] = "DERIVED"
+        elif property_key == "asset.availability_state" and out.get("producer_kind") == "DERIVED":
             out["derived_from"] = [f"{asset.concept_id}.health", "asset.lifecycle_status"]
         if "source_integration" not in out:
             out.update({
@@ -522,29 +532,18 @@ class MobilityRuntimeManager:
                 return rel.from_asset_id
         return None
 
-    def effective_charging_profile(self, charger_id: str) -> dict[str, float] | None:
+    def effective_charging_profile(self, charger_id: str) -> dict[str, Any] | None:
         charger=self.control_profile(charger_id)
-        if charger is None or charger.nominal_voltage_v is None or charger.phase_count is None:
-            return None
-        phases=int(charger.phase_count); voltage=float(charger.nominal_voltage_v)
-        min_a=charger.min_current_a; max_a=charger.max_current_a; step_a=charger.current_step_a
+        snapshots=getattr(self,'snapshots',{}) or {}
+        snap=snapshots.get(charger_id)
+        values={} if snap is None else dict(snap.values)
         vehicle_id=self.configured_vehicle_for_charger(charger_id)
         vehicle=self.control_profile(vehicle_id) if vehicle_id else None
-        if vehicle and vehicle.ac_phase_count: phases=min(phases,int(vehicle.ac_phase_count))
-        if phases<=0 or voltage<=0: return None
-        if vehicle and vehicle.max_ac_power_kw and max_a:
-            max_a=min(float(max_a),float(vehicle.max_ac_power_kw)*1000.0/(voltage*phases))
-        if min_a is None or max_a is None or min_a<=0 or max_a<min_a: return None
-        # Step size is a writable-surface characteristic. A product profile may
-        # legitimately omit it; the physical Number entity can still provide the
-        # authoritative step used by requested-power mapping.
-        return {
-            'nominal_voltage_v':voltage,'phase_count':float(phases),'min_current_a':float(min_a),
-            'max_current_a':float(max_a),'current_step_a':None if step_a is None else float(step_a),
-            'min_power_kw':float(min_a)*voltage*phases/1000.0,
-            'max_power_kw':float(max_a)*voltage*phases/1000.0,
-            'step_power_kw':None if step_a is None else float(step_a)*voltage*phases/1000.0,
-        }
+        return resolve_effective_charging_profile(
+            charger_profile=charger,
+            vehicle_profile=vehicle,
+            charger_values=values,
+        )
 
     def add_listener(self, cb: Callable[[],None]) -> Callable[[],None]:
         self.listeners.append(cb)
@@ -902,6 +901,8 @@ class MobilityRuntimeManager:
         return {
             'selected_input_count':len(payloads),'prepared_input_count':len(prepared_rows),'asset_count':len(self.assets),
             'accepted_binding_count':len(self.bindings),'relationship_count':len(self.effective_relationships),
+            'semantic_conflict_count':sum(len(rows) for rows in self._semantic_conflicts.values()),
+            'semantic_path_complete':not any(self._semantic_conflicts.values()),
             'degraded_asset_count':initial_degraded_asset_count,'status':status,
             'selection_error_count':len(selection_errors),'atomic_domain_replace':True,'capability_isolation':True,
         }
@@ -947,31 +948,48 @@ class MobilityRuntimeManager:
 
         snap.values={k:v[1] for k,v in sorted(candidates.items())}
         snap.quality={k:f"candidate:{v[2]}" for k,v in sorted(candidates.items())}
-        # Brand is the new canonical product identity term. Legacy manufacturer/vendor
-        # remain compatibility/source facts and feed brand as one explicit derivation.
-        if asset.concept_id == "vehicle" and snap.values.get("vehicle.brand") in (None, "") and snap.values.get("vehicle.manufacturer") not in (None, ""):
-            snap.values["vehicle.brand"] = snap.values["vehicle.manufacturer"]
-            snap.quality["vehicle.brand"] = "derived_from:vehicle.manufacturer"
-        if asset.concept_id == "charger" and snap.values.get("charger.brand") in (None, "") and snap.values.get("charger.vendor") not in (None, ""):
-            snap.values["charger.brand"] = snap.values["charger.vendor"]
-            snap.quality["charger.brand"] = "derived_from:charger.vendor"
+        semantic_paths=begin_source_paths(snap.values,snap.quality)
+        semantic_conflicts: list[dict[str,Any]]=[]
+        self._semantic_paths[asset_id]=semantic_paths
+        self._semantic_conflicts[asset_id]=semantic_conflicts
 
-        # Foundation device manufacturer/model remain provenance only. They are
-        # intentionally not copied into canonical Mobility brand/model properties:
-        # technical SKUs and reseller labels are not product identity. They can still
-        # participate in the narrow conflict veto above and remain visible in
-        # diagnostics/source metadata.
+        def commit(property_key: str, value: Any, producer_kind: str, owner: str, quality_value: str) -> bool:
+            return write_canonical(
+                values=snap.values,
+                quality=snap.quality,
+                definitions=semantic_properties,
+                paths=semantic_paths,
+                conflicts=semantic_conflicts,
+                key=property_key,
+                value=value,
+                producer_kind=producer_kind,
+                owner=owner,
+                quality_value=quality_value,
+            )
+
+        # Canonical product identity derivations contribute candidates; the resolver,
+        # never imperative write order, decides whether they become effective truth.
+        if asset.concept_id == "vehicle" and snap.values.get("vehicle.manufacturer") not in (None, ""):
+            commit(
+                "vehicle.brand", snap.values["vehicle.manufacturer"], "DERIVED",
+                "runtime/derived.py#brand", "derived_from:vehicle.manufacturer",
+            )
+        if asset.concept_id == "charger" and snap.values.get("charger.vendor") not in (None, ""):
+            commit(
+                "charger.brand", snap.values["charger.vendor"], "DERIVED",
+                "runtime/derived.py#brand", "derived_from:charger.vendor",
+            )
 
         selected_profile=self._selected_profile(asset_id)
         if selected_profile:
             pid=str(selected_profile["profile_id"])
-            snap.values["asset.profile_id"]=pid
-            snap.quality["asset.profile_id"]=(
-                "mobility_domain_configuration"
-                if self.configuration_value(asset_id, "asset.profile_id", None)
-                else "mobility_profile_identity_match"
+            configured_profile=self.configuration_value(asset_id,"asset.profile_id",None)
+            commit(
+                "asset.profile_id", pid,
+                "CONFIGURED" if configured_profile not in (None,"") else "DERIVED",
+                "domain_config#asset.profile_id" if configured_profile not in (None,"") else "profile_resolution#identity_match",
+                "mobility_domain_configuration" if configured_profile not in (None,"") else "mobility_profile_identity_match",
             )
-            semantic_properties=(getattr(self.registry,"semantic_catalog",{}).get("properties") or {})
             for property_key,definition in semantic_properties.items():
                 applicable=set(definition.get("applicable_asset_types") or [])
                 if applicable and asset.concept_id not in applicable:
@@ -980,31 +998,24 @@ class MobilityRuntimeManager:
                 if not profile_field:
                     continue
                 value=selected_profile.get(profile_field)
-                if value is None:
+                if value is None or "PROFILE" not in set(definition.get("producer_types") or []):
                     continue
-                precedence=list(definition.get("truth_precedence") or [])
-                if "PROFILE" not in precedence:
-                    continue
-                if property_key in snap.values:
-                    quality = str(snap.quality.get(property_key) or "")
-                    existing_kind = None
-                    if quality.startswith("candidate:") or quality in {"source_device_identity", "logical_asset_identity"}:
-                        existing_kind = "SOURCE"
-                    elif quality.startswith("derived_from:") or quality.startswith("derived_"):
-                        existing_kind = "DERIVED"
-                    elif quality == "mobility_domain_configuration":
-                        existing_kind = "CONFIGURED"
-                    if existing_kind in precedence and precedence.index(existing_kind) < precedence.index("PROFILE"):
-                        continue
-                snap.values[property_key]=value
-                snap.quality[property_key]=f"mobility_profile:{pid}"
+                commit(
+                    property_key,value,"PROFILE","profile_catalog",
+                    f"mobility_profile:{pid}",
+                )
 
         planning=self.planning_profile(asset_id)
         if planning and asset.concept_id=='vehicle' and planning.enabled and planning.ready_by is not None:
-            snap.values['vehicle.ready_by']=planning.ready_by; snap.quality['vehicle.ready_by']='mobility_domain_configuration'
+            commit(
+                'vehicle.ready_by',planning.ready_by,'CONFIGURED',
+                'domain_config#vehicle.ready_by','mobility_domain_configuration',
+            )
+
+        # Configuration is a candidate producer, not an unconditional overwrite.
+        # The semantic catalog precedence is the only authority deciding whether it wins.
         for property_key,definition in semantic_properties.items():
-            precedence=list(definition.get("truth_precedence") or [])
-            if "CONFIGURED" not in precedence:
+            if "CONFIGURED" not in set(definition.get("producer_types") or []):
                 continue
             applicable=set(definition.get("applicable_asset_types") or [])
             if applicable and asset.concept_id not in applicable:
@@ -1013,21 +1024,31 @@ class MobilityRuntimeManager:
             configured=self.configuration_value(asset_id,property_key,sentinel)
             if configured is sentinel:
                 continue
-            snap.values[property_key]=configured
-            snap.quality[property_key]="mobility_domain_configuration"
+            commit(
+                property_key,configured,"CONFIGURED","domain_config",
+                "mobility_domain_configuration",
+            )
+
         if not semantic_properties:
             fallback_keys={'asset.display_name','asset.short_name','asset.owner_label','asset.location_label','asset.profile_id','vehicle.target_soc_pct','vehicle.ready_by','vehicle.present','vehicle.battery_capacity_kwh','vehicle.mobility_charge_policy'}
             for property_key in fallback_keys:
                 sentinel=object(); configured=self.configuration_value(asset_id,property_key,sentinel)
                 if configured is not sentinel:
-                    snap.values[property_key]=configured; snap.quality[property_key]='mobility_domain_configuration'
+                    snap.values[property_key]=configured
+                    snap.quality[property_key]='mobility_domain_configuration'
 
         lifecycle=self.configuration_value(asset_id,'asset.lifecycle_status','active')
-        snap.values['asset.lifecycle_status']=lifecycle; snap.quality['asset.lifecycle_status']='mobility_domain_configuration'
-        if 'asset.display_name' not in snap.values:
-            source_name=self._source_device_name(asset.source_device_id)
-            snap.values['asset.display_name']=source_name or asset.display_name
-            snap.quality['asset.display_name']='source_device_identity' if source_name else 'logical_asset_identity'
+        commit(
+            'asset.lifecycle_status',lifecycle,'CONFIGURED',
+            'domain_config#asset.lifecycle_status','mobility_domain_configuration',
+        )
+        source_name=self._source_device_name(asset.source_device_id)
+        commit(
+            'asset.display_name',source_name or asset.display_name,'SOURCE',
+            'accepted_source_identity',
+            'source_device_identity' if source_name else 'logical_asset_identity',
+        )
+
         if asset.concept_id=='vehicle':
             if snap.values.get('vehicle.target_soc_pct') is not None:
                 snap.values['vehicle.target_soc_pct']=float(snap.values['vehicle.target_soc_pct'])
@@ -1039,28 +1060,54 @@ class MobilityRuntimeManager:
                 manual_soc=self.configuration_value(asset_id,'vehicle.soc_pct',None)
                 manual_energy=self.configuration_value(asset_id,'vehicle.battery_energy_kwh',None)
                 if manual_soc is not None:
-                    snap.values['vehicle.soc_pct']=float(manual_soc); snap.quality['vehicle.soc_pct']='mobility_manual_profile'
+                    commit('vehicle.soc_pct',float(manual_soc),'CONFIGURED','manual_vehicle_configuration','mobility_manual_profile')
                 if manual_energy is not None:
-                    snap.values['vehicle.battery_energy_kwh']=float(manual_energy); snap.quality['vehicle.battery_energy_kwh']='mobility_manual_profile'
+                    commit('vehicle.battery_energy_kwh',float(manual_energy),'CONFIGURED','manual_vehicle_configuration','mobility_manual_profile')
                 capacity=snap.values.get('vehicle.battery_capacity_kwh')
                 if manual_soc is None and manual_energy is not None and capacity is not None and float(capacity)>0:
-                    snap.values['vehicle.soc_pct']=round(float(manual_energy)/float(capacity)*100.0,3); snap.quality['vehicle.soc_pct']='derived_from_manual_energy_capacity'
+                    commit(
+                        'vehicle.soc_pct',round(float(manual_energy)/float(capacity)*100.0,3),
+                        'DERIVED','runtime/derived.py#manual_energy_capacity',
+                        'derived_from_manual_energy_capacity',
+                    )
             selected=self.effective_charger_for_vehicle(asset_id)
-            if selected: snap.values['vehicle.selected_charger']=selected; snap.quality['vehicle.selected_charger']='mobility_domain_configuration_or_foundation_assignment'
+            if selected:
+                commit(
+                    'vehicle.selected_charger',selected,'RELATIONSHIP',
+                    'runtime/manager.py#effective_relationships','configured_assignment',
+                )
             selected_charger=self.effective_charger_for_vehicle(asset_id)
             charging_profile=self.effective_charging_profile(selected_charger) if selected_charger else None
-            apply_vehicle_derivations(snap.values, snap.quality, charging_profile=charging_profile)
+            derived_values=dict(snap.values); derived_quality=dict(snap.quality)
+            apply_vehicle_derivations(derived_values,derived_quality,charging_profile=charging_profile)
+            apply_derived_candidates(
+                before_values=snap.values,before_quality=snap.quality,
+                derived_values=derived_values,derived_quality=derived_quality,
+                definitions=semantic_properties,paths=semantic_paths,conflicts=semantic_conflicts,
+                owner='runtime/derived.py#vehicle',
+            )
         elif asset.concept_id=='charger':
             vid=self.configured_vehicle_for_charger(asset_id)
-            if vid: snap.values['charger.assigned_vehicle_id']=vid; snap.quality['charger.assigned_vehicle_id']='mobility_domain_configuration_or_foundation_assignment'
+            if vid:
+                commit(
+                    'charger.assigned_vehicle_id',vid,'RELATIONSHIP',
+                    'runtime/manager.py#effective_relationships','configured_assignment',
+                )
             utility_surface = any(
                 binding.builder_id == "mobility.charger.utility_surface.v1"
                 for binding in asset.source_bindings.values()
             )
+            derived_values=dict(snap.values); derived_quality=dict(snap.quality)
             apply_charger_derivations(
-                snap.values,
-                snap.quality,
+                derived_values,
+                derived_quality,
                 utility_surface=utility_surface,
+            )
+            apply_derived_candidates(
+                before_values=snap.values,before_quality=snap.quality,
+                derived_values=derived_values,derived_quality=derived_quality,
+                definitions=semantic_properties,paths=semantic_paths,conflicts=semantic_conflicts,
+                owner='runtime/derived.py#charger',
             )
 
         snap.source_configuration_revision=max_cfg; snap.build_input_revision=max_build
@@ -1070,7 +1117,12 @@ class MobilityRuntimeManager:
             if row.get('asset_id')==asset_id and row.get('required') is True
             and row.get('status') in {'MISSING','AMBIGUOUS','INVALID_EVIDENCE','BLOCKED_BY_REVIEW','BLOCKED_BY_TARGET_SCOPE'}
         })
-        if build_required_issues:
+        if semantic_conflicts:
+            snap.health='DEGRADED'
+            snap.health_reason='semantic_path_conflict:' + ','.join(
+                sorted({str(row.get("property_id") or "unknown") for row in semantic_conflicts})
+            )
+        elif build_required_issues:
             snap.health='DEGRADED'; snap.health_reason='required_capability_issue:' + ','.join(build_required_issues)
         elif required_missing:
             snap.health='DEGRADED'; snap.health_reason='required_observation_unavailable:' + ','.join(sorted(set(required_missing)))
@@ -1085,16 +1137,31 @@ class MobilityRuntimeManager:
             log=_LOGGER.info if snap.health=='OK' else _LOGGER.warning
             log('Mobility asset health asset=%s health=%s reason=%s', asset_id, snap.health, snap.health_reason)
             self._notify()
-        snap.values['asset.availability_state']='disabled' if snap.values.get('asset.lifecycle_status')=='disabled' else ('available' if snap.health=='OK' else 'temporarily_unavailable')
-        snap.quality['asset.availability_state']='derived_from_required_observation_health'
-        snap.values[f'{asset.concept_id}.health']=snap.health; snap.quality[f'{asset.concept_id}.health']='canonical_runtime_health'
-        snap.values[f'{asset.concept_id}.health_reason']=snap.health_reason; snap.quality[f'{asset.concept_id}.health_reason']='canonical_runtime_health'
+        commit(
+            'asset.availability_state',
+            'disabled' if snap.values.get('asset.lifecycle_status')=='disabled' else ('available' if snap.health=='OK' else 'temporarily_unavailable'),
+            'DERIVED','runtime/manager.py#health','derived_from_required_observation_health',
+        )
+        commit(
+            f'{asset.concept_id}.health',snap.health,'DERIVED',
+            'runtime/manager.py#health','canonical_runtime_health',
+        )
+        commit(
+            f'{asset.concept_id}.health_reason',snap.health_reason,'DERIVED',
+            'runtime/manager.py#health','canonical_runtime_health',
+        )
         for rel in self.effective_relationships.values():
             if rel.relationship_type!='configured_assignment' or rel.health!='OK': continue
             if asset.concept_id=='vehicle' and rel.from_asset_id==asset_id:
-                snap.values['vehicle.selected_charger']=rel.to_asset_id; snap.quality['vehicle.selected_charger']='configured_assignment'
+                commit(
+                    'vehicle.selected_charger',rel.to_asset_id,'RELATIONSHIP',
+                    'runtime/manager.py#effective_relationships','configured_assignment',
+                )
             if asset.concept_id=='charger' and rel.to_asset_id==asset_id:
-                snap.values['charger.assigned_vehicle_id']=rel.from_asset_id; snap.quality['charger.assigned_vehicle_id']='configured_assignment'
+                commit(
+                    'charger.assigned_vehicle_id',rel.from_asset_id,'RELATIONSHIP',
+                    'runtime/manager.py#effective_relationships','configured_assignment',
+                )
         self._reconcile_relationship_health()
         after=(dict(snap.values),dict(snap.quality),snap.health,snap.health_reason,snap.source_configuration_revision,snap.build_input_revision)
         if after!=before:
@@ -1195,6 +1262,11 @@ class MobilityRuntimeManager:
                     'canonical_outputs':[] if self._binding_plans.get(aid) is None else sorted(self._binding_plans[aid].canonical_outputs),
                 },
                 'capability_status_counts':status_counts,'capabilities':cap_rows,
+                'semantic_paths':[
+                    {'property_id':key, **dict(row)}
+                    for key,row in sorted((self._semantic_paths.get(aid) or {}).items())
+                ],
+                'semantic_conflicts':list(self._semantic_conflicts.get(aid) or []),
             })
         selection_status_counts={}
         for row in selections: selection_status_counts[row.get('status')]=selection_status_counts.get(row.get('status'),0)+1

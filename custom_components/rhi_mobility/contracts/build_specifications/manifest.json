@@ -37,7 +37,7 @@
     "creates_public_contract": false,
     "executes_commands": false
   },
-  "release": "M0.10.27",
+  "release": "M0.10.29",
   "closure": {
     "step": 3,
     "full_feature_migration": true,
@@ -70,7 +70,7 @@
     "legacy_compatibility": "retired",
     "entity_id_drop_in": false
   },
-  "shared_baseline": "1.8.1",
+  "shared_baseline": "1.8.3",
   "selected_domain_build_input_contract": "1.2.0",
   "foundation_capability_candidate_contract": "1.1.0"
 }

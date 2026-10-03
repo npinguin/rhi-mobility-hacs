@@ -1,3 +1,14 @@
+## M0.10.29 — SINGLE_SEMANTIC_PATH
+
+- adopt Shared Baseline 1.8.3 and ADR-015;
+- enforce one effective semantic resolution path after source acceptance;
+- route profile/configuration/relationship/derived candidates through model-owned truth precedence;
+- expose semantic producer/resolver/conflict evidence and fail closed on duplicate writers;
+- make EVSE Start/Stop readiness consume one canonical state authority;
+- correct requested kW from effective active phases and phase voltage, including 400 V line-line normalization;
+- move publication content-integrity into PR validation;
+- preserve zero accepted technical and feature debt.
+
 ## M0.10.27 — Shared Baseline Integrity
 
 - restore the embedded Shared Baseline 1.8.1 snapshot byte-for-byte to the Foundation authority;
@@ -549,7 +560,7 @@
 
 ## M0.9.8 — Foundation minimum compatibility
 
-- Replace the exact Foundation F1.8.1/F1.8.2/F1.8.3 bootstrap whitelist with a minimum Foundation release of F1.8.1.
+- Replace the exact Foundation F1.8.1/F1.8.3/F1.8.3 bootstrap whitelist with a minimum Foundation release of F1.8.1.
 - Accept compatible later Foundation maintenance releases without requiring a Mobility code change solely to extend an allowlist.
 - Keep Shared Baseline 1.8.1 exact and fail closed on baseline drift, malformed Foundation release identities or releases older than F1.8.1.
 - Keep the change entirely Mobility-owned; no Foundation code, configuration lifecycle or cross-domain behavior is modified.

@@ -179,10 +179,18 @@ class MobilityControlCatalog:
         if key=='charger.command.start':
             op=values.get('charger.operating_state'); conn=values.get('charger.connection_state')
             if op=='fault' or conn=='fault': return False,'charger_fault'
-            if 'charger.connection_state' in values and conn!='asset_connected': return False,'vehicle_not_connected'
+            if conn!='asset_connected': return False,'vehicle_not_connected'
             if op in (None,'unknown'): return False,'charger_state_unknown'
+            if op=='running': return False,'already_running'
+            if op in {'idle','preparing','suspended','stopped'}: return True,'ready'
+            return False,'charger_state_not_startable'
         elif key=='charger.command.stop':
-            return True,'ready_protective_stop'
+            op=values.get('charger.operating_state'); conn=values.get('charger.connection_state')
+            if op=='fault' or conn=='fault': return True,'ready_protective_stop'
+            if op in {'running','preparing','suspended'}: return True,'ready_protective_stop'
+            if op in {'idle','stopped'}: return False,'charger_not_active'
+            if op in (None,'unknown'): return False,'charger_state_unknown'
+            return False,'charger_state_not_stoppable'
         elif key.startswith('vehicle.command.') and snap and snap.health!='OK':
             return False,'vehicle_runtime_not_ready'
         return True,'ready'
