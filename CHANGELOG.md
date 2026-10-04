@@ -1,3 +1,11 @@
+## M0.10.33 — Translation Closure
+
+- add the missing Restore profile OptionsFlow translation;
+- remove the retired configure_product_asset translation entry;
+- enforce exact strings.json / translations/en.json parity;
+- enforce translation coverage for every rendered OptionsFlow step and error;
+- retain zero accepted technical debt, feature debt and known static defects.
+
 ## M0.10.32 — Zero Debt Closure
 
 - fix Mobility→Energy requested-power editor identity to the canonical property-key unique-id;

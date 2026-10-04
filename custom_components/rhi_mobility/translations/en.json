@@ -23,13 +23,6 @@
           "charger_config": "Charger config"
         }
       },
-      "configure_product_asset": {
-        "title": "Choose vehicle or charger",
-        "description": "Choose a logical vehicle or charger. The list is searchable; type its name, model or integration label.",
-        "data": {
-          "product_asset": "Vehicle or charger"
-        }
-      },
       "edit_product_asset": {
         "title": "Configure {asset}",
         "description": "Profile-owned product facts are inherited automatically. Configure only this concrete asset: profile selection, name, owner/location, colour, relationships, planning intent and lifecycle.",
@@ -347,6 +340,13 @@
           "charger.phase_capability": "Phase capability override",
           "charger.nominal_voltage_v": "Nominal voltage override (V)",
           "charger.current_step_a": "Current adjustment step override (A)"
+        }
+      },
+      "restore_profile": {
+        "title": "Restore profile",
+        "description": "Choose a disabled packaged profile to restore.",
+        "data": {
+          "profile": "Profile"
         }
       }
     },
