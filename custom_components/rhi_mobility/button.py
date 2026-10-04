@@ -8,13 +8,13 @@ from .const import DOMAIN, RELEASE
 from .projection import logical_device_info
 
 async def async_setup_entry(hass: HomeAssistant,entry: ConfigEntry,async_add_entities: AddEntitiesCallback) -> None:
-    data=hass.data[DOMAIN][entry.entry_id]; controller=data['controller']; created={}
+    data=hass.data[DOMAIN][entry.entry_id]; controller=data['controller']; manager=data['runtime']; created={}
     @callback
     def sync():
         new=[]
         for cid,row in controller.command_descriptors().items():
             if cid in created: continue
-            entity=MobilityCommandButton(entry.entry_id,row.asset_id,row.command_key,controller); created[cid]=entity; new.append(entity)
+            entity=MobilityCommandButton(entry.entry_id,row.asset_id,row.command_key,controller,manager); created[cid]=entity; new.append(entity)
         wanted=set(controller.command_descriptors())
         for cid in list(created):
             if cid not in wanted:
@@ -24,8 +24,8 @@ async def async_setup_entry(hass: HomeAssistant,entry: ConfigEntry,async_add_ent
 
 class MobilityCommandButton(ButtonEntity):
     _attr_has_entity_name=True
-    def __init__(self,entry_id,asset_id,command_key,controller):
-        self.entry_id=entry_id; self.asset_id=asset_id; self.command_key=command_key; self.controller=controller
+    def __init__(self,entry_id,asset_id,command_key,controller,manager):
+        self.entry_id=entry_id; self.asset_id=asset_id; self.command_key=command_key; self.controller=controller; self.manager=manager
         suffix=command_key.split('.')[-1]
         self._attr_unique_id=f'{DOMAIN}:{asset_id}:command:{command_key}'
         self._attr_name=suffix.replace('_',' ').title(); self._attr_icon=self._icon(command_key); self._attr_suggested_object_id=f'{DOMAIN}_{asset_id}_{suffix}'
@@ -33,6 +33,18 @@ class MobilityCommandButton(ButtonEntity):
         row=controller.command_descriptors().get(f'{asset_id}:{command_key}')
         if row and str(row.placement).endswith('.engineering'):
             self._attr_entity_category=EntityCategory.DIAGNOSTIC
+    async def async_added_to_hass(self):
+        # Command readiness depends on canonical runtime state (for example charger
+        # operating/connection state), not only on command/executor topology. Keep
+        # the button entity stable and refresh its availability when its owning
+        # Mobility asset changes.
+        self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
+        self.async_on_remove(self.controller.add_listener(self._changed))
+
+    @callback
+    def _changed(self):
+        self.async_write_ha_state()
+
     @staticmethod
     def _icon(key):
         if key.endswith('.start'): return 'mdi:play'

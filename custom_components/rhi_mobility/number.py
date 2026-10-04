@@ -53,8 +53,16 @@ class MobilityNumber(NumberEntity):
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
-        if self.editable.get('write_kind') in {'charger_requested_power','vehicle_requested_power','charger_requested_current'}:
+        kind=self.editable.get('write_kind')
+        if kind in {'charger_requested_power','vehicle_requested_power','charger_requested_current'}:
             self.async_on_remove(self.controller.add_listener(self._changed))
+        if kind=='vehicle_requested_power':
+            # The value/bounds/availability are owned by the effective charger.
+            # Charger telemetry/capability changes do not necessarily mutate the
+            # vehicle snapshot and the controller intentionally does not fan out
+            # every telemetry update. Subscribe to bounded Mobility runtime changes
+            # so this cross-asset product control converges without a reload.
+            self.async_on_remove(self.manager.add_listener(self._changed))
         # Canonical property sensors publish the registered HA editor entity id as
         # write metadata. Registration can complete after the first property snapshot,
         # so republish topology once, coalesced with the existing runtime mechanism.

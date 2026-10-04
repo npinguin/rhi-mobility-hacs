@@ -621,6 +621,11 @@ class MobilityPropertySensor(SensorEntity):
             add_control = getattr(self.projection.controller, "add_listener", None)
             if callable(add_control):
                 self.async_on_remove(add_control(self._changed))
+        if self.property_key == "vehicle.requested_charge_power_kw":
+            # This canonical vehicle property is a projection of its effective
+            # charger's physical control/readback. Refresh on charger-side runtime
+            # changes as well as vehicle-side changes.
+            self.async_on_remove(self.manager.add_listener(self._changed))
 
     @callback
     def _changed(self) -> None:

@@ -5,6 +5,7 @@ from typing import Any
 
 from .const import DOMAIN, FOUNDATION_DOMAIN_ID, RELEASE, SHARED_BASELINE_VERSION, SELECTED_BUILD_INPUT_REGISTRY_KEY
 from .coverage import completeness_gate, normalized_property_coverage, source_capability_coverage
+from .editable_projection import editable_definitions
 from .property_resolver import PropertyResolver
 from .readiness import evaluate_asset_readiness
 from .relationship_resolution import resolve_vehicle_charger_relationship
@@ -52,7 +53,14 @@ def _asset_lifecycle(manager: Any, asset_id: str) -> str:
         return "unknown"
 
 
-def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[str, Any]:
+def _ha_projection_diagnostics(
+    hass: Any,
+    entry_id: str,
+    manager: Any,
+    public: Any = None,
+    controller: Any = None,
+    registry: Any = None,
+) -> dict[str, Any]:
     try:
         from homeassistant.helpers import device_registry as dr
         from homeassistant.helpers import entity_registry as er
@@ -134,12 +142,115 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
 
     topology_mismatches = [row["asset_id"] for row in rows if not row["topology_match"]]
     binding_mismatches = [row["asset_id"] for row in rows if not row["binding_on_exact_source_device"]]
+
+    # Product projection proof. Device topology alone is insufficient: the user
+    # experience is made of concrete property sensors, editor entities and command
+    # buttons. Compare backend-declared surfaces with the actual Entity Registry so
+    # diagnostics cannot report false-green while product controls are absent.
+    registered_by_unique_id = {
+        str(getattr(row, "unique_id", "") or ""): row
+        for row in config_entries
+        if getattr(row, "unique_id", None)
+    }
+    expected_surfaces: dict[str, dict[str, Any]] = {}
+    if public is not None:
+        for item in public.materialized_scalar_properties():
+            asset_id = str(item.get("asset_id") or "")
+            property_key = str(item.get("property_key") or "")
+            if asset_id and property_key:
+                unique_id = f"{DOMAIN}:{asset_id}:property:{property_key}"
+                expected_surfaces[unique_id] = {
+                    "asset_id": asset_id,
+                    "surface_kind": "property",
+                    "platform": "sensor",
+                    "property_key": property_key,
+                }
+    active_registry = registry or getattr(manager, "registry", None)
+    if active_registry is not None:
+        for asset_id, asset in sorted(manager.assets.items()):
+            for platform in ("number", "select", "text", "switch"):
+                for property_key, _editable in editable_definitions(
+                    active_registry, asset.concept_id, platform
+                ):
+                    unique_id = f"{DOMAIN}:{asset_id}:{platform}:{property_key}"
+                    expected_surfaces[unique_id] = {
+                        "asset_id": asset_id,
+                        "surface_kind": "editor",
+                        "platform": platform,
+                        "property_key": property_key,
+                    }
+    if controller is not None:
+        for descriptor in controller.command_descriptors().values():
+            unique_id = (
+                f"{DOMAIN}:{descriptor.asset_id}:command:{descriptor.command_key}"
+            )
+            expected_surfaces[unique_id] = {
+                "asset_id": str(descriptor.asset_id),
+                "surface_kind": "command",
+                "platform": "button",
+                "command_key": str(descriptor.command_key),
+                "execution_allowed": bool(descriptor.execution_allowed),
+                "blocked_reason": descriptor.blocked_reason,
+            }
+
+    logical_device_by_asset = {}
+    for asset_id in manager.assets:
+        logical = device_registry.async_get_device(identifiers={(DOMAIN, asset_id)})
+        logical_device_by_asset[asset_id] = None if logical is None else str(logical.id)
+
+    missing_product_surfaces = []
+    misplaced_product_surfaces = []
+    integration_disabled_product_surfaces = []
+    user_disabled_product_surfaces = []
+    registered_product_surfaces = []
+    for unique_id, expected in sorted(expected_surfaces.items()):
+        entity = registered_by_unique_id.get(unique_id)
+        if entity is None:
+            missing_product_surfaces.append({**expected, "unique_id": unique_id})
+            continue
+        actual_device_id = (
+            None if getattr(entity, "device_id", None) is None
+            else str(entity.device_id)
+        )
+        expected_device_id = logical_device_by_asset.get(expected["asset_id"])
+        disabled_by = getattr(entity, "disabled_by", None)
+        disabled_text = "" if disabled_by is None else str(
+            getattr(disabled_by, "value", disabled_by)
+        )
+        row = {
+            **expected,
+            "unique_id": unique_id,
+            "entity_id": str(entity.entity_id),
+            "expected_device_id": expected_device_id,
+            "actual_device_id": actual_device_id,
+            "disabled_by": disabled_text or None,
+        }
+        registered_product_surfaces.append(row)
+        if expected_device_id is not None and actual_device_id != expected_device_id:
+            misplaced_product_surfaces.append(row)
+        if disabled_text.lower() == "integration":
+            integration_disabled_product_surfaces.append(row)
+        elif disabled_text:
+            user_disabled_product_surfaces.append(row)
+
+    product_projection_evaluated = (
+        public is not None and controller is not None and active_registry is not None
+    )
+    product_projection_ok = (
+        not product_projection_evaluated
+        or (
+            not missing_product_surfaces
+            and not misplaced_product_surfaces
+            and not integration_disabled_product_surfaces
+        )
+    )
     status = "OK" if (
         root_id
         and not topology_mismatches
         and not binding_mismatches
         and not orphan_ids
         and not source_reparenting
+        and product_projection_ok
     ) else "DEGRADED"
     return {
         "status": status,
@@ -152,6 +263,18 @@ def _ha_projection_diagnostics(hass: Any, entry_id: str, manager: Any) -> dict[s
         "source_reparenting_device_ids": sorted(set(source_reparenting)),
         "binding_mismatch_count": len(binding_mismatches),
         "asset_rows": rows,
+        "product_projection_evaluated": product_projection_evaluated,
+        "expected_product_surface_count": len(expected_surfaces),
+        "registered_product_surface_count": len(registered_product_surfaces),
+        "missing_product_surface_count": len(missing_product_surfaces),
+        "missing_product_surfaces": missing_product_surfaces[:50],
+        "misplaced_product_surface_count": len(misplaced_product_surfaces),
+        "misplaced_product_surfaces": misplaced_product_surfaces[:50],
+        "integration_disabled_product_surface_count": len(integration_disabled_product_surfaces),
+        "integration_disabled_product_surfaces": integration_disabled_product_surfaces[:50],
+        "user_disabled_product_surface_count": len(user_disabled_product_surfaces),
+        "user_disabled_product_surfaces": user_disabled_product_surfaces[:50],
+        "product_projection_ok": product_projection_ok,
         "orphan_proxy_device_count": len(orphan_ids),
         "orphan_proxy_device_ids": orphan_ids[:20],
         "entry_entities_scanned": len(config_entries),
@@ -479,7 +602,14 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
         "charging_control": charging_control,
         "v2_contracts": _v2_contract_diagnostics(data),
         "execution": {} if controller is None else controller.executor.snapshot(),
-        "ha_projection": {} if manager is None else _ha_projection_diagnostics(hass, entry.entry_id, manager),
+        "ha_projection": {} if manager is None else _ha_projection_diagnostics(
+            hass,
+            entry.entry_id,
+            manager,
+            public,
+            controller,
+            getattr(manager, "registry", None),
+        ),
         "publication": {
             "publisher_domain": None if provider is None else provider.publisher_domain,
             "publication_revision": None if provider is None else provider.publication_revision,

@@ -1,3 +1,11 @@
+## M0.10.31 — Runtime UX Closure
+
+- refresh charging command buttons from live canonical charger state;
+- refresh vehicle requested-power controls from effective-charger runtime changes;
+- make HA projection health prove expected product entity registration instead of device topology alone;
+- fail projection health on missing, misplaced or integration-disabled required product surfaces;
+- retain zero accepted technical debt and zero accepted feature debt.
+
 ## M0.10.30 — PILOT_STABILIZATION
 
 - close target-HA semantic conflicts from legitimate fallback derivations;
