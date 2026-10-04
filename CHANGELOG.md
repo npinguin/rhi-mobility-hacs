@@ -1,3 +1,11 @@
+## M0.10.30 — PILOT_STABILIZATION
+
+- close target-HA semantic conflicts from legitimate fallback derivations;
+- make requested-power phase truth explicit and retain a bounded idle charger envelope;
+- reduce HA editable product controls to an explicit opt-in surface;
+- classify engineering commands as diagnostics;
+- keep pilot promotion blocked until target-HA runtime diagnostics pass.
+
 ## M0.10.29 — SINGLE_SEMANTIC_PATH
 
 - adopt Shared Baseline 1.8.3 and ADR-015;

@@ -3,6 +3,7 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity import EntityCategory
 from .const import DOMAIN, RELEASE
 from .projection import logical_device_info
 
@@ -29,6 +30,9 @@ class MobilityCommandButton(ButtonEntity):
         self._attr_unique_id=f'{DOMAIN}:{asset_id}:command:{command_key}'
         self._attr_name=suffix.replace('_',' ').title(); self._attr_icon=self._icon(command_key); self._attr_suggested_object_id=f'{DOMAIN}_{asset_id}_{suffix}'
         self._attr_device_info=logical_device_info(controller.hass,entry_id,controller.manager,asset_id)
+        row=controller.command_descriptors().get(f'{asset_id}:{command_key}')
+        if row and str(row.placement).endswith('.engineering'):
+            self._attr_entity_category=EntityCategory.DIAGNOSTIC
     @staticmethod
     def _icon(key):
         if key.endswith('.start'): return 'mdi:play'

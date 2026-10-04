@@ -15,7 +15,10 @@ def editable_definitions(registry, asset_type: str, platform: str) -> list[tuple
         editable=definition.get("editable")
         if not isinstance(editable,dict) or editable.get("platform") != platform:
             continue
-        if editable.get("ui_exposed") is False:
+        # HA editor entities are a deliberate product surface, not the complete
+        # configuration schema. Profile/spec/identity metadata remains editable
+        # through domain configuration but is not duplicated as everyday HA controls.
+        if editable.get("ui_exposed") is not True:
             continue
         if asset_type not in set(editable.get("asset_types") or []):
             continue

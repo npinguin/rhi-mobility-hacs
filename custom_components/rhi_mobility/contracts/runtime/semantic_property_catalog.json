@@ -1,7 +1,7 @@
 {
   "kind": "RHI_MOBILITY_SEMANTIC_PROPERTY_CATALOG",
   "contract_version": "1.0.0",
-  "release": "M0.10.7",
+  "release": "M0.10.30",
   "authority": "rhi_mobility",
   "rules": {
     "canonical_v2_authority": true,
@@ -98,7 +98,8 @@
           "vehicle",
           "charger"
         ],
-        "name": "Display Name"
+        "name": "Display Name",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -158,7 +159,8 @@
         "asset_types": [
           "charger"
         ],
-        "name": "Location"
+        "name": "Location",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -199,7 +201,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Owner Label"
+        "name": "Owner Label",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -255,7 +258,8 @@
           "vehicle",
           "charger"
         ],
-        "name": "Profile"
+        "name": "Profile",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -359,7 +363,8 @@
           "vehicle",
           "charger"
         ],
-        "name": "Short Name"
+        "name": "Short Name",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -369,7 +374,7 @@
       "visibility": "product",
       "unit": "A",
       "entity_type": "sensor",
-      "derived": false,
+      "derived": true,
       "friendly_name": "Actual current",
       "render_as": "readonly_value",
       "applicable_asset_types": [
@@ -389,7 +394,8 @@
         }
       },
       "producer_types": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "builder_sources": [
         {
@@ -400,9 +406,16 @@
         }
       ],
       "truth_precedence": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
-      "value_type": "number"
+      "value_type": "number",
+      "derived_dependencies": [
+        "charger.current_l1_a",
+        "charger.current_l2_a",
+        "charger.current_l3_a"
+      ],
+      "implementation": "Direct accepted source wins; Mobility-owned deterministic derivation is the single fallback."
     },
     "charger.added_energy_kwh": {
       "component_id": "metering",
@@ -920,7 +933,8 @@
           "charger"
         ],
         "dynamic_bounds": "requested_current",
-        "name": "Current Limit"
+        "name": "Current Limit",
+        "ui_exposed": false
       },
       "builder_sources": [
         {
@@ -1554,7 +1568,7 @@
           "charger"
         ],
         "name": "Charger visual key",
-        "ui_exposed": true
+        "ui_exposed": false
       }
     },
     "charger.lifetime_energy_kwh": {
@@ -1645,7 +1659,8 @@
         "name": "Maximum Current",
         "min": 0.1,
         "max": 200,
-        "step": 0.1
+        "step": 0.1,
+        "ui_exposed": false
       }
     },
     "charger.min_current_a": {
@@ -1702,7 +1717,8 @@
         "name": "Minimum Current",
         "min": 0.1,
         "max": 200,
-        "step": 0.1
+        "step": 0.1,
+        "ui_exposed": false
       }
     },
     "charger.model": {
@@ -1756,7 +1772,8 @@
         "asset_types": [
           "charger"
         ],
-        "name": "Model"
+        "name": "Model",
+        "ui_exposed": false
       }
     },
     "charger.nominal_voltage_v": {
@@ -1813,7 +1830,8 @@
         "name": "Nominal Voltage",
         "min": 1,
         "max": 1000,
-        "step": 1
+        "step": 1,
+        "ui_exposed": false
       }
     },
     "charger.observed_at": {
@@ -2041,7 +2059,8 @@
           "1",
           "2",
           "3"
-        ]
+        ],
+        "ui_exposed": false
       }
     },
     "charger.phase_current_l1_a": {
@@ -2514,7 +2533,8 @@
           "charger"
         ],
         "dynamic_bounds": "requested_power",
-        "name": "Set Charging Power"
+        "name": "Set Charging Power",
+        "ui_exposed": true
       },
       "value_type": "number"
     },
@@ -3066,7 +3086,8 @@
           "active",
           "disabled"
         ],
-        "name": "Lifecycle"
+        "name": "Lifecycle",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -3515,7 +3536,8 @@
         "name": "Battery Capacity",
         "min": 1,
         "max": 500,
-        "step": 0.1
+        "step": 0.1,
+        "ui_exposed": false
       },
       "value_type": "number"
     },
@@ -3576,7 +3598,8 @@
         "min": 0,
         "dynamic_max": "battery_capacity",
         "step": 0.1,
-        "name": "Battery Energy"
+        "name": "Battery Energy",
+        "ui_exposed": false
       },
       "value_type": "number"
     },
@@ -3917,7 +3940,8 @@
           "vehicle"
         ],
         "name": "Charge Mode",
-        "requires_controller_source": "vehicle_charge_mode"
+        "requires_controller_source": "vehicle_charge_mode",
+        "ui_exposed": false
       },
       "value_type": "enum",
       "state_family": "canonical_token"
@@ -5248,10 +5272,12 @@
         }
       },
       "producer_types": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "truth_precedence": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "value_type": "number",
       "builder_sources": [
@@ -5261,7 +5287,14 @@
           "usage": "observation",
           "normalizer": "distance_km"
         }
-      ]
+      ],
+      "derived_dependencies": [
+        "vehicle.primary_engine_type",
+        "vehicle.primary_range_km",
+        "vehicle.secondary_engine_type",
+        "vehicle.secondary_range_km"
+      ],
+      "implementation": "Direct accepted source wins; Mobility-owned deterministic derivation is the single fallback."
     },
     "vehicle.external_power_state": {
       "component_id": "charging",
@@ -5393,7 +5426,7 @@
       "visibility": "product",
       "unit": "km",
       "entity_type": "sensor",
-      "derived": false,
+      "derived": true,
       "builder_sources": [
         {
           "builder_id": "mobility.vehicle.connected_vehicle.v1",
@@ -5403,15 +5436,24 @@
         }
       ],
       "truth_precedence": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "applicable_asset_types": [
         "vehicle"
       ],
       "producer_types": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
-      "value_type": "number"
+      "value_type": "number",
+      "derived_dependencies": [
+        "vehicle.primary_engine_type",
+        "vehicle.primary_range_km",
+        "vehicle.secondary_engine_type",
+        "vehicle.secondary_range_km"
+      ],
+      "implementation": "Direct accepted source wins; Mobility-owned deterministic derivation is the single fallback."
     },
     "vehicle.health": {
       "component_id": "diagnostics",
@@ -5614,7 +5656,7 @@
           "vehicle"
         ],
         "name": "Vehicle visual key",
-        "ui_exposed": true
+        "ui_exposed": false
       }
     },
     "vehicle.immediate_charging_state": {
@@ -6393,7 +6435,8 @@
         "name": "Maximum AC Power",
         "min": 0.1,
         "max": 100,
-        "step": 0.1
+        "step": 0.1,
+        "ui_exposed": false
       }
     },
     "vehicle.max_oil_level": {
@@ -6479,7 +6522,8 @@
           "Forced",
           "Paused"
         ],
-        "name": "Mobility Charge Policy"
+        "name": "Mobility Charge Policy",
+        "ui_exposed": true
       },
       "value_type": "text"
     },
@@ -6534,7 +6578,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Model"
+        "name": "Model",
+        "ui_exposed": false
       }
     },
     "vehicle.motion_state": {
@@ -7324,7 +7369,8 @@
           "1",
           "2",
           "3"
-        ]
+        ],
+        "ui_exposed": false
       }
     },
     "vehicle.plug_lock_state": {
@@ -7490,7 +7536,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Present"
+        "name": "Present",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -7681,7 +7728,7 @@
       "visibility": "product",
       "unit": "km",
       "entity_type": "sensor",
-      "derived": false,
+      "derived": true,
       "friendly_name": "Range total km",
       "render_as": "readonly_value",
       "applicable_asset_types": [
@@ -7701,7 +7748,8 @@
         }
       },
       "producer_types": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "builder_sources": [
         {
@@ -7712,9 +7760,17 @@
         }
       ],
       "truth_precedence": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
-      "value_type": "number"
+      "value_type": "number",
+      "derived_dependencies": [
+        "vehicle.range_km",
+        "vehicle.kind",
+        "vehicle.ev_range_km",
+        "vehicle.fuel_range_km"
+      ],
+      "implementation": "Direct accepted source wins; Mobility-owned deterministic derivation is the single fallback."
     },
     "vehicle.ready_by": {
       "component_id": "charging",
@@ -7753,7 +7809,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Ready By"
+        "name": "Ready By",
+        "ui_exposed": true
       },
       "value_type": "text"
     },
@@ -7878,7 +7935,8 @@
           "vehicle"
         ],
         "dynamic_bounds": "requested_power",
-        "name": "Requested Charge Power"
+        "name": "Requested Charge Power",
+        "ui_exposed": true
       },
       "value_type": "number"
     },
@@ -8192,7 +8250,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Selected Charger"
+        "name": "Selected Charger",
+        "ui_exposed": true
       },
       "value_type": "text"
     },
@@ -8289,7 +8348,8 @@
         "min": 0,
         "max": 100,
         "step": 1,
-        "name": "SoC"
+        "name": "SoC",
+        "ui_exposed": false
       },
       "value_type": "number"
     },
@@ -8734,7 +8794,8 @@
         "min": 0,
         "max": 100,
         "step": 1,
-        "name": "Target SoC"
+        "name": "Target SoC",
+        "ui_exposed": true
       },
       "value_type": "number"
     },
@@ -10357,7 +10418,8 @@
           "vehicle",
           "charger"
         ],
-        "name": "Enabled"
+        "name": "Enabled",
+        "ui_exposed": false
       },
       "producer_types": [
         "CONFIGURED",
@@ -10648,7 +10710,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Brand"
+        "name": "Brand",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -10679,7 +10742,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Variant"
+        "name": "Variant",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -10713,7 +10777,8 @@
         "name": "Model Year",
         "min": 1900,
         "max": 2200,
-        "step": 1
+        "step": 1,
+        "ui_exposed": false
       },
       "value_type": "number"
     },
@@ -10741,7 +10806,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Color"
+        "name": "Color",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -10805,7 +10871,8 @@
         "asset_types": [
           "charger"
         ],
-        "name": "Brand"
+        "name": "Brand",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -10836,7 +10903,8 @@
         "asset_types": [
           "charger"
         ],
-        "name": "Variant"
+        "name": "Variant",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -10870,7 +10938,8 @@
         "name": "Model Year",
         "min": 1900,
         "max": 2200,
-        "step": 1
+        "step": 1,
+        "ui_exposed": false
       },
       "value_type": "number"
     },
@@ -10898,7 +10967,8 @@
         "asset_types": [
           "charger"
         ],
-        "name": "Color"
+        "name": "Color",
+        "ui_exposed": false
       },
       "value_type": "text"
     },
@@ -10974,7 +11044,8 @@
         "name": "Maximum Power",
         "min": 0.1,
         "max": 1000,
-        "step": 0.1
+        "step": 0.1,
+        "ui_exposed": false
       }
     },
     "charger.current_step_a": {
@@ -11021,7 +11092,8 @@
         "name": "Current Step",
         "min": 0.1,
         "max": 100,
-        "step": 0.1
+        "step": 0.1,
+        "ui_exposed": false
       }
     },
     "vehicle.person_entity_id": {
@@ -11061,7 +11133,8 @@
         "asset_types": [
           "vehicle"
         ],
-        "name": "Person"
+        "name": "Person",
+        "ui_exposed": false
       },
       "reference_target": "homeassistant.person",
       "value_type": "text"

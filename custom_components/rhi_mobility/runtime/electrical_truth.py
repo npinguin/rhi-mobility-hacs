@@ -47,7 +47,12 @@ def resolve_effective_charging_profile(
         phases = min(int(configured_phases), int(vehicle_phases))
         phase_count_source = "vehicle_charger_capability_fallback"
     elif configured_phases is not None and charger_values.get("charger.connection_state") != "asset_connected":
-        return None
+        # No active session means there is no vehicle-specific phase negotiation to
+        # observe. Charger capability is an explicit idle envelope, not a claim about
+        # an active vehicle. This keeps requested-power configuration available while
+        # remaining fail-closed once a vehicle is connected without phase evidence.
+        phases = int(configured_phases)
+        phase_count_source = "charger_capability_idle_fallback"
     else:
         return None
 
