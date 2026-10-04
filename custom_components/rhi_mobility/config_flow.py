@@ -680,10 +680,6 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
     async def async_step_charger_config(self, user_input=None):
         return await self._configure_asset_type("charger", "charger_config", user_input)
 
-    # Backward-compatible hidden step for an already-open 0.9.35 options flow.
-    async def async_step_configure_product_asset(self, user_input=None):
-        return await self.async_step_vehicle_config(user_input)
-
     async def async_step_product_configuration_mode(self, user_input=None):
         asset_id = str(self._target_product_asset or "")
         if asset_id not in self._product_assets():

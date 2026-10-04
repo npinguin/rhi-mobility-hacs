@@ -75,20 +75,18 @@ class MobilityEnergyV2Provider:
         try:
             from homeassistant.helpers import entity_registry as er
             registry = er.async_get(hass)
-            unique_id = f"rhi_mobility:{asset_id}:number:requested_power"
+            unique_id = f"rhi_mobility:{asset_id}:number:charger.requested_charge_power_kw"
             return registry.async_get_entity_id("number", "rhi_mobility", unique_id)
         except Exception as exc:
             _LOGGER.debug("Mobility exact editor entity lookup unavailable asset_id=%s: %s", asset_id, exc)
             return None
 
     def _requested_power_write_contract(self, asset_id: str | None, desc: Any) -> dict[str, Any]:
-        current_descriptor = getattr(self.controller, "requested_current_descriptor", None)
-        current_desc = current_descriptor(asset_id) if asset_id and callable(current_descriptor) else None
-        if current_desc is None and desc is not None and getattr(desc, "mode", None) == "current_limit":
-            # Backward-compatible provider/test controllers may only expose the
-            # established requested-power descriptor. A current-limit power
-            # descriptor already carries the same Mobility-owned physical bounds.
-            current_desc = desc
+        current_desc = (
+            self.controller.requested_current_descriptor(asset_id)
+            if asset_id
+            else None
+        )
         if not asset_id or desc is None:
             return {
                 "requested_power_kw_write_owner": "rhi_mobility",
@@ -128,7 +126,7 @@ class MobilityEnergyV2Provider:
             "requested_power_kw_write_asset_id": asset_id,
             "requested_power_kw_write_property_key": "charger.requested_charge_power_kw",
             "requested_power_kw_write_target_entity": self._mobility_editor_entity(asset_id),
-            "requested_power_kw_editor_unique_id": f"rhi_mobility:{asset_id}:number:requested_power",
+            "requested_power_kw_editor_unique_id": f"rhi_mobility:{asset_id}:number:charger.requested_charge_power_kw",
             "requested_power_kw_write_service_domain": "rhi_mobility",
             "requested_power_kw_write_service_action": "set_requested_power",
             "requested_power_kw_write_value_field": "power_kw",

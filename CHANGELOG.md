@@ -1,3 +1,11 @@
+## M0.10.32 — Zero Debt Closure
+
+- fix Mobility→Energy requested-power editor identity to the canonical property-key unique-id;
+- remove requested-current compatibility fallback;
+- remove pre-V2 hidden OptionsFlow compatibility;
+- remove obsolete startup revision diagnostic alias;
+- keep accepted technical debt, feature debt and known static defects at zero.
+
 ## M0.10.31 — Runtime UX Closure
 
 - refresh charging command buttons from live canonical charger state;

@@ -535,8 +535,6 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
             setup_timings_ms["convergence_foundation_build"]=0.0
         setup_data["startup_convergence_rebuild_required"]=convergence_rebuild_required
         setup_data["startup_handoff_structural_changed"]=post_platform_handoff_token != initial_handoff_token
-        # Backward-compatible diagnostic name; semantics are now structural, not revision-based.
-        setup_data["startup_handoff_revision_changed"]=setup_data["startup_handoff_structural_changed"]
         setup_data["initial_structural_token"]=initial_handoff_token
         setup_data["applied_structural_token"]=getattr(manager, "_last_selected_input_structural_token", None)
         setup_data["post_platform_structural_token"]=post_platform_handoff_token
