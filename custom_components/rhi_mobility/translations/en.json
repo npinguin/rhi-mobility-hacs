@@ -14,18 +14,18 @@
   "options": {
     "step": {
       "init": {
-        "title": "Manage Mobility products",
+        "title": "Mobility settings",
+        "description": "Choose what you want to configure. Everyday vehicle and charger settings are kept separate from profiles and technical overrides.",
         "menu_options": {
-          "vehicle_profile_config": "Vehicle profile config",
-          "vehicle_config": "Vehicle config",
-          "guest_vehicle_config": "Guest vehicle config",
-          "charger_profile_config": "Charger profile config",
-          "charger_config": "Charger config"
+          "vehicles": "Vehicles",
+          "chargers": "Chargers",
+          "guest_vehicles": "Guest vehicles",
+          "advanced": "Advanced"
         }
       },
       "edit_product_asset": {
-        "title": "Configure {asset}",
-        "description": "Profile-owned product facts are inherited automatically. Configure only this concrete asset: profile selection, name, owner/location, colour, relationships, planning intent and lifecycle.",
+        "title": "Mobility settings › Configure {asset}",
+        "description": "Configure this concrete asset. Profile-owned technical product facts remain inherited unless you explicitly use Advanced overrides.",
         "data": {
           "asset.profile_id": "Profile",
           "asset.display_name": "Display name",
@@ -194,20 +194,8 @@
         "title": "Remove {name}",
         "description": "Remove this guest vehicle and its Mobility-owned configuration."
       },
-      "manage_profiles": {
-        "title": "Profiles",
-        "description": "Search the catalog, edit one profile directly, or add a custom vehicle/charger profile. Saving an edit returns here so multiple profiles can be maintained in one session.",
-        "data": {
-          "action": "Action",
-          "profile": "Profile"
-        },
-        "data_description": {
-          "action": "Choose what you want to do. Editing is the default for fast repeated maintenance.",
-          "profile": "Type a brand, model, variant or year to find the profile. Packaged and local override profiles use the same stable product identity."
-        }
-      },
       "vehicle_profile_config": {
-        "title": "Vehicle profile config",
+        "title": "Mobility settings › Advanced › Vehicle profiles",
         "description": "Manage vehicle product profiles. The list is sorted by brand and searchable by brand, model, variant or year. Profile values are product defaults; concrete vehicles can override permitted values in Vehicle config.",
         "data": {
           "action": "Action",
@@ -219,7 +207,7 @@
         }
       },
       "charger_profile_config": {
-        "title": "Charger profile config",
+        "title": "Mobility settings › Advanced › Charger profiles",
         "description": "Manage charger product profiles. The list is sorted by brand and searchable by brand, model, variant or year. Profile values are product defaults; concrete chargers can override permitted values in Charger config.",
         "data": {
           "action": "Action",
@@ -228,32 +216,6 @@
         "data_description": {
           "action": "Edit, add, remove/disable, or restore a profile.",
           "profile": "Profiles are displayed as Brand — Model · Variant · Year so products from the same brand stay together."
-        }
-      },
-      "vehicle_config": {
-        "title": "Vehicle config",
-        "description": "Choose one concrete connected vehicle. Profile values are defaults; fields shown in the next screen are Mobility-owned instance configuration or explicit overrides. Live/readback truth remains source-owned.",
-        "data": {
-          "product_asset": "Vehicle"
-        }
-      },
-      "charger_config": {
-        "title": "Charger config",
-        "description": "Choose one concrete charger. Profile values are defaults; fields shown in the next screen are Mobility-owned instance configuration or explicit overrides. Live/readback truth remains source-owned.",
-        "data": {
-          "product_asset": "Charger"
-        }
-      },
-      "guest_vehicle_config": {
-        "title": "Guest vehicle config",
-        "description": "Manage Mobility-owned guest vehicles with the same product/configuration model as connected vehicles, but without a Foundation technical source.",
-        "data": {
-          "action": "Action",
-          "guest_vehicle": "Guest vehicle"
-        },
-        "data_description": {
-          "action": "Edit, add or remove a guest vehicle.",
-          "guest_vehicle": "Choose the guest vehicle to edit or remove."
         }
       },
       "add_guest_product": {
@@ -312,15 +274,8 @@
           "lifecycle_status": "Lifecycle"
         }
       },
-      "product_configuration_mode": {
-        "title": "Configure {asset}",
-        "menu_options": {
-          "edit_product_asset": "Instance configuration",
-          "edit_product_asset_advanced": "Advanced profile overrides"
-        }
-      },
       "edit_product_asset_advanced": {
-        "title": "Advanced overrides for {asset}",
+        "title": "Mobility settings › Advanced › Overrides for {asset}",
         "description": "Optional explicit deviations from the selected product profile. Blank means inherit the profile value; clearing an existing override returns to profile truth.",
         "data": {
           "vehicle.brand": "Brand override",
@@ -347,6 +302,53 @@
         "description": "Choose a disabled packaged profile to restore.",
         "data": {
           "profile": "Profile"
+        }
+      },
+      "vehicles": {
+        "title": "Mobility settings › Vehicles",
+        "description": "Choose one connected vehicle to configure. Save finishes this vehicle task.",
+        "data": {
+          "product_asset": "Vehicle"
+        }
+      },
+      "chargers": {
+        "title": "Mobility settings › Chargers",
+        "description": "Choose one charger to configure. Save finishes this charger task.",
+        "data": {
+          "product_asset": "Charger"
+        }
+      },
+      "guest_vehicles": {
+        "title": "Mobility settings › Guest vehicles",
+        "description": "Choose one guest-vehicle task. Guest vehicles are Mobility-owned and do not require a Foundation technical device.",
+        "menu_options": {
+          "add_guest_vehicle": "Add guest vehicle",
+          "edit_guest_vehicle": "Edit guest vehicle",
+          "remove_guest_vehicle": "Remove guest vehicle"
+        }
+      },
+      "advanced": {
+        "title": "Mobility settings › Advanced",
+        "description": "Profiles and explicit technical overrides live here. Normal vehicle and charger settings do not require this section.",
+        "menu_options": {
+          "vehicle_profile_config": "Vehicle profiles",
+          "charger_profile_config": "Charger profiles",
+          "advanced_vehicle_overrides": "Vehicle profile overrides",
+          "advanced_charger_overrides": "Charger profile overrides"
+        }
+      },
+      "advanced_vehicle_overrides": {
+        "title": "Mobility settings › Advanced › Vehicle overrides",
+        "description": "Choose a vehicle whose profile-owned technical values you explicitly want to override.",
+        "data": {
+          "product_asset": "Vehicle"
+        }
+      },
+      "advanced_charger_overrides": {
+        "title": "Mobility settings › Advanced › Charger overrides",
+        "description": "Choose a charger whose profile-owned technical values you explicitly want to override.",
+        "data": {
+          "product_asset": "Charger"
         }
       }
     },

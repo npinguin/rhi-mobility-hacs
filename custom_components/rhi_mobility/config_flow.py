@@ -638,14 +638,43 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         return self.async_create_entry(title="", data=self._options())
 
     async def async_step_init(self, user_input=None):
-        choices = ["vehicle_profile_config"]
+        choices = []
         if self._product_assets_for_type("vehicle"):
-            choices.append("vehicle_config")
-        choices.append("guest_vehicle_config")
-        choices.append("charger_profile_config")
+            choices.append("vehicles")
         if self._product_assets_for_type("charger"):
-            choices.append("charger_config")
+            choices.append("chargers")
+        choices.extend(["guest_vehicles", "advanced"])
         return self.async_show_menu(step_id="init", menu_options=choices)
+
+    async def async_step_vehicles(self, user_input=None):
+        return await self._configure_asset_type("vehicle", "vehicles", user_input)
+
+    async def async_step_chargers(self, user_input=None):
+        return await self._configure_asset_type("charger", "chargers", user_input)
+
+    async def async_step_guest_vehicles(self, user_input=None):
+        options = ["add_guest_vehicle"]
+        if self._guests():
+            options.extend(["edit_guest_vehicle", "remove_guest_vehicle"])
+        return self.async_show_menu(step_id="guest_vehicles", menu_options=options)
+
+    async def async_step_advanced(self, user_input=None):
+        options = ["vehicle_profile_config", "charger_profile_config"]
+        if self._product_assets_for_type("vehicle"):
+            options.append("advanced_vehicle_overrides")
+        if self._product_assets_for_type("charger"):
+            options.append("advanced_charger_overrides")
+        return self.async_show_menu(step_id="advanced", menu_options=options)
+
+    async def async_step_advanced_vehicle_overrides(self, user_input=None):
+        return await self._configure_advanced_asset_type(
+            "vehicle", "advanced_vehicle_overrides", user_input
+        )
+
+    async def async_step_advanced_charger_overrides(self, user_input=None):
+        return await self._configure_advanced_asset_type(
+            "charger", "advanced_charger_overrides", user_input
+        )
 
     async def _configure_asset_type(self, asset_type: str, step_id: str, user_input=None):
         choices = self._product_asset_options_for_type(asset_type)
@@ -666,29 +695,38 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                     errors={"base": "unknown_product_asset"},
                 )
             self._target_product_asset = asset_id
-            if self._has_effective_profile(asset_id):
-                return await self.async_step_product_configuration_mode()
             return await self.async_step_edit_product_asset()
         return self.async_show_form(
             step_id=step_id,
             data_schema=vol.Schema({vol.Required("product_asset"): selector}),
         )
 
-    async def async_step_vehicle_config(self, user_input=None):
-        return await self._configure_asset_type("vehicle", "vehicle_config", user_input)
-
-    async def async_step_charger_config(self, user_input=None):
-        return await self._configure_asset_type("charger", "charger_config", user_input)
-
-    async def async_step_product_configuration_mode(self, user_input=None):
-        asset_id = str(self._target_product_asset or "")
-        if asset_id not in self._product_assets():
-            return await self.async_step_init()
-        if not self._has_effective_profile(asset_id):
-            return await self.async_step_edit_product_asset()
-        return self.async_show_menu(
-            step_id="product_configuration_mode",
-            menu_options=["edit_product_asset", "edit_product_asset_advanced"],
+    async def _configure_advanced_asset_type(self, asset_type: str, step_id: str, user_input=None):
+        choices = self._product_asset_options_for_type(asset_type)
+        if not choices:
+            return await self.async_step_advanced()
+        selector = SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    SelectOptionDict(value=value, label=label)
+                    for value, label in choices.items()
+                ],
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        )
+        if user_input is not None:
+            asset_id = str(user_input.get("product_asset") or "")
+            if asset_id not in choices:
+                return self.async_show_form(
+                    step_id=step_id,
+                    data_schema=vol.Schema({vol.Required("product_asset"): selector}),
+                    errors={"base": "unknown_product_asset"},
+                )
+            self._target_product_asset = asset_id
+            return await self.async_step_edit_product_asset_advanced()
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=vol.Schema({vol.Required("product_asset"): selector}),
         )
 
     async def _edit_product_asset(self, *, advanced: bool, user_input=None):
@@ -717,7 +755,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
                 await runtime.async_set_configuration_property(asset_id, canonical_key, value)
         except (TypeError, ValueError):
             return self._product_form(asset_id, advanced=advanced, user_input=user_input, error="invalid_product_configuration")
-        return await self.async_step_product_configuration_mode() if self._has_effective_profile(asset_id) else await self.async_step_edit_product_asset()
+        return self.async_create_entry(title="", data=self._options())
 
     async def async_step_edit_product_asset(self, user_input=None):
         return await self._edit_product_asset(advanced=False, user_input=user_input)
@@ -771,9 +809,6 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
 
     async def async_step_charger_profile_config(self, user_input=None):
         return await self._profile_config("charger", "charger_profile_config", user_input)
-
-    async def async_step_manage_profiles(self, user_input=None):
-        return await self.async_step_vehicle_profile_config(user_input)
 
     async def async_step_add_vehicle_profile(self, user_input=None):
         if user_input is None:
@@ -878,39 +913,6 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             else self.async_step_charger_profile_config()
         )
 
-    async def async_step_guest_vehicle_config(self, user_input=None):
-        guests = self._guests()
-        schema = {vol.Required("action", default="edit"): self._guest_action_selector()}
-        if guests:
-            schema[vol.Optional("guest_vehicle")] = SelectSelector(
-                SelectSelectorConfig(
-                    options=[
-                        SelectOptionDict(value=asset_id, label=str(row.get("name") or asset_id))
-                        for asset_id, row in sorted(
-                            guests.items(),
-                            key=lambda item: str(item[1].get("name") or item[0]).casefold(),
-                        )
-                    ],
-                    mode=SelectSelectorMode.DROPDOWN,
-                )
-            )
-        if user_input is None:
-            return self.async_show_form(step_id="guest_vehicle_config", data_schema=vol.Schema(schema))
-        action = str(user_input.get("action") or "edit")
-        if action == "add":
-            return await self.async_step_add_guest_vehicle()
-        target = str(user_input.get("guest_vehicle") or "")
-        if not target or target not in guests:
-            return self.async_show_form(
-                step_id="guest_vehicle_config",
-                data_schema=vol.Schema(schema),
-                errors={"guest_vehicle": "guest_vehicle_required"},
-            )
-        self._target_guest = target
-        if action == "remove":
-            return await self.async_step_remove_guest()
-        return await self.async_step_edit_guest()
-
     async def async_step_add_guest_vehicle(self, user_input=None):
         if user_input is None:
             return self.async_show_form(
@@ -965,7 +967,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         await domain_config.async_add_guest_vehicle(
             MobilityDomainConfiguration._validate_guest_vehicle(values, set(profiles))
         )
-        return await self.async_step_guest_vehicle_config()
+        return self.async_create_entry(title="", data=self._options())
 
     async def async_step_add_guest_custom(self, user_input=None):
         if user_input is None:
@@ -997,7 +999,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         await domain_config.async_add_guest_vehicle(
             MobilityDomainConfiguration._validate_guest_vehicle(values, set(self._guest_profiles()))
         )
-        return await self.async_step_guest_vehicle_config()
+        return self.async_create_entry(title="", data=self._options())
 
     async def _select_guest(self, step_id: str, next_step: str, user_input=None):
         guests = self._guests()
@@ -1100,7 +1102,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             target,
             MobilityDomainConfiguration._validate_guest_vehicle(values, set(profiles)),
         )
-        return await self.async_step_guest_vehicle_config()
+        return self.async_create_entry(title="", data=self._options())
 
     async def async_step_edit_guest_custom(self, user_input=None):
         guests = self._guests()
@@ -1146,7 +1148,7 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             target,
             MobilityDomainConfiguration._validate_guest_vehicle(values, set(self._guest_profiles())),
         )
-        return await self.async_step_guest_vehicle_config()
+        return self.async_create_entry(title="", data=self._options())
 
     async def async_step_remove_guest_vehicle(self, user_input=None):
         return await self._select_guest("remove_guest_vehicle", "remove_guest", user_input)
@@ -1159,12 +1161,12 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
         if user_input is None:
             return self.async_show_form(step_id="remove_guest", data_schema=vol.Schema({vol.Required("confirm", default=False): bool}), description_placeholders={"name": str(guests.get(target, {}).get("name") or target)})
         if not user_input.get("confirm"):
-            return await self.async_step_init()
+            return await self.async_step_guest_vehicles()
         domain_config = self._domain_config()
         if domain_config is None:
-            return await self.async_step_init()
+            return await self.async_step_guest_vehicles()
         await domain_config.async_remove_guest_vehicle(target)
-        return await self.async_step_guest_vehicle_config()
+        return self.async_create_entry(title="", data=self._options())
 
     async def async_step_restore_profile(self, user_input=None):
         disabled = self._disabled_profiles()

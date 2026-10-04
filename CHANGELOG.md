@@ -1,3 +1,11 @@
+## M0.10.34 — GUIDED_CONFIGURATION_UX
+
+- replace the flat profile/product menu with Vehicles, Chargers, Guest vehicles and Advanced tasks;
+- route basic asset configuration directly to the selected asset and finish after Save;
+- isolate profile management and technical profile overrides under Advanced;
+- split guest vehicle Add/Edit/Remove into explicit tasks;
+- remove obsolete navigation aliases and preserve zero accepted technical/feature debt.
+
 ## M0.10.33 — Translation Closure
 
 - add the missing Restore profile OptionsFlow translation;
