@@ -466,6 +466,13 @@ class MobilityEnergyV2Provider:
         )
         assigned_name = self._v(assigned, "asset.display_name") if assigned else None
         connected_name = self._v(connected_vehicle, "asset.display_name") if connected_vehicle else None
+        effective_vehicle = (
+            assigned
+            if assigned_relationship is not None
+            and assigned_relationship.effective_charger_id == aid
+            else None
+        )
+        effective_vehicle_name = self._v(effective_vehicle, "asset.display_name") if effective_vehicle else None
         commands = self.controller.command_descriptors()
         start = commands.get(f"{aid}:charger.command.start")
         stop = commands.get(f"{aid}:charger.command.stop")
@@ -480,11 +487,29 @@ class MobilityEnergyV2Provider:
             "connection_state": vals.get("charger.connection_state") or "unknown",
             "assigned_asset_id": assigned,
             "assigned_asset_display_name": assigned_name,
+            "configured_asset_id": assigned,
+            "configured_asset_display_name": assigned_name,
+            "effective_asset_id": effective_vehicle,
+            "effective_asset_display_name": effective_vehicle_name or assigned_name,
             "connected_asset_id": connected_vehicle,
             "connected_asset_display_name": connected_name,
+            "observed_connected_asset_id": connected_vehicle,
+            "observed_connected_asset_display_name": connected_name,
             "connected_identity_proven": connected_vehicle is not None,
+            "physical_identity_proven": connected_vehicle is not None,
             "relationship_status": None if assigned_relationship is None else assigned_relationship.status.value,
             "relationship_reason": None if assigned_relationship is None else assigned_relationship.reason,
+            "relationship": {
+                "configured_vehicle_asset_id": assigned,
+                "configured_vehicle_display_name": assigned_name,
+                "effective_vehicle_asset_id": effective_vehicle,
+                "effective_vehicle_display_name": effective_vehicle_name or assigned_name,
+                "observed_connected_vehicle_asset_id": connected_vehicle,
+                "observed_connected_vehicle_display_name": connected_name,
+                "physical_identity_proven": connected_vehicle is not None,
+                "status": None if assigned_relationship is None else assigned_relationship.status.value,
+                "reason": None if assigned_relationship is None else assigned_relationship.reason,
+            },
             "operating_state": vals.get("charger.operating_state") or "unknown",
             "power_kw": vals.get("charger.power_kw"),
             "energy_flow_direction": "unknown" if vals.get("charger.power_kw") is None else ("to_connected_asset" if float(vals.get("charger.power_kw")) > 0.05 else "idle"),
@@ -629,13 +654,43 @@ class MobilityEnergyV2Provider:
             cvals = charger.values if charger else {}
             desc = self.controller.requested_power_descriptor(rel.to_asset_id)
             commands = self.controller.command_descriptors()
+            typed = resolve_vehicle_charger_relationship(self.manager, rel.from_asset_id)
+            vehicle_name = self._v(rel.from_asset_id, "asset.display_name")
+            charger_name = self._v(rel.to_asset_id, "asset.display_name")
+            observed_id = (
+                typed.physically_connected_charger_id
+                if typed.observed_identity_proven
+                and typed.physically_connected_charger_id == rel.to_asset_id
+                else None
+            )
             charging_relations.append({
-                "relationship_id": rel.relationship_id, "vehicle_asset_id": rel.from_asset_id, "charger_asset_id": rel.to_asset_id,
-                "relationship_health": rel.health, "connection_state": cvals.get("charger.connection_state"), "operating_state": cvals.get("charger.operating_state"),
-                "actual_power_kw": cvals.get("charger.power_kw"), "actual_current_a": cvals.get("charger.actual_current_a"),
-                "requested_power_kw": self.controller.requested_power_readback(rel.to_asset_id), "requested_current_limit_a": self.controller.requested_current_readback(rel.to_asset_id),
+                "relationship_id": rel.relationship_id,
+                "vehicle_asset_id": rel.from_asset_id,
+                "vehicle_display_name": vehicle_name,
+                "charger_asset_id": rel.to_asset_id,
+                "charger_display_name": charger_name,
+                "configured_charger_id": typed.configured_charger_id,
+                "configured_charger_display_name": self._v(typed.configured_charger_id, "asset.display_name") if typed.configured_charger_id else None,
+                "effective_charger_id": typed.effective_charger_id,
+                "effective_charger_display_name": self._v(typed.effective_charger_id, "asset.display_name") if typed.effective_charger_id else None,
+                "observed_connected_charger_id": observed_id,
+                "observed_connected_charger_display_name": self._v(observed_id, "asset.display_name") if observed_id else None,
+                "physical_identity_proven": typed.observed_identity_proven and observed_id is not None,
+                "relationship_status": typed.status.value,
+                "relationship_reason": typed.reason,
+                "relationship_health": rel.health,
+                "connection_state": cvals.get("charger.connection_state"),
+                "operating_state": cvals.get("charger.operating_state"),
+                "actual_power_kw": cvals.get("charger.power_kw"),
+                "actual_current_a": cvals.get("charger.actual_current_a"),
+                "requested_power_kw": self.controller.requested_power_readback(rel.to_asset_id),
+                "requested_current_limit_a": self.controller.requested_current_readback(rel.to_asset_id),
                 "requested_power_supported": desc is not None,
                 "command_ids": {key: cid for cid, row in commands.items() if row.asset_id == rel.to_asset_id for key in [row.command_key]},
+                "command_resolution": {
+                    "start": self._charger_command_resolution(rel.from_asset_id, rel.to_asset_id, "start"),
+                    "stop": self._charger_command_resolution(rel.from_asset_id, rel.to_asset_id, "stop"),
+                },
                 "vehicle_health": self.manager.snapshots.get(rel.from_asset_id).health if self.manager.snapshots.get(rel.from_asset_id) else None,
                 "charger_health": None if charger is None else charger.health,
             })

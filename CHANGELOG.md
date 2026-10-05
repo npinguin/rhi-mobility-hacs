@@ -1,3 +1,12 @@
+## M0.10.35 — Target Ha Relationship Truth Closure
+
+- publish symmetric canonical vehicle↔charger relationship truth with configured, effective and observed identity kept distinct;
+- publish display-ready canonical asset identity on consumer, connection and charging-relation surfaces;
+- retain charger-owned Start/Stop execution and exact physical executor references in MOBILITY_COMMAND_V2;
+- forbid connector occupancy from proving physical vehicle identity;
+- add blocking target-HA relationship regressions;
+- keep exact target Home Assistant qualification mandatory before production approval.
+
 ## M0.10.34 — GUIDED_CONFIGURATION_UX
 
 - replace the flat profile/product menu with Vehicles, Chargers, Guest vehicles and Advanced tasks;
