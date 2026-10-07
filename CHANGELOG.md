@@ -1,3 +1,10 @@
+## M0.10.36 — Engineering Baseline Sync
+
+- publish the validated post-closure Mobility engineering baseline as a new immutable HACS candidate;
+- keep V2-only runtime ownership, flat Home Assistant projection and physical execution semantics unchanged;
+- synchronize coordinated targets to Foundation F1.8.41 and Energy E0.15.103;
+- preserve Shared Baseline 1.8.3 and zero accepted technical/feature debt.
+
 ## M0.10.35 — Target Ha Relationship Truth Closure
 
 - publish symmetric canonical vehicle↔charger relationship truth with configured, effective and observed identity kept distinct;
