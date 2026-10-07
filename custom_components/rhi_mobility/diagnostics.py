@@ -573,6 +573,11 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
             "setup_metrics": dict(data.get("setup_metrics") or {}),
             "startup_convergence_rebuild_required": bool(data.get("startup_convergence_rebuild_required")),
             "projection": dict(data.get("projection_metrics") or {}),
+            "runtime_fanout": (
+                manager.performance_diagnostics()
+                if manager is not None and hasattr(manager, "performance_diagnostics")
+                else {}
+            ),
         },
         "build_handoff": {} if manager is None else manager.diagnostics_snapshot(),
         "binding": {

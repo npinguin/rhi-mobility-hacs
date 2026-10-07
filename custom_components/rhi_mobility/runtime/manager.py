@@ -45,6 +45,15 @@ class MobilityRuntimeManager:
         self._runtime_revision: int = 0
         self._semantic_paths: dict[str, dict[str, dict[str, Any]]] = {}
         self._semantic_conflicts: dict[str, list[dict[str, Any]]] = {}
+        self._perf = {
+            "refresh_requests": 0,
+            "coalesced_refresh_requests": 0,
+            "asset_refresh_runs": 0,
+            "asset_notify_count": 0,
+            "runtime_listener_callback_count": 0,
+            "global_notify_count": 0,
+            "topology_notify_count": 0,
+        }
 
     @property
     def bindings(self):
@@ -573,11 +582,17 @@ class MobilityRuntimeManager:
         return unsub
 
     def _notify(self) -> None:
-        for cb in tuple(self.listeners): cb()
+        self._perf["global_notify_count"] += 1
+        for cb in tuple(self.listeners):
+            cb()
 
     def _notify_topology(self) -> None:
-        for cb in tuple(self._topology_listeners): cb()
-        for cb in tuple(self._runtime_listeners): cb()
+        self._perf["topology_notify_count"] += 1
+        for cb in tuple(self._topology_listeners):
+            cb()
+        for cb in tuple(self._runtime_listeners):
+            self._perf["runtime_listener_callback_count"] += 1
+            cb()
         self._notify()
 
     def _schedule_topology_notify(self) -> None:
@@ -603,14 +618,22 @@ class MobilityRuntimeManager:
         self._notify_topology()
 
     def _notify_asset(self, asset_id: str) -> None:
-        for cb in tuple(self._asset_listeners.get(str(asset_id),())): cb()
-        for cb in tuple(self._runtime_listeners): cb()
+        self._perf["asset_notify_count"] += 1
+        for cb in tuple(self._asset_listeners.get(str(asset_id), ())):
+            cb()
+        for cb in tuple(self._runtime_listeners):
+            self._perf["runtime_listener_callback_count"] += 1
+            cb()
 
     def _schedule_refresh(self, asset_id: str) -> None:
         if asset_id not in self.assets:
             return
+        self._perf["refresh_requests"] += 1
+        already_pending = asset_id in self._pending_refresh_assets
         self._pending_refresh_assets.add(asset_id)
         if self._refresh_flush_scheduled:
+            if already_pending:
+                self._perf["coalesced_refresh_requests"] += 1
             return
         loop=getattr(self.hass,"loop",None)
         call_soon=getattr(loop,"call_soon",None)
@@ -624,6 +647,7 @@ class MobilityRuntimeManager:
         self._refresh_flush_scheduled=False
         pending=sorted(self._pending_refresh_assets); self._pending_refresh_assets.clear()
         for asset_id in pending:
+            self._perf["asset_refresh_runs"] += 1
             self._refresh(asset_id)
 
     def _clear_asset_listener(self, asset_id: str) -> None:
@@ -1167,6 +1191,15 @@ class MobilityRuntimeManager:
         if after!=before:
             self._runtime_revision += 1
             self._notify_asset(asset_id)
+
+    def performance_diagnostics(self) -> dict[str, int]:
+        return {
+            **self._perf,
+            "runtime_listener_count": len(self._runtime_listeners),
+            "asset_listener_asset_count": len(self._asset_listeners),
+            "asset_listener_count": sum(len(rows) for rows in self._asset_listeners.values()),
+            "pending_refresh_asset_count": len(self._pending_refresh_assets),
+        }
 
     def supported_property_keys(self, asset_id: str) -> set[str]:
         keys: set[str] = set()

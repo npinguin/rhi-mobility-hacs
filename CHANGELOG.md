@@ -1,3 +1,11 @@
+## M0.10.37 — Change-only Energy V2 Publication
+
+- coalesce Mobility runtime callbacks before Energy V2 publication;
+- fingerprint the semantic MOBILITY_ENERGY_V2 payload and suppress unchanged Home Assistant writes;
+- expose Mobility runtime refresh/fanout counters for target-HA performance qualification;
+- preserve Vehicle/Charger ownership, flat HA projection and physical execution semantics;
+- coordinate runtime qualification with Foundation F1.8.41 and Energy E0.15.105.
+
 ## M0.10.36 — Engineering Baseline Sync
 
 - publish the validated post-closure Mobility engineering baseline as a new immutable HACS candidate;

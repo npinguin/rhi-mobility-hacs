@@ -249,29 +249,77 @@ class PolicyV2Sensor(MonitoringSensor):
 
 
 class EnergyV2Sensor(MonitoringSensor):
+    """Change-only HA transport for the Mobility -> Energy V2 contract."""
+
     _attr_icon = "mdi:transmission-tower-export"
 
     def __init__(self, entry_id: str, provider) -> None:
         super().__init__(entry_id, "energy_v2", "Energy V2")
         self.entity_id = "sensor.rhi_mobility_energy_v2"
         self.provider = provider
+        self._scheduled = None
+        self._fingerprint = None
+        self._revision = 0
+        self._snapshot: dict = {}
+        self._recompute_request_count = 0
+        self._unchanged_skip_count = 0
+        self._refresh_snapshot()
+
+    def _refresh_snapshot(self) -> bool:
+        payload = dict(self.provider.snapshot() or {})
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
+        fingerprint = hashlib.sha256(encoded).hexdigest()
+        if fingerprint == self._fingerprint:
+            self._unchanged_skip_count += 1
+            return False
+        self._fingerprint = fingerprint
+        self._revision += 1
+        payload["content_fingerprint"] = fingerprint
+        payload["contract_revision"] = self._revision
+        self._snapshot = payload
+        return True
 
     async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
         add_listener = getattr(self.provider, "add_listener", None)
         if callable(add_listener):
             self.async_on_remove(add_listener(self._changed))
 
     @callback
     def _changed(self) -> None:
-        self.async_write_ha_state()
+        self._recompute_request_count += 1
+        if self._scheduled is not None:
+            return
+        self._scheduled = self.hass.loop.call_soon(self._flush_refresh)
+
+    @callback
+    def _flush_refresh(self) -> None:
+        self._scheduled = None
+        if self._refresh_snapshot():
+            self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._scheduled is not None:
+            self._scheduled.cancel()
+            self._scheduled = None
+        await super().async_will_remove_from_hass()
 
     @property
     def native_value(self):
-        return "ready"
+        return self._revision
 
     @property
     def extra_state_attributes(self):
-        return dict(self.provider.snapshot() or {})
+        return dict(self._snapshot)
+
+    def publication_diagnostics(self) -> dict:
+        return {
+            "recompute_request_count": self._recompute_request_count,
+            "contract_revision": self._revision,
+            "unchanged_skip_count": self._unchanged_skip_count,
+            "recompute_scheduled": self._scheduled is not None,
+            "content_fingerprint": self._fingerprint,
+        }
 
 
 class CommandV2Sensor(MonitoringSensor):
