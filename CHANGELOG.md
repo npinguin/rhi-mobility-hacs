@@ -1,3 +1,15 @@
+## M0.10.38 — Runtime Scope Closure
+
+- adopt Shared Baseline 1.8.4 and ADR-016 Runtime Scope and Persistent Truth;
+- preserve changed source entity identity through runtime coalescing;
+- read only changed prebound observations plus required health evidence;
+- preserve unrelated asset truth instead of rematerializing the full asset source set;
+- keep asset-scoped fanout and change-only MOBILITY_ENERGY_V2 publication;
+- introduce no generic runtime framework or event bus;
+- coordinate with Foundation F1.8.42 and Energy E0.15.106;
+- preserve zero accepted technical and feature debt;
+- keep production approval pending exact target-HA qualification.
+
 ## M0.10.37 — Change-only Energy V2 Publication
 
 - coalesce Mobility runtime callbacks before Energy V2 publication;

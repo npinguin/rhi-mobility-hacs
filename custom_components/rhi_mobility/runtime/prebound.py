@@ -102,14 +102,21 @@ def materialize_observations(
     hass: Any,
     plan: ActiveBindingPlan,
     semantic_properties: dict[str, Any],
+    entity_ids: set[str] | None = None,
 ) -> tuple[dict[str, tuple[int, Any, str]], list[str], list[str]]:
-    """Materialize current canonical facts from a prebound plan."""
+    """Materialize canonical facts for all or only changed prebound source entities.
+
+    Structural binding resolution is already complete in ActiveBindingPlan. Ordinary
+    telemetry therefore reads only observations owned by the changed HA entities.
+    """
 
     candidates: dict[str, tuple[int, Any, str]] = {}
     required_missing: list[str] = []
     required_unknown: list[str] = []
 
     for bound in plan.observations:
+        if entity_ids is not None and bound.entity_id not in entity_ids:
+            continue
         state = hass.states.get(bound.entity_id)
         raw = None if state is None else state.state
         attributes = {} if state is None else dict(getattr(state, "attributes", {}) or {})

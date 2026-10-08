@@ -36,7 +36,8 @@ class MobilityRuntimeManager:
         self._topology_listeners: list[Callable[[],None]]=[]
         self._runtime_listeners: list[Callable[[],None]]=[]
         self._asset_listeners: dict[str,list[Callable[[],None]]]=defaultdict(list)
-        self._pending_refresh_assets: set[str]=set()
+        # asset_id -> changed source entity ids. None/full refreshes bypass this map.
+        self._pending_refresh_assets: dict[str,set[str]]={}
         self._refresh_flush_scheduled=False
         self._topology_notify_scheduled=False
         self.last_build_attempt: dict[str,Any] = {'status':'WAITING_FOR_FOUNDATION','observed_at':None}
@@ -625,12 +626,14 @@ class MobilityRuntimeManager:
             self._perf["runtime_listener_callback_count"] += 1
             cb()
 
-    def _schedule_refresh(self, asset_id: str) -> None:
+    def _schedule_refresh(self, asset_id: str, entity_id: str | None = None) -> None:
         if asset_id not in self.assets:
             return
         self._perf["refresh_requests"] += 1
         already_pending = asset_id in self._pending_refresh_assets
-        self._pending_refresh_assets.add(asset_id)
+        pending_entities = self._pending_refresh_assets.setdefault(asset_id, set())
+        if entity_id:
+            pending_entities.add(str(entity_id))
         if self._refresh_flush_scheduled:
             if already_pending:
                 self._perf["coalesced_refresh_requests"] += 1
@@ -645,10 +648,14 @@ class MobilityRuntimeManager:
 
     def _flush_scheduled_refreshes(self) -> None:
         self._refresh_flush_scheduled=False
-        pending=sorted(self._pending_refresh_assets); self._pending_refresh_assets.clear()
-        for asset_id in pending:
+        pending={
+            asset_id: set(entity_ids)
+            for asset_id, entity_ids in self._pending_refresh_assets.items()
+        }
+        self._pending_refresh_assets.clear()
+        for asset_id in sorted(pending):
             self._perf["asset_refresh_runs"] += 1
-            self._refresh(asset_id)
+            self._refresh(asset_id, dirty_entity_ids=pending[asset_id])
 
     def _clear_asset_listener(self, asset_id: str) -> None:
         for unsub in self._unsubs.pop(asset_id,[]): unsub()
@@ -940,13 +947,14 @@ class MobilityRuntimeManager:
         unsubs=[]
         if entity_ids:
             @callback
-            def changed(event) -> None: self._schedule_refresh(asset_id)
+            def changed(event) -> None:
+                self._schedule_refresh(asset_id, str(event.data.get("entity_id") or "") or None)
             unsubs.append(async_track_state_change_event(self.hass,entity_ids,changed))
         self._unsubs[asset_id]=unsubs
         self._refresh(asset_id)
 
-    def _refresh(self, asset_id: str) -> None:
-        self._refresh_core(asset_id)
+    def _refresh(self, asset_id: str, *, dirty_entity_ids: set[str] | None = None) -> None:
+        self._refresh_core(asset_id, dirty_entity_ids=dirty_entity_ids)
 
     def control_source(self, asset_id: str, input_id: str):
         plan=self._binding_plans.get(asset_id)
@@ -955,7 +963,7 @@ class MobilityRuntimeManager:
     def active_binding_plan(self, asset_id: str):
         return self._binding_plans.get(asset_id)
 
-    def _refresh_core(self, asset_id: str) -> None:
+    def _refresh_core(self, asset_id: str, *, dirty_entity_ids: set[str] | None = None) -> None:
         asset=self.assets.get(asset_id); snap=self.snapshots.get(asset_id)
         if not asset or not snap: return
         before=(dict(snap.values),dict(snap.quality),snap.health,snap.health_reason,snap.source_configuration_revision,snap.build_input_revision)
@@ -964,14 +972,36 @@ class MobilityRuntimeManager:
         if plan is None:
             plan=build_active_binding_plan(asset,self.registry)
             self._binding_plans[asset_id]=plan
+        # Required observations remain part of every health evaluation. Optional
+        # observations are read only when their own source entity changed.
+        refresh_entities = None
+        if dirty_entity_ids is not None:
+            refresh_entities = set(dirty_entity_ids)
+            refresh_entities.update(
+                bound.entity_id for bound in plan.observations if bound.required
+            )
         candidates,required_missing,required_unknown=materialize_observations(
-            self.hass,plan,semantic_properties
+            self.hass,plan,semantic_properties,refresh_entities
         )
         max_cfg=max((b.source_configuration_revision for b in asset.source_bindings.values()),default=0)
         max_build=max((b.build_input_revision for b in asset.source_bindings.values()),default=0)
 
-        snap.values={k:v[1] for k,v in sorted(candidates.items())}
-        snap.quality={k:f"candidate:{v[2]}" for k,v in sorted(candidates.items())}
+        if refresh_entities is None:
+            snap.values={k:v[1] for k,v in sorted(candidates.items())}
+            snap.quality={k:f"candidate:{v[2]}" for k,v in sorted(candidates.items())}
+        else:
+            touched_outputs={
+                key
+                for bound in plan.observations
+                if bound.entity_id in refresh_entities
+                for key in bound.outputs
+            }
+            for key in touched_outputs:
+                snap.values.pop(key,None)
+                snap.quality.pop(key,None)
+            for key,value in sorted(candidates.items()):
+                snap.values[key]=value[1]
+                snap.quality[key]=f"candidate:{value[2]}"
         semantic_paths=begin_source_paths(snap.values,snap.quality)
         semantic_conflicts: list[dict[str,Any]]=[]
         self._semantic_paths[asset_id]=semantic_paths
