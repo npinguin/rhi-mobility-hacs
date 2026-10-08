@@ -1,3 +1,13 @@
+## M0.10.40 — Product Projection Closure
+
+- make explicit semantic-property placement a release-blocking contract for every Mobility property;
+- preserve the existing component/section/visibility catalog as the single presentation authority;
+- remove redundant recursive deep copies while composing the aggregate Mobility product contract;
+- keep runtime truth, command ownership, Energy boundary and Shared Baseline 1.8.4 unchanged;
+- coordinate with Foundation F1.8.42 and Energy E0.15.108;
+- keep zero accepted technical and feature debt;
+- keep production approval pending exact target-HA qualification.
+
 ## M0.10.39 — Runtime Evidence Correction
 
 - preserve only persistent source/readback observations across partial asset refreshes;

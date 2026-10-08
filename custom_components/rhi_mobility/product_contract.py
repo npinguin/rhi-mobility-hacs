@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Any
 
 try:
@@ -42,14 +41,16 @@ class MobilityProductContractProvider:
         self.energy = energy
 
     def snapshot(self) -> dict[str, Any]:
-        runtime = deepcopy(self.public.snapshot() or {})
-        experience = deepcopy(self.experience.snapshot() or {})
-        policy = deepcopy(self.policy.snapshot() or {})
-        commands = deepcopy(self.command.command_snapshot() or {})
-        activity = deepcopy(self.activity.snapshot() or {})
-        profiles = deepcopy(self.profile_catalog.snapshot() or {})
-        supervision = deepcopy(self.supervision.snapshot() or {})
-        energy = deepcopy(self.energy.snapshot() or {})
+        # Each provider owns snapshot construction and returns a fresh product view.
+        # Composing those views does not require recursively copying every contract again.
+        runtime = self.public.snapshot() or {}
+        experience = self.experience.snapshot() or {}
+        policy = self.policy.snapshot() or {}
+        commands = self.command.command_snapshot() or {}
+        activity = self.activity.snapshot() or {}
+        profiles = self.profile_catalog.snapshot() or {}
+        supervision = self.supervision.snapshot() or {}
+        energy = self.energy.snapshot() or {}
         objects = list(runtime.get("assets") or [])
         relationships = list(runtime.get("relationships") or [])
         return {
@@ -62,7 +63,7 @@ class MobilityProductContractProvider:
             "objects": objects,
             "assets": objects,
             "relationships": relationships,
-            "fleet": deepcopy(runtime.get("fleet") or {}),
+            "fleet": runtime.get("fleet") or {},
             "experience": experience,
             "configuration": {"policy": policy},
             "commands": list(commands.get("commands") or []),
