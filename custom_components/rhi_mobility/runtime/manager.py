@@ -11,7 +11,7 @@ from ..eligibility import broad_all_matching_selection
 from ..models.contracts import AssetControlProfile, LogicalAssetBinding, RelationshipSnapshot, RuntimeSnapshot, VehiclePlanningProfile
 from .derived import apply_vehicle_derivations, apply_charger_derivations
 from .prebound import build_active_binding_plan, materialize_observations
-from .semantic_authority import begin_source_paths, write_canonical, apply_derived_candidates
+from .semantic_authority import begin_source_paths, write_canonical, apply_derived_candidates, retain_persistent_observation_truth
 from .electrical_truth import resolve_effective_charging_profile
 
 _LOGGER = logging.getLogger(__name__)
@@ -1002,6 +1002,7 @@ class MobilityRuntimeManager:
             for key,value in sorted(candidates.items()):
                 snap.values[key]=value[1]
                 snap.quality[key]=f"candidate:{value[2]}"
+        retain_persistent_observation_truth(snap.values, snap.quality)
         semantic_paths=begin_source_paths(snap.values,snap.quality)
         semantic_conflicts: list[dict[str,Any]]=[]
         self._semantic_paths[asset_id]=semantic_paths

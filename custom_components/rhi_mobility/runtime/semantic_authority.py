@@ -24,6 +24,27 @@ def producer_kind_from_quality(value: Any) -> str | None:
     return _KIND_FROM_QUALITY.get(text)
 
 
+
+def retain_persistent_observation_truth(
+    values: dict[str, Any],
+    quality: dict[str, str],
+) -> None:
+    """Keep only source/readback truth before rebuilding one affected asset.
+
+    Partial refresh preserves unrelated source observations for the asset, but
+    configured/profile/relationship/derived values are recomputed in the same
+    bounded asset refresh. Keeping those values and then calling begin_source_paths
+    would falsely assign their prior runtime value to runtime/prebound.py and create
+    duplicate-writer conflicts on the next derivation.
+    """
+    keep_kinds = {"SOURCE", "CONTROL_READBACK"}
+    for key in tuple(values):
+        kind = producer_kind_from_quality(quality.get(key))
+        if kind not in keep_kinds:
+            values.pop(key, None)
+            quality.pop(key, None)
+
+
 def begin_source_paths(
     values: dict[str, Any],
     quality: dict[str, str],

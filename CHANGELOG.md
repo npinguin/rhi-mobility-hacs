@@ -1,3 +1,14 @@
+## M0.10.39 — Runtime Evidence Correction
+
+- preserve only persistent source/readback observations across partial asset refreshes;
+- rebuild configured/profile/relationship/derived truth inside the affected asset scope;
+- prevent retained derived values from being misclassified as new prebound semantic writers;
+- close target-HA duplicate-writer conflicts on charger brand/health semantics;
+- preserve the M0.10.38 changed-source runtime scope and change-only publication model;
+- coordinate with Foundation F1.8.42 and Energy E0.15.107;
+- keep zero accepted technical and feature debt;
+- keep production approval pending exact target-HA qualification.
+
 ## M0.10.38 — Runtime Scope Closure
 
 - adopt Shared Baseline 1.8.4 and ADR-016 Runtime Scope and Persistent Truth;
