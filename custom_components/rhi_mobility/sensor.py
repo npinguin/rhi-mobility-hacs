@@ -726,8 +726,16 @@ class MobilityPropertySensor(SensorEntity):
             "secondary_label_field": write.get("secondary_label_field") or "secondary_label",
             "allow_none": bool(write.get("allow_none")),
             "none_value": write.get("none_value") or "",
+            "friendly_name": definition.get("friendly_name") or self.property_key,
+            "unit": definition.get("unit") or "",
+            "render_as": definition.get("render_as"),
+            "display_order": definition.get("display_order", 9999),
+            "empty_state_behavior": definition.get("empty_state_behavior"),
+            "availability": projected.get("availability"),
+            "value": projected.get("value"),
             **provenance,
-            "canonical_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
+            "canonical_contract": "MOBILITY_CANONICAL_PROPERTY_V2",
+            "compatibility_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
         }
         return attrs
 

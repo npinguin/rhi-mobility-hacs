@@ -1,3 +1,15 @@
+## M0.10.41 — Canonical Domain Interface
+
+- separate canonical per-property truth from the aggregate Public Runtime contract;
+- publish MOBILITY_CANONICAL_PROPERTY_V2 on existing scalar property entities;
+- preserve component/section/visibility/write metadata on the canonical property surface;
+- keep MOBILITY_PUBLIC_RUNTIME_V2 as a compatibility aggregate during UX cutover;
+- retain MOBILITY_COMMAND_V2 and MOBILITY_ENERGY_V2 as bounded domain-boundary contracts;
+- preserve existing Home Assistant device/entity identities and runtime semantics;
+- coordinate with Foundation F1.8.42 and Energy E0.15.109;
+- keep zero accepted technical and feature debt;
+- keep production approval pending exact target-HA functional and CPU qualification.
+
 ## M0.10.40 — Product Projection Closure
 
 - make explicit semantic-property placement a release-blocking contract for every Mobility property;
