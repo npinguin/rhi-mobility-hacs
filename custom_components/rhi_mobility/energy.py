@@ -18,12 +18,11 @@ class MobilityEnergyV2Provider:
     """
     CONTRACT_ID = "MOBILITY_ENERGY_V2"
 
-    def __init__(self, manager, controller, registry, public_provider=None) -> None:
+    def __init__(self, manager, controller, registry) -> None:
         self.manager = manager
         self.controller = controller
         self.registry = registry
-        self.public = public_provider
-        self._resolver = PropertyResolver(manager, public_provider) if public_provider is not None else None
+        self._resolver = PropertyResolver(manager, controller, registry=registry)
 
     def add_listener(self, callback):
         """Subscribe consumers to canonical Mobility runtime/control changes."""
@@ -40,8 +39,14 @@ class MobilityEnergyV2Provider:
         return unsubscribe
 
     def _base_value(self, aid: str, key: str):
-        if self.public is not None:
-            return self.public.property_value(aid, key)
+        # Producer-to-producer interop consumes the same canonical typed
+        # property resolution as native HA; never query a second Public V2 core.
+        if self._resolver is not None:
+            resolved = self._resolver.resolve(aid, key)
+            if resolved.available:
+                return resolved.value
+        # RuntimeManager snapshots remain canonical even when a narrow producer
+        # fixture or staged registry does not expose the full semantic catalog.
         snap = self.manager.snapshots.get(aid)
         return None if snap is None else snap.values.get(key)
 
@@ -102,7 +107,7 @@ class MobilityEnergyV2Provider:
                 "requested_power_kw_write_max": None,
                 "requested_power_kw_write_step": None,
                 "requested_power_kw_readback_property_key": "charger.requested_charge_power_kw",
-                "requested_power_kw_readback_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
+                "requested_power_kw_readback_contract": "MOBILITY_CANONICAL_PROPERTY_V2",
                 "physical_write_owner": "rhi_mobility",
                 "physical_write_target_exposed_to_consumer": False,
                 "physical_mapping_mode": "current_limit_only" if current_desc is not None else None,
@@ -135,7 +140,7 @@ class MobilityEnergyV2Provider:
             "requested_power_kw_write_max": float(desc.max_power_kw),
             "requested_power_kw_write_step": float(desc.step_power_kw),
             "requested_power_kw_readback_property_key": "charger.requested_charge_power_kw",
-            "requested_power_kw_readback_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
+            "requested_power_kw_readback_contract": "MOBILITY_CANONICAL_PROPERTY_V2",
             "physical_write_owner": "rhi_mobility",
             "physical_write_target_exposed_to_consumer": False,
             "physical_mapping_mode": str(desc.mode),
@@ -420,7 +425,7 @@ class MobilityEnergyV2Provider:
                 "blockers": list(planning_blockers),
             },
             "runtime_revision": int(getattr(self.manager, "_runtime_revision", 0) or 0),
-            "source_observed_at": self.public._source_observed_at(aid) if self.public is not None else None,
+            "source_observed_at": self.manager.source_observed_at(aid) if callable(getattr(self.manager, "source_observed_at", None)) else None,
             "available_export_energy_kwh": None,
             "limits": limits,
             "readiness": readiness,
@@ -789,7 +794,7 @@ class MobilityEnergyV2Provider:
             for asset_id, asset in sorted(self.manager.assets.items())
             if asset.concept_id == "vehicle"
         ]
-        out["resolution_contract"] = "MOBILITY_PUBLIC_RUNTIME_V2"
+        out["resolution_contract"] = "RHI_MOBILITY_CANONICAL_PROPERTY_V1"
         out["resolved_assets"] = resolved_assets
         out["typed_relationships"] = relations
         out["contains_physical_bindings"] = False

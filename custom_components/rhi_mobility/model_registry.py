@@ -51,6 +51,46 @@ class MobilityModelRegistry:
         self.profiles = tuple(dict(row) for row in profile_catalog.get("profiles", []))
         self._profiles_by_id = {str(row["profile_id"]): dict(row) for row in self.profiles}
 
+    def property_definition(
+        self, property_key: str, asset_type: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Canonical property metadata and domain-owned placement authority."""
+        canonical = str((getattr(self, "semantic_aliases", {}) or {}).get(property_key, property_key))
+        properties = self.semantic_catalog.get("properties") or {}
+        # Each declared property owns its HA type, placement and editability.
+        # An alias shares semantic value, not the target's asset/HA metadata.
+        base = properties.get(property_key)
+        if not isinstance(base, dict):
+            base = properties.get(canonical)
+        if not isinstance(base, dict):
+            return None
+        definition = dict(base)
+        if asset_type:
+            placement = (base.get("placements") or {}).get(asset_type)
+            if isinstance(placement, dict):
+                for field in (
+                    "component_id", "section_id", "visibility", "render_as",
+                    "display_order", "friendly_name", "unit", "empty_state_behavior",
+                ):
+                    if field in placement:
+                        definition[field] = placement[field]
+        return definition
+
+    def applicable_property_keys(self, asset_type: str) -> list[str]:
+        """Declared normalized vocabulary for this asset type, including unknown values.
+
+        Availability of an observation must never hide a declared property.
+        """
+        return sorted(
+            key
+            for key, row in (self.semantic_catalog.get("properties") or {}).items()
+            if isinstance(row, dict)
+            and (
+                not row.get("applicable_asset_types")
+                or asset_type in set(row["applicable_asset_types"])
+            )
+        )
+
     def build_spec(self, builder_id: str) -> dict[str, Any]:
         try:
             return deepcopy(self.specs[builder_id])

@@ -7,6 +7,7 @@ from .const import DOMAIN, FOUNDATION_DOMAIN_ID, RELEASE, SHARED_BASELINE_VERSIO
 from .coverage import completeness_gate, normalized_property_coverage, source_capability_coverage
 from .editable_projection import editable_definitions
 from .property_resolver import PropertyResolver
+from .property_projection import MobilityPropertyProjection
 from .readiness import evaluate_asset_readiness
 from .relationship_resolution import resolve_vehicle_charger_relationship
 
@@ -57,7 +58,7 @@ def _ha_projection_diagnostics(
     hass: Any,
     entry_id: str,
     manager: Any,
-    public: Any = None,
+    projection: Any = None,
     controller: Any = None,
     registry: Any = None,
 ) -> dict[str, Any]:
@@ -153,8 +154,8 @@ def _ha_projection_diagnostics(
         if getattr(row, "unique_id", None)
     }
     expected_surfaces: dict[str, dict[str, Any]] = {}
-    if public is not None:
-        for item in public.materialized_scalar_properties():
+    if projection is not None:
+        for item in projection.materialized_scalar_properties():
             asset_id = str(item.get("asset_id") or "")
             property_key = str(item.get("property_key") or "")
             if asset_id and property_key:
@@ -234,7 +235,7 @@ def _ha_projection_diagnostics(
             user_disabled_product_surfaces.append(row)
 
     product_projection_evaluated = (
-        public is not None and controller is not None and active_registry is not None
+        projection is not None and controller is not None and active_registry is not None
     )
     product_projection_ok = (
         not product_projection_evaluated
@@ -412,7 +413,6 @@ def _charging_control_diagnostics(manager: Any, controller: Any) -> list[dict[st
 
 def _v2_contract_diagnostics(data: dict[str, Any]) -> dict[str, Any]:
     """Bounded proof that canonical first-party V2 authorities are live."""
-    public = data.get("public_provider")
     policy = data.get("policy_provider")
     experience = data.get("experience_provider")
     command = data.get("command_provider")
@@ -421,7 +421,6 @@ def _v2_contract_diagnostics(data: dict[str, Any]) -> dict[str, Any]:
     activity = data.get("activity_provider")
     product_supervision = data.get("product_supervision_provider")
 
-    public_snap = dict(public.snapshot() or {}) if public and callable(getattr(public, "snapshot", None)) else {}
     policy_snap = dict(policy.snapshot() or {}) if policy and callable(getattr(policy, "snapshot", None)) else {}
     experience_snap = dict(experience.snapshot() or {}) if experience and callable(getattr(experience, "snapshot", None)) else {}
     command_snap = dict(command.command_snapshot() or {}) if command and callable(getattr(command, "command_snapshot", None)) else {}
@@ -431,12 +430,11 @@ def _v2_contract_diagnostics(data: dict[str, Any]) -> dict[str, Any]:
     supervision_snap = dict(product_supervision.snapshot() or {}) if product_supervision and callable(getattr(product_supervision, "snapshot", None)) else {}
 
     return {
-        "public_runtime": {
-            "available": bool(public_snap),
-            "contract_id": public_snap.get("contract_id"),
-            "asset_count": len(public_snap.get("assets") or []),
-            "relationship_count": len(public_snap.get("vehicle_charger_relationships") or []),
-            "canonical": bool(public_snap.get("canonical")),
+        "canonical_runtime": {
+            "available": data.get("runtime") is not None,
+            "contract_id": "RHI_MOBILITY_CANONICAL_PROPERTY_V1",
+            "asset_count": len(getattr(data.get("runtime"), "assets", {}) or {}),
+            "authority": "MobilityRuntimeManager",
         },
         "policy": {
             "available": bool(policy_snap),
@@ -481,7 +479,7 @@ def _v2_contract_diagnostics(data: dict[str, Any]) -> dict[str, Any]:
             "status": (supervision_snap.get("status") or {}).get("value"),
         },
         "configuration_surface": {
-            "contract_id": "MOBILITY_PUBLIC_RUNTIME_V2",
+            "contract_id": "RHI_MOBILITY_CANONICAL_PROPERTY_V1",
             "transport": "canonical_property_entities",
             "write_metadata_owner": "rhi_mobility",
             "v1_semantic_owner": False,
@@ -494,7 +492,6 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
     manager = data.get("runtime")
     controller = data.get("controller")
     provider = data.get("provider")
-    public = data.get("public_provider")
     domain_config = data.get("domain_config")
     handoff = _bounded_handoff(hass)
     normalized: dict[str, Any] = {}
@@ -506,9 +503,11 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
     lifecycle_counts = {"configured": 0, "active": 0, "disabled": 0}
     resolution_evidence: list[dict[str, Any]] = []
     charging_control: list[dict[str, Any]] = []
-    if manager is not None and public is not None and controller is not None:
-        resolver = PropertyResolver(manager, public)
-        normalized = normalized_property_coverage(manager, public)
+    projection = None
+    if manager is not None and controller is not None:
+        projection = MobilityPropertyProjection(hass, manager, controller)
+        resolver = PropertyResolver(manager, controller)
+        normalized = normalized_property_coverage(manager, controller)
         sources = source_capability_coverage(manager)
         completeness = completeness_gate(
             normalized,
@@ -610,7 +609,7 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
             hass,
             entry.entry_id,
             manager,
-            public,
+            projection,
             controller,
             getattr(manager, "registry", None),
         ),

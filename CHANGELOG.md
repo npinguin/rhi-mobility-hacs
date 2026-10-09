@@ -1,3 +1,12 @@
+## M0.10.42 — Canonical Runtime Cutover
+
+- release the already-merged canonical native property runtime from source PR #248 as a new immutable HACS test candidate;
+- remove redundant Public V2 aggregate and product-contract runtime, preserve targeted command and Energy producer boundaries;
+- align the canonical domain model 1.2.5 and source bindings with executable model-derived regressions;
+- align candidate consumer coordinates to Foundation F1.8.42, Shared Baseline 1.8.4 and Energy E0.15.110;
+- keep target Home Assistant qualification, performance, command readback and three-home pilot as separate stable-approval gates;
+- governed release scope: [Mobility #242](https://github.com/npinguin/rhi-mobility/issues/242), implementation [PR #248](https://github.com/npinguin/rhi-mobility/pull/248).
+
 ## M0.10.41 — Canonical Domain Interface
 
 - separate canonical per-property truth from the aggregate Public Runtime contract;
@@ -6,7 +15,7 @@
 - keep MOBILITY_PUBLIC_RUNTIME_V2 as a compatibility aggregate during UX cutover;
 - retain MOBILITY_COMMAND_V2 and MOBILITY_ENERGY_V2 as bounded domain-boundary contracts;
 - preserve existing Home Assistant device/entity identities and runtime semantics;
-- coordinate with Foundation F1.8.42 and Energy E0.15.109;
+- coordinate with Foundation F1.8.42 and Energy E0.15.110;
 - keep zero accepted technical and feature debt;
 - keep production approval pending exact target-HA functional and CPU qualification.
 

@@ -14,20 +14,26 @@ from .property_resolver import PropertyResolver
 
 
 class MobilityPropertyProjection:
-    """Project canonical PropertyResolution into HA/public representations only."""
-    def __init__(self,hass,manager,controller,public_provider) -> None:
-        self.hass=hass; self.manager=manager; self.controller=controller; self.public=public_provider; self.registry=manager.registry
-        self.resolver=PropertyResolver(manager,public_provider)
+    """Project domain-owned canonical PropertyResolution into native HA entities."""
+    def __init__(self,hass,manager,controller) -> None:
+        self.hass=hass; self.manager=manager; self.controller=controller; self.registry=manager.registry
+        semantic = dict(getattr(self.registry, "semantic_catalog", {}) or {})
+        self.properties = dict(semantic.get("properties") or {})
+        self.aliases = dict(getattr(self.registry, "semantic_aliases", {}) or {})
+        self.resolver=PropertyResolver(manager,controller)
 
     def definition(self,asset_type: str,property_key: str) -> dict[str,Any] | None:
-        definition=(self.registry.semantic_catalog.get("properties") or {}).get(property_key)
-        if not isinstance(definition,dict): return None
-        applicable=set(definition.get("applicable_asset_types") or [])
-        if applicable and asset_type not in applicable: return None
-        out=dict(definition); placement=(definition.get("placements") or {}).get(asset_type)
-        if isinstance(placement,dict): out.update(placement)
-        out["property_key"]=property_key
-        return out
+        # One semantic/placement owner: MobilityModelRegistry.
+        from .model_registry import MobilityModelRegistry
+        definition = MobilityModelRegistry.property_definition(
+            self.registry, property_key, asset_type
+        )
+        if definition is None:
+            return None
+        applicable = set(definition.get("applicable_asset_types") or [])
+        if applicable and asset_type not in applicable:
+            return None
+        return {**definition, "property_key": property_key}
 
     def definitions_for_type(self,asset_type: str) -> list[dict[str,Any]]:
         rows=[]
@@ -35,6 +41,34 @@ class MobilityPropertyProjection:
             row=self.definition(asset_type,key)
             if row is not None: rows.append(row)
         return sorted(rows,key=lambda r:(r.get("component_id") or "",r.get("section_id") or "",r.get("display_order",9999),r["property_key"]))
+
+    def _capability_supported_keys(self, asset_id: str) -> set[str]:
+        supported = getattr(self.manager, "supported_property_keys", None)
+        return set(supported(asset_id)) if callable(supported) else set()
+
+    def materialized_property_keys(self, asset_id: str) -> list[str]:
+        """Materialize every declared applicable property, including unknown values.
+
+        Source availability controls state/quality, never structural visibility.
+        A temporary source loss must not remove or recreate HA entity identity.
+        """
+        asset = self.manager.assets.get(asset_id)
+        if asset is None:
+            return []
+        return sorted(
+            key for key, definition in self.properties.items()
+            if not definition.get("applicable_asset_types")
+            or asset.concept_id in definition["applicable_asset_types"]
+        )
+
+    def materialized_scalar_properties(self) -> list[dict[str, Any]]:
+        rows = []
+        for asset_id, asset in sorted(self.manager.assets.items()):
+            for key in self.materialized_property_keys(asset_id):
+                definition = self.definition(asset.concept_id, key) or {}
+                if definition.get("entity_type", "sensor") == "sensor":
+                    rows.append({"asset_id": asset_id, "property_key": key, **definition})
+        return rows
 
     def value(self,asset_id: str,property_key: str) -> Any:
         return self.resolver.resolve(asset_id,property_key).value
@@ -145,4 +179,4 @@ class MobilityPropertyProjection:
             "source_provenance":provenance,"source_entity_id":provenance.get("source_entity_id",""),"source_integration":provenance.get("source_integration",""),"source_device_id":provenance.get("source_device_id",""),"raw_capability_id":provenance.get("raw_capability_id",""),"candidate_id":provenance.get("candidate_id",""),"source_input_id":provenance.get("source_input_id",""),
             "producer_kind":None if resolution.producer_kind is None else resolution.producer_kind.value,
             "resolution_status":resolution.status.value,"resolution_error":None if resolution.error_kind is None else resolution.error_kind.value,
-            "canonical_contract":"MOBILITY_PUBLIC_RUNTIME_V2","access":"editable" if write.get("editable") else "read_only","editor":write.get("write_binding_type","") if write.get("editable") else "",**write}
+            "canonical_contract":"RHI_MOBILITY_CANONICAL_PROPERTY_V1","access":"editable" if write.get("editable") else "read_only","editor":write.get("write_binding_type","") if write.get("editable") else "",**write}

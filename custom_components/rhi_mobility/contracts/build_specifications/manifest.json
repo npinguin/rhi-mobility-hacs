@@ -37,12 +37,15 @@
     "creates_public_contract": false,
     "executes_commands": false
   },
-  "release": "M0.10.41",
+  "release": "M0.10.42",
   "closure": {
     "step": 3,
     "full_feature_migration": true,
-    "public_runtime_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
-    "energy_contract": "MOBILITY_ENERGY_V2",
+    "canonical_property_contract": "MOBILITY_CANONICAL_PROPERTY_V2",
+    "producer_contracts": [
+      "MOBILITY_ENERGY_V2",
+      "COMMAND_V2"
+    ],
     "legacy_compatibility": "retired",
     "legacy_computation_migrated": true,
     "commands_declared": true,

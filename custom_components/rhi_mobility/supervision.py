@@ -5,7 +5,7 @@ from typing import Any
 
 CONTRACT_ID = "RHI_DOMAIN_SUPERVISORY_STATUS_V1"
 CONTRACT_VERSION = "1.1.0"
-_CANONICAL_RUNTIME_CONTRACT = "MOBILITY_PUBLIC_RUNTIME_V2"
+_CANONICAL_RUNTIME_CONTRACT = "RHI_MOBILITY_CANONICAL_PROPERTY_V1"
 
 _PRIORITY = {
     "BLOCKED": 60,
@@ -36,14 +36,12 @@ class MobilityDomainSupervisoryStatusProvider:
         *,
         manager: Any,
         controller: Any,
-        public_provider: Any,
         experience_provider: Any,
         build_spec_provider: Any,
         release: str,
     ) -> None:
         self.manager = manager
         self.controller = controller
-        self.public = public_provider
         self.experience = experience_provider
         self.build_spec_provider = build_spec_provider
         self.release = release
@@ -101,8 +99,9 @@ class MobilityDomainSupervisoryStatusProvider:
     def _contract_status(self) -> str:
         """Validate canonical V2 authority without materializing a runtime snapshot."""
         try:
-            contract_id = str(getattr(self.public, "CONTRACT_ID", "") or "")
-            properties = getattr(self.public, "properties", None)
+            contract_id = _CANONICAL_RUNTIME_CONTRACT
+            semantic = dict(getattr(self.manager.registry, "semantic_catalog", {}) or {})
+            properties = semantic.get("properties")
         except Exception:
             return "BLOCKED"
         return "OK" if contract_id == _CANONICAL_RUNTIME_CONTRACT and isinstance(properties, dict) and properties else "BLOCKED"
@@ -276,7 +275,7 @@ class MobilityDomainSupervisoryStatusProvider:
         from .property_resolver import PropertyResolver
         from .readiness import evaluate_asset_readiness
 
-        normalized = normalized_property_coverage(self.manager, self.public)
+        normalized = normalized_property_coverage(self.manager, self.controller)
         source = source_capability_coverage(self.manager)
         attempt = dict(getattr(self.manager, "last_build_attempt", {}) or {})
         gate = completeness_gate(
@@ -289,7 +288,7 @@ class MobilityDomainSupervisoryStatusProvider:
         for asset_id in sorted(getattr(self.manager, "assets", {}) or {}):
             lifecycle = str(self.manager.configuration_value(asset_id, "asset.lifecycle_status", "active") or "active")
             resolutions = list(
-                PropertyResolver(self.manager, self.public).resolve_asset(asset_id).values()
+                PropertyResolver(self.manager, self.controller).resolve_asset(asset_id).values()
             )
             row = evaluate_asset_readiness(
                 self.manager, self.controller, asset_id, resolutions

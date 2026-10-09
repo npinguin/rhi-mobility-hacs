@@ -4705,23 +4705,6 @@
     "energy_may_request_intent": true,
     "energy_may_execute_raw_service": false
   },
-  "public_runtime_contract": {
-    "contract_id": "MOBILITY_PUBLIC_RUNTIME_V2",
-    "provider_id": "mobility.public.v2",
-    "canonical": true,
-    "rules": {
-      "actual_requested_separate": true,
-      "ux_inference_forbidden": true,
-      "raw_integration_state_public": false,
-      "fast_values_scalar_entities": true,
-      "runtime_index_values_embedded": false
-    },
-    "full_semantic_parity_required": true,
-    "semantic_property_catalog": "semantic_property_catalog.json",
-    "profile_catalog": "profile_catalog.json",
-    "canonical_property_count": 277,
-    "runtime_property_authority": "semantic_property_catalog.json"
-  },
   "experience_contract": {
     "contract_id": "MOBILITY_EXPERIENCE_V2",
     "provider_id": "mobility.experience.v2",
@@ -4800,5 +4783,27 @@
       }
     },
     "rule": "Policy owns thresholds only. Runtime owns facts; Experience owns conclusions; UX owns presentation."
+  },
+  "canonical_runtime_contract": {
+    "contract_id": "MOBILITY_CANONICAL_PROPERTY_V2",
+    "authority": "RuntimeManager and PropertyResolver",
+    "publication": "native Home Assistant entities",
+    "duplicate_runtime_authority_allowed": false,
+    "aggregate_runtime_provider": "retired",
+    "rules": {
+      "actual_requested_separate": true,
+      "ux_inference_forbidden": true,
+      "raw_integration_state_public": false,
+      "fast_values_scalar_entities": true,
+      "runtime_index_values_embedded": false
+    },
+    "targeted_producer_contracts": [
+      "MOBILITY_ENERGY_V2",
+      "COMMAND_V2"
+    ],
+    "semantic_property_catalog": "semantic_property_catalog.json",
+    "profile_catalog": "profile_catalog.json",
+    "canonical_property_count": 277,
+    "runtime_property_authority": "semantic_property_catalog.json"
   }
 }

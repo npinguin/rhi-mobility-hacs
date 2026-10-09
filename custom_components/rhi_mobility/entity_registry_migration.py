@@ -8,7 +8,6 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 _CANONICAL_MONITOR_ENTITY_IDS = {
-    "runtime_v2": "sensor.rhi_mobility_runtime_v2",
     "experience_v2": "sensor.rhi_mobility_experience_v2",
     "policy_v2": "sensor.rhi_mobility_policy_v2",
     "command_v2": "sensor.rhi_mobility_command_v2",
@@ -24,7 +23,7 @@ def canonical_monitor_unique_id(entry_id: str, role: str) -> str:
 
 
 def migrate_canonical_v2_entity_ids(hass: Any, entry_id: str) -> dict[str, str]:
-    """Move pre-M0.9.44 monitor registry rows onto stable public V2 entity IDs.
+    """Move retained monitor registry rows onto stable canonical entity IDs.
 
     Home Assistant preserves an existing entity_id by unique_id. M0.9.44 only
     changed the desired entity_id on the Entity object, which cannot rename an
@@ -65,6 +64,6 @@ def migrate_canonical_v2_entity_ids(hass: Any, entry_id: str) -> dict[str, str]:
 
         registry.async_update_entity(current, **changes)
         migrated[current] = target
-        _LOGGER.info("Materialized Mobility V2 public entity %s -> %s (enabled)", current, target)
+        _LOGGER.info("Materialized retained Mobility monitor entity %s -> %s (enabled)", current, target)
 
     return migrated

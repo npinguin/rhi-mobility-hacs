@@ -31,7 +31,6 @@ from .const import (
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     data = hass.data[DOMAIN][entry.entry_id]
     manager = data["runtime"]
-    public = data["public_provider"]
     controller = data["controller"]
     provider = data["provider"]
     source_diagnostics = data["source_diagnostics_provider"]
@@ -43,16 +42,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     activity = data["activity_provider"]
     profile_catalog = data["profile_catalog_provider"]
     product_supervision = data["product_supervision_provider"]
-    product_contract = data["product_contract_provider"]
     domain_config = data["domain_config"]
-    projection = MobilityPropertyProjection(hass, manager, controller, public)
+    projection = MobilityPropertyProjection(hass, manager, controller)
     async_add_entities(
         [
             ReleaseSensor(entry.entry_id),
-            HealthSensor(entry.entry_id, manager, controller, public),
+            HealthSensor(entry.entry_id, manager, controller),
             ConfigurationSensor(hass, entry.entry_id, manager),
             BuildSensor(entry.entry_id, manager, provider),
-            RuntimeV2SummarySensor(entry.entry_id, manager, public),
             ExperienceV2Sensor(entry.entry_id, manager, domain_config, experience),
             PolicyV2Sensor(entry.entry_id, domain_config, policy),
             EnergyV2Sensor(entry.entry_id, energy),
@@ -60,7 +57,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             ActivityV2Sensor(entry.entry_id, manager, controller, activity),
             ProfileCatalogV2Sensor(entry.entry_id, profile_catalog),
             ProductSupervisionV2Sensor(entry.entry_id, manager, controller, product_supervision),
-            ProductContractV2Sensor(entry.entry_id, manager, controller, domain_config, product_contract),
             BroadDeviceSurfaceSensor("mobility", NAME, "Mobility Module V2", device_surfaces, manager, controller, diagnostic=True, device_identifier=entry.entry_id),
             BroadDeviceSurfaceSensor("mobility_intelligence", "Mobility Intelligence", "Mobility Intelligence", device_surfaces, manager, controller, device_identifier=entry.entry_id),
             BroadDeviceSurfaceSensor("vehicle_intelligence", "Vehicle Intelligence", "Vehicle Intelligence", device_surfaces, manager, controller, device_identifier=entry.entry_id),
@@ -75,7 +71,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     @callback
     def sync_properties() -> None:
-        rows = public.materialized_scalar_properties()
+        rows = projection.materialized_scalar_properties()
         wanted = {(row["asset_id"], row["property_key"]) for row in rows}
         for key in list(created):
             if key in wanted:
@@ -92,7 +88,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 # same entity object leaves early read-only metadata stale forever.
                 created[key]._changed()
                 continue
-            entity = MobilityPropertySensor(entry.entry_id, row["asset_id"], row["property_key"], public, manager, projection)
+            entity = MobilityPropertySensor(entry.entry_id, row["asset_id"], row["property_key"], manager, projection)
             created[key] = entity
             new.append(entity)
         diagnostic_wanted = {(asset_id, role) for asset_id in manager.assets for role in ("integration", "device", "status")}
@@ -162,39 +158,6 @@ class RuntimeMonitoringSensor(MonitoringSensor):
     @callback
     def _changed(self) -> None:
         self.async_write_ha_state()
-
-
-class RuntimeV2SummarySensor(RuntimeMonitoringSensor):
-    _attr_icon = "mdi:database-outline"
-
-    def __init__(self, entry_id: str, manager, public) -> None:
-        super().__init__(entry_id, "runtime_v2", "Runtime V2", manager)
-        self.entity_id = "sensor.rhi_mobility_runtime_v2"
-        self.public = public
-
-    @property
-    def native_value(self):
-        return "ready"
-
-    @property
-    def extra_state_attributes(self):
-        snapshot = self.public.snapshot()
-        return {
-            "contract_id": snapshot.get("contract_id"),
-            "canonical": True,
-            "release": {
-                "backend_release": RELEASE,
-                "release_name": RELEASE_NAME,
-                "shared_baseline_id": SHARED_BASELINE_ID,
-                "shared_baseline_version": SHARED_BASELINE_VERSION,
-                "shared_baseline_checksum": SHARED_BASELINE_CHECKSUM,
-            },
-            "assets": snapshot.get("assets") or [],
-            "fleet": snapshot.get("fleet") or {},
-            "relationships": snapshot.get("relationships") or [],
-            "vehicle_charger_relationships": snapshot.get("vehicle_charger_relationships") or [],
-            "ux_inference_forbidden": True,
-        }
 
 
 class ExperienceV2Sensor(RuntimeMonitoringSensor):
@@ -409,74 +372,6 @@ class ProductSupervisionV2Sensor(RuntimeMonitoringSensor):
         return dict(self.provider.snapshot() or {})
 
 
-class ProductContractV2Sensor(RuntimeMonitoringSensor):
-    """Single change-only aggregate Mobility product contract for UX consumers."""
-
-    _attr_icon = "mdi:car-multiple"
-
-    def __init__(self, entry_id: str, manager, controller, domain_config, provider) -> None:
-        super().__init__(entry_id, "public_contract_v2", "Public Contract V2", manager)
-        self.entity_id = "sensor.rhi_mobility_public_contract_v2"
-        self.controller = controller
-        self.domain_config = domain_config
-        self.provider = provider
-        self._scheduled = None
-        self._fingerprint = None
-        self._revision = 0
-        self._snapshot = {}
-        self._refresh_snapshot()
-
-    def _refresh_snapshot(self) -> bool:
-        payload = dict(self.provider.snapshot() or {})
-        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
-        fingerprint = hashlib.sha256(encoded).hexdigest()
-        if fingerprint == self._fingerprint:
-            return False
-        self._fingerprint = fingerprint
-        self._revision += 1
-        payload["content_fingerprint"] = fingerprint
-        payload["contract_revision"] = self._revision
-        self._snapshot = payload
-        return True
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        self.async_on_remove(self.controller.add_listener(self._changed))
-        self.async_on_remove(self.domain_config.add_listener(self._configuration_changed))
-
-    def _request_refresh(self) -> None:
-        if self._scheduled is not None:
-            return
-        self._scheduled = self.hass.loop.call_soon(self._flush_refresh)
-
-    def _flush_refresh(self) -> None:
-        self._scheduled = None
-        if self._refresh_snapshot():
-            self.async_write_ha_state()
-
-    @callback
-    def _configuration_changed(self, _asset_id: str, _property_key: str) -> None:
-        self._request_refresh()
-
-    @callback
-    def _changed(self) -> None:
-        self._request_refresh()
-
-    async def async_will_remove_from_hass(self) -> None:
-        if self._scheduled is not None:
-            self._scheduled.cancel()
-            self._scheduled = None
-        await super().async_will_remove_from_hass()
-
-    @property
-    def native_value(self):
-        return self._revision
-
-    @property
-    def extra_state_attributes(self):
-        return dict(self._snapshot)
-
-
 class ReleaseSensor(MonitoringSensor):
     _attr_icon = "mdi:car-connected"
     _attr_entity_registry_enabled_default = False
@@ -501,10 +396,10 @@ class ReleaseSensor(MonitoringSensor):
 class HealthSensor(RuntimeMonitoringSensor):
     _attr_icon = "mdi:shield-check-outline"
 
-    def __init__(self, entry_id: str, manager, controller, public) -> None:
+    def __init__(self, entry_id: str, manager, controller) -> None:
         super().__init__(entry_id, "health", "Health", manager)
         self.controller = controller
-        self.resolver = PropertyResolver(manager, public)
+        self.resolver = PropertyResolver(manager, controller)
 
     def _asset_readiness(self):
         rows = []
@@ -639,13 +534,12 @@ class MobilityPropertySensor(SensorEntity):
     _attr_should_poll = False
     _attr_icon = "mdi:gauge"
 
-    def __init__(self, entry_id, asset_id, property_key, provider, manager, projection):
+    def __init__(self, entry_id, asset_id, property_key, manager, projection):
         asset = manager.assets.get(asset_id)
-        definition = provider.property_definition(property_key, None if asset is None else asset.concept_id) or {}
+        definition = manager.registry.property_definition(property_key, None if asset is None else asset.concept_id) or {}
         name = definition.get("friendly_name") or property_key.split(".")[-1].replace("_", " ").title()
         self.asset_id = asset_id
         self.property_key = property_key
-        self.provider = provider
         self.manager = manager
         self.projection = projection
         self._attr_name = name
@@ -691,7 +585,7 @@ class MobilityPropertySensor(SensorEntity):
     @property
     def extra_state_attributes(self):
         asset = self.manager.assets.get(self.asset_id)
-        definition = self.provider.property_definition(self.property_key, None if asset is None else asset.concept_id) or {}
+        definition = self.manager.registry.property_definition(self.property_key, None if asset is None else asset.concept_id) or {}
         projected = self.projection.row(self.asset_id, self.property_key) or {}
         provenance = dict(projected.get("source_provenance") or {})
         write = self.projection.write_metadata(self.asset_id, self.property_key) or {}
@@ -734,8 +628,7 @@ class MobilityPropertySensor(SensorEntity):
             "availability": projected.get("availability"),
             "value": projected.get("value"),
             **provenance,
-            "canonical_contract": "MOBILITY_CANONICAL_PROPERTY_V2",
-            "compatibility_contract": "MOBILITY_PUBLIC_RUNTIME_V2",
+            "canonical_contract": "RHI_MOBILITY_CANONICAL_PROPERTY_V1",
         }
         return attrs
 

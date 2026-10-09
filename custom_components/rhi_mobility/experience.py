@@ -31,495 +31,6 @@ def _vehicle_charger_relationship(manager, vehicle_id: str):
     return resolve_vehicle_charger_relationship(manager, vehicle_id)
 
 
-class MobilityPublicRuntimeProvider:
-    """Canonical Mobility V2 projection with complete R43.2.65 semantic coverage.
-
-    The provider never revives V1 computation. It resolves the old property vocabulary
-    onto one of the V2 owners: accepted source normalization, Mobility configuration,
-    selected profile, relationship, control/readback, derivation or a pure alias.
-    """
-    CONTRACT_ID = "MOBILITY_PUBLIC_RUNTIME_V2"
-
-    def __init__(self, manager, controller, registry) -> None:
-        self.manager = manager
-        self.controller = controller
-        self.registry = registry
-        semantic = dict(getattr(registry, "semantic_catalog", {}) or {})
-        self.properties: dict[str, dict[str, Any]] = dict(semantic.get("properties") or {})
-        self.aliases = dict(getattr(registry, "semantic_aliases", {}) or {})
-
-    def property_definition(self, property_key: str, asset_type: str | None = None) -> dict[str, Any] | None:
-        base = self.properties.get(property_key)
-        if base is None:
-            return None
-        out = dict(base)
-        if asset_type:
-            placement = (base.get("placements") or {}).get(asset_type)
-            if isinstance(placement, dict):
-                out.update({
-                    "component_id": placement.get("component_id", out.get("component_id")),
-                    "section_id": placement.get("section_id", out.get("section_id")),
-                    "visibility": placement.get("visibility", out.get("visibility")),
-                    "render_as": placement.get("render_as", out.get("render_as")),
-                    "display_order": placement.get("display_order", out.get("display_order")),
-                    "friendly_name": placement.get("friendly_name", out.get("friendly_name")),
-                    "unit": placement.get("unit", out.get("unit")),
-                    "empty_state_behavior": placement.get("empty_state_behavior", out.get("empty_state_behavior")),
-                })
-        return out
-
-    def _snap(self, asset_id: str):
-        return self.manager.snapshots.get(asset_id)
-
-    def _asset(self, asset_id: str):
-        return self.manager.assets.get(asset_id)
-
-    def _canonical(self, key: str) -> str:
-        return str(self.aliases.get(key, key))
-
-    def _effective_charger(self, vehicle_id: str) -> str | None:
-        return self.manager.effective_charger_for_vehicle(vehicle_id)
-
-    def _source_observed_at(self, asset_id: str) -> str | None:
-        asset = self._asset(asset_id)
-        if asset is None:
-            return None
-        timestamps = []
-        for binding in asset.source_bindings.values():
-            for source in binding.inputs.values():
-                if not source.entity_id:
-                    continue
-                state = self.manager.hass.states.get(source.entity_id)
-                stamp = getattr(state, "last_updated", None) if state is not None else None
-                if stamp is not None:
-                    timestamps.append(stamp)
-        if not timestamps:
-            return None
-        return max(timestamps).isoformat()
-
-    def property_value(self, asset_id: str, property_key: str) -> Any:
-        asset = self._asset(asset_id)
-        snap = self._snap(asset_id)
-        if asset is None:
-            return None
-
-        key = str(property_key)
-        canonical = self._canonical(key)
-
-        # Exact configuration/identity owners.
-        configured = self.manager.configuration_value(asset_id, key, None)
-        if configured is not None:
-            return configured
-        if key == "asset.display_name":
-            return (snap.values.get("asset.display_name") if snap else None) or asset.display_name
-        if key == "asset.short_name":
-            return (snap.values.get("asset.short_name") if snap else None) or asset.display_name
-        if key == "lifecycle_status":
-            return (snap.values.get("asset.lifecycle_status") if snap else None) or self.manager.configuration_value(asset_id, "asset.lifecycle_status", "active")
-        if key == "asset.selected_candidate_id":
-            ids = sorted({src.candidate_id for b in asset.source_bindings.values() for src in b.inputs.values()})
-            return ids[0] if len(ids) == 1 else None
-
-        # Relationship owner.
-        if key == "vehicle.selected_charger" and asset.concept_id == "vehicle":
-            return _vehicle_charger_relationship(self.manager, asset_id).configured_charger_id
-        if key == "vehicle.effective_charger" and asset.concept_id == "vehicle":
-            return self._effective_charger(asset_id)
-        if key in {"charger.assigned_vehicle_id", "charger.effective_assigned_vehicle_id"} and asset.concept_id == "charger":
-            return self.manager.configured_vehicle_for_charger(asset_id)
-        if key == "charger.available_for_connection" and asset.concept_id == "charger":
-            return None if snap is None else snap.values.get("charger.available_for_connection")
-
-        # Physical control/readback owner. Requested intent never substitutes actual power/current.
-        if key in {"charger.requested_power_kw", "charger.requested_charge_power_kw"} and asset.concept_id == "charger":
-            return self.controller.requested_power_readback(asset_id)
-        if key == "vehicle.requested_charge_power_kw" and asset.concept_id == "vehicle":
-            cid = self._effective_charger(asset_id)
-            return self.controller.requested_power_readback(cid) if cid else None
-        if key in {"charger.current_limit_a", "limits.requested_current_limit_a"} and asset.concept_id == "charger":
-            readback = getattr(self.controller, "requested_current_readback", None)
-            value = readback(asset_id) if callable(readback) else None
-            if value is not None:
-                return value
-            # Non-OCPP bindings may expose a read-only source current limit without
-            # a writable actuator. Preserve that source truth as a fallback.
-            if snap is not None and "charger.current_limit_a" in snap.values:
-                return snap.values.get("charger.current_limit_a")
-            return None
-        if key == "charger.available_for_control" and asset.concept_id == "charger":
-            descriptors = getattr(self.controller, "command_descriptors", None)
-            if not callable(descriptors):
-                return None
-            return any(r.asset_id == asset_id and r.execution_allowed for r in descriptors().values())
-        if key == "vehicle.charge_mode" and asset.concept_id == "vehicle":
-            readback = getattr(self.controller, "vehicle_charge_mode_readback", None)
-            return readback(asset_id) if callable(readback) else None
-
-        # Runtime health/evidence metadata.
-        if key == "charger.snapshot_revision" and snap is not None:
-            return snap.build_input_revision
-        if key == "charger.observed_at":
-            return self._source_observed_at(asset_id)
-        if key == "charger.health" and snap is not None:
-            return snap.health
-        if key == "charger.health_reason" and snap is not None:
-            return getattr(snap, "health_reason", None)
-
-        # Canonical source/profile/config values already materialised by the manager.
-        if snap is not None:
-            if canonical in snap.values:
-                return snap.values.get(canonical)
-            if key in snap.values:
-                return snap.values.get(key)
-
-        # All canonical derivations are materialised by MobilityRuntimeManager.
-        return None
-
-    def property_quality(self, asset_id: str, property_key: str) -> str | None:
-        asset = self._asset(asset_id)
-        snap = self._snap(asset_id)
-        if asset is None:
-            return None
-        key = str(property_key)
-        canonical = self._canonical(key)
-        if key != canonical:
-            underlying = self.property_quality(asset_id, canonical)
-            return underlying or f"compatibility_alias:{canonical}"
-        if key in {"charger.requested_power_kw", "charger.requested_charge_power_kw", "vehicle.requested_charge_power_kw", "charger.current_limit_a", "limits.requested_current_limit_a"}:
-            return "physical_setpoint_readback" if self.property_value(asset_id, key) is not None else None
-        if key in {"vehicle.selected_charger", "vehicle.effective_charger", "charger.assigned_vehicle_id", "charger.effective_assigned_vehicle_id"}:
-            return "mobility_relationship" if self.property_value(asset_id, key) is not None else None
-        if key in {"charger.available_for_control", "charger.available_for_connection", "charger.health", "charger.health_reason", "charger.snapshot_revision", "charger.observed_at"}:
-            return "derived_runtime_evidence" if self.property_value(asset_id, key) is not None else None
-        if snap is not None:
-            if key in snap.quality:
-                return snap.quality.get(key)
-            if canonical in snap.quality:
-                return snap.quality.get(canonical)
-        if self.manager.configuration_value(asset_id, key, None) is not None:
-            return "mobility_domain_configuration"
-        return None
-
-    @staticmethod
-    def _source_ref_attributes(source, input_id: str | None = None) -> dict[str, Any]:
-        out = {
-            "source_integration": source.integration_domain,
-            "source_device_id": source.device_id,
-            "source_config_entry_id": source.config_entry_id,
-            "source_entity_id": source.entity_id,
-            "candidate_id": source.candidate_id,
-            "raw_capability_id": source.raw_capability_id,
-            "technical_capability": source.technical_capability,
-            "source_input_id": input_id,
-            "target_scope": source.target_scope,
-        }
-        return {k: v for k, v in out.items() if v is not None and v != ""}
-
-    def property_provenance(self, asset_id: str, property_key: str) -> dict[str, Any]:
-        asset = self._asset(asset_id)
-        if asset is None:
-            return {}
-        key = str(property_key)
-        canonical = self._canonical(key)
-        if key != canonical:
-            out = self.property_provenance(asset_id, canonical)
-            out = dict(out)
-            out["compatibility_alias_of"] = canonical
-            out["normalization_status"] = "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN"
-            return out
-
-        # Exact controller source for writable/readback properties.
-        charger_id = asset_id
-        if key == "vehicle.requested_charge_power_kw":
-            charger_id = self._effective_charger(asset_id) or ""
-        if key in {"charger.current_limit_a", "limits.requested_current_limit_a"} and charger_id:
-            descriptor = getattr(self.controller, "requested_current_descriptor", None)
-            desc = descriptor(charger_id) if callable(descriptor) else None
-            if desc is not None:
-                source = getattr(desc, "source", None)
-                out = self._source_ref_attributes(source, "charger_current_limit_write") if source is not None else {}
-                out.update({"producer_kind": "CONTROL_READBACK", "normalization_status": "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN", "quality": "physical_setpoint_readback"})
-                return out
-        if key in {"charger.requested_power_kw", "charger.requested_charge_power_kw", "vehicle.requested_charge_power_kw"} and charger_id:
-            descriptor = getattr(self.controller, "requested_power_descriptor", None)
-            desc = descriptor(charger_id) if callable(descriptor) else None
-            if desc is not None:
-                source = getattr(desc, "source", None)
-                out = self._source_ref_attributes(source, "charger_current_limit_write" if desc.mode == "current_limit" else "charger_power_limit_write") if source is not None else {}
-                out.update({"producer_kind": "CONTROL_READBACK", "normalization_status": "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN", "quality": "physical_setpoint_readback"})
-                return out
-
-        provenance_fn = getattr(self.manager, "property_provenance", None)
-        out = dict(provenance_fn(asset_id, key)) if callable(provenance_fn) else {}
-        if not out and canonical != key:
-            out = dict(self.manager.property_provenance(asset_id, canonical))
-        if key in {"vehicle.selected_charger", "vehicle.effective_charger", "charger.assigned_vehicle_id", "charger.effective_assigned_vehicle_id"}:
-            out["producer_kind"] = "RELATIONSHIP"
-            out["derived_from"] = ["mobility.configured_assignment"]
-            out["quality"] = "mobility_relationship"
-        # All other derived dependency provenance is owned by the canonical semantic catalog
-        # and already supplied by MobilityRuntimeManager.property_provenance().
-        out["normalization_status"] = "AVAILABLE" if self.property_value(asset_id, key) is not None else "UNKNOWN"
-        return {k: v for k, v in out.items() if v is not None}
-
-    def _capability_supported_keys(self, asset_id: str) -> set[str]:
-        supported = getattr(self.manager, "supported_property_keys", None)
-        if callable(supported):
-            return set(supported(asset_id))
-        # Compatibility for isolated test managers only; production manager always owns this.
-        keys: set[str] = set()
-        asset = self._asset(asset_id)
-        if asset is not None:
-            for binding in asset.source_bindings.values():
-                model = self.registry.builder_model(binding.builder_id)
-                for input_id in binding.inputs:
-                    rule = (model.get("input_rules") or {}).get(input_id) or {}
-                    keys.update(str(k) for k in rule.get("outputs") or [])
-        return keys
-
-    def available_property_keys(self, asset_id: str) -> list[str]:
-        """Return the complete applicable canonical/public vocabulary for an asset.
-
-        The canonical per-asset catalog is itself a public product contract. Support
-        and current observation availability must not shrink that contract; consumers
-        use value/quality/provenance to distinguish available, unknown and unsupported
-        truth.
-        """
-        asset = self._asset(asset_id)
-        if asset is None:
-            return []
-        typ = asset.concept_id
-        keys: set[str] = set()
-        for key, definition in self.properties.items():
-            types = set(definition.get("applicable_asset_types") or [])
-            if not types or typ in types:
-                keys.add(key)
-        return sorted(keys)
-
-    def materialized_property_keys(self, asset_id: str) -> list[str]:
-        """Return only properties that deserve a concrete Home Assistant entity.
-
-        A source-backed property materialises when the accepted binding declares the
-        capability, even while its current source state is unknown/unavailable. Values
-        produced by Mobility configuration or derivation materialise from the canonical
-        snapshot. Unsupported catalog vocabulary stays in the public contract but does
-        not create permanent Unknown entities on the logical HA device.
-        """
-        asset = self._asset(asset_id)
-        if asset is None:
-            return []
-        typ = asset.concept_id
-        snap = self._snap(asset_id)
-        supported = set(self._capability_supported_keys(asset_id))
-        supported.update((snap.values if snap else {}).keys())
-
-        # Mobility-owned configured values may exist before the next runtime refresh.
-        config_values = getattr(self.manager, "domain_config", None)
-        asset_values = getattr(config_values, "asset_values", None)
-        if callable(asset_values):
-            supported.update(asset_values(asset_id).keys())
-
-        # Product editables are contract surfaces, not observed capabilities.
-        # They must remain materialised while their current capability is unavailable
-        # so the canonical V2 row can publish write_supported=false + an explicit
-        # reason instead of disappearing from first-party consumers. HA editor entity
-        # existence follows the same catalog-driven rule in number/select/text/switch.
-        for key, definition in self.properties.items():
-            editable = definition.get("editable")
-            if not isinstance(editable, dict):
-                continue
-            types = set(editable.get("asset_types") or definition.get("applicable_asset_types") or [])
-            if types and typ not in types:
-                continue
-            if editable.get("ui_exposed") is False:
-                continue
-            supported.add(key)
-
-        # Canonical lifecycle/health facts exist for every materialized asset.
-        # Add them before alias expansion so lifecycle aliases and their HA editor
-        # metadata can materialize on first publication rather than only after a
-        # configured value happens to exist.
-        supported.update({"asset.lifecycle_status", "asset.availability_state", f"{typ}.health", f"{typ}.health_reason"})
-
-        # Compatibility/product aliases materialise only when their canonical fact does.
-        for alias, canonical in self.aliases.items():
-            definition = self.properties.get(alias) or {}
-            types = set(definition.get("applicable_asset_types") or [])
-            if (not types or typ in types) and canonical in supported:
-                supported.add(alias)
-
-        return sorted(
-            key
-            for key in supported
-            if key in self.properties
-            and (
-                not self.properties[key].get("applicable_asset_types")
-                or typ in self.properties[key].get("applicable_asset_types")
-            )
-        )
-
-    def available_scalar_properties(self) -> list[dict[str, Any]]:
-        """Canonical/public scalar contract rows; not the HA entity materialisation set."""
-        rows = []
-        for asset_id, asset in sorted(self.manager.assets.items()):
-            for key in self.available_property_keys(asset_id):
-                definition = self.property_definition(key, asset.concept_id) or {}
-                if definition.get("entity_type", "sensor") != "sensor":
-                    continue
-                rows.append({"asset_id": asset_id, "property_key": key, **definition})
-        return rows
-
-    def materialized_scalar_properties(self) -> list[dict[str, Any]]:
-        """Concrete HA sensor rows without unsupported-catalog Unknown pollution."""
-        rows = []
-        for asset_id, asset in sorted(self.manager.assets.items()):
-            for key in self.materialized_property_keys(asset_id):
-                definition = self.property_definition(key, asset.concept_id) or {}
-                if definition.get("entity_type", "sensor") != "sensor":
-                    continue
-                rows.append({"asset_id": asset_id, "property_key": key, **definition})
-        return rows
-
-    def property_publication_snapshot(self, asset_id: str) -> dict[str, Any]:
-        """Describe the canonical per-asset V2 property publication contract.
-
-        expected_property_keys is the set that the backend says must materialise for
-        this concrete asset, based on accepted capabilities/configuration/derivation.
-        HA runtime diagnostics separately verify whether those expected entities are
-        really registered; this provider never uses V1 as a fallback authority.
-        """
-        expected = self.materialized_property_keys(asset_id)
-        catalog = self.available_property_keys(asset_id)
-        return {
-            "expected_property_keys": expected,
-            "expected_property_count": len(expected),
-            "catalog_property_keys": catalog,
-            "catalog_property_count": len(catalog),
-            "authority": self.CONTRACT_ID,
-            "v1_fallback_allowed": False,
-        }
-
-    def component_snapshot(self, asset_id: str) -> dict[str, Any]:
-        asset = self._asset(asset_id)
-        snap = self._snap(asset_id)
-        if asset is None or snap is None:
-            return {}
-        components: dict[str, dict[str, Any]] = {}
-        for key in self.available_property_keys(asset_id):
-            definition = self.property_definition(key, asset.concept_id) or {}
-            component_id = definition.get("component_id") or asset.concept_id
-            section_id = definition.get("section_id") or "details"
-            component = components.setdefault(component_id, {"component_id": component_id, "sections": {}})
-            section = component["sections"].setdefault(section_id, {"section_id": section_id, "properties": {}})
-            section["properties"][key] = {
-                "value": self.property_value(asset_id, key),
-                "unit": definition.get("unit"),
-                "visibility": definition.get("visibility", "product"),
-                "quality": self.property_quality(asset_id, key),
-                "provenance": self.property_provenance(asset_id, key),
-                "editable": bool(definition.get("editable", False)),
-            }
-        prefix = asset.concept_id
-        identity = {
-            "brand": self.property_value(asset_id, f"{prefix}.brand"),
-            "model": self.property_value(asset_id, f"{prefix}.model"),
-            "variant": self.property_value(asset_id, f"{prefix}.variant"),
-            "model_year": self.property_value(asset_id, f"{prefix}.model_year"),
-            "status": self.property_value(asset_id, f"{prefix}.identity_status"),
-        }
-        return {
-            "asset_id": asset_id,
-            "asset_type": asset.concept_id,
-            "concept_id": asset.concept_id,
-            "display_name": self.property_value(asset_id, "asset.display_name") or asset.display_name,
-            "identity": identity,
-            "profile_id": self.property_value(asset_id, "asset.profile_id"),
-            "color": self.property_value(asset_id, f"{prefix}.color"),
-            "image_key": self.property_value(asset_id, f"{prefix}.image_key"),
-            "visual_ref": resolve_visual_ref(
-                asset.concept_id,
-                self.property_value(asset_id, f"{prefix}.image_key"),
-                self.property_value(asset_id, "asset.profile_id"),
-            ),
-            "lifecycle_status": self.property_value(asset_id, "asset.lifecycle_status"),
-            "health": snap.health,
-            "primary_source": (self.manager.primary_source_metadata(asset_id) if callable(getattr(self.manager, "primary_source_metadata", None)) else {}),
-            "property_publication": self.property_publication_snapshot(asset_id),
-            "components": [
-                {"component_id": c["component_id"], "sections": [c["sections"][k] for k in sorted(c["sections"])]}
-                for c in (components[k] for k in sorted(components))
-            ],
-        }
-
-    def fleet_snapshot(self) -> dict[str, Any]:
-        active_vehicles = []
-        active_chargers = []
-        available = connected = charging = 0
-        known_power = 0
-        total_power = 0.0
-        for asset_id, asset in sorted(self.manager.assets.items()):
-            lifecycle = str(self.property_value(asset_id, "asset.lifecycle_status") or "active").lower()
-            if lifecycle == "disabled":
-                continue
-            if asset.concept_id == "vehicle":
-                active_vehicles.append(asset_id)
-                continue
-            if asset.concept_id != "charger":
-                continue
-            active_chargers.append(asset_id)
-            if self.property_value(asset_id, "charger.available_for_connection") is True:
-                available += 1
-            if self.property_value(asset_id, "charger.connection_state") == "asset_connected":
-                connected += 1
-            if self.property_value(asset_id, "charger.operating_state") == "running":
-                charging += 1
-            power = self.property_value(asset_id, "charger.power_kw")
-            if isinstance(power, (int, float)):
-                known_power += 1
-                total_power += max(0.0, float(power))
-        if not active_chargers or known_power == 0:
-            power_state = "unknown"
-            aggregate_power = None
-        elif known_power == len(active_chargers):
-            power_state = "complete"
-            aggregate_power = round(total_power, 3)
-        else:
-            power_state = "partial"
-            aggregate_power = round(total_power, 3)
-        return {
-            "active_vehicle_count": len(active_vehicles),
-            "active_charger_count": len(active_chargers),
-            "available_charger_count": available,
-            "connected_charger_count": connected,
-            "charging_charger_count": charging,
-            "aggregate_actual_charging_power_kw": aggregate_power,
-            "aggregate_power_state": power_state,
-            "power_known_charger_count": known_power,
-            "power_unknown_charger_count": len(active_chargers) - known_power,
-        }
-
-    def snapshot(self) -> dict[str, Any]:
-        return {
-            "contract_id": self.CONTRACT_ID,
-            "publisher": "rhi_mobility",
-            "canonical": True,
-            "assets": [self.component_snapshot(aid) for aid in sorted(self.manager.assets)],
-            "fleet": self.fleet_snapshot(),
-            "relationships": [
-                {"relationship_id": r.relationship_id, "relationship_type": r.relationship_type, "from_asset_id": r.from_asset_id, "to_asset_id": r.to_asset_id, "health": r.health}
-                for r in sorted(self.manager.effective_relationships.values(), key=lambda x: x.relationship_id)
-            ],
-            "vehicle_charger_relationships": [
-                _vehicle_charger_relationship(self.manager, aid).as_dict()
-                for aid, asset in sorted(self.manager.assets.items())
-                if asset.concept_id == "vehicle"
-            ],
-            "command_provider_id": "mobility.command.v2",
-            "raw_integration_state_public": False,
-            "ux_inference_forbidden": True,
-        }
-
-
 class MobilityExperienceProvider:
     """Backend-owned Mobility conclusions matching the R43.2.65 intelligence families."""
     CONTRACT_ID = "MOBILITY_EXPERIENCE_V2"
@@ -534,8 +45,11 @@ class MobilityExperienceProvider:
         "vehicle.window_fl_state", "vehicle.window_fr_state", "vehicle.window_rl_state", "vehicle.window_rr_state",
     )
 
-    def __init__(self, public_provider: MobilityPublicRuntimeProvider, registry, policy_provider=None) -> None:
-        self.public = public_provider
+    def __init__(self, manager, controller, registry, policy_provider=None) -> None:
+        self.manager = manager
+        self.controller = controller
+        from .property_resolver import PropertyResolver
+        self.resolver = PropertyResolver(manager, controller, registry=registry)
         self.policy = policy_provider
         contract = registry.domain_model["experience_contract"]
         self.unsafe = set(contract["security_unsafe_values"])
@@ -546,7 +60,8 @@ class MobilityExperienceProvider:
         return {"state": state, "severity": severity, "summary": summary, "reason": reason, "reason_type": reason_type, "source_quality": source_quality, "input_properties": inputs, **extra}
 
     def _v(self, aid: str, key: str):
-        return self.public.property_value(aid, key)
+        resolution = self.resolver.resolve(aid, key)
+        return resolution.value if resolution.available else None
 
     def _policy(self, key: str, default: Any) -> Any:
         if self.policy is None:
@@ -586,7 +101,7 @@ class MobilityExperienceProvider:
     def _runtime_data_health(self, asset_id: str, lifecycle: str) -> dict[str, Any]:
         if lifecycle == "disabled":
             return {"state": "unavailable", "reasons": ["lifecycle_disabled"]}
-        manager = getattr(self.public, "manager", None)
+        manager = self.manager
         if manager is None:
             return {"state": "unavailable", "reasons": ["runtime_manager_unavailable"]}
         snap = manager.snapshots.get(asset_id)
@@ -610,7 +125,7 @@ class MobilityExperienceProvider:
         return {"state": "healthy", "reasons": []}
 
     def _charging_relationship(self, asset_id: str) -> dict[str, Any]:
-        manager = getattr(self.public, "manager", None)
+        manager = self.manager
         if manager is None:
             return {
                 "vehicle_id": asset_id,
@@ -923,10 +438,57 @@ class MobilityExperienceProvider:
             "policy_revision": self.policy_revision,
         }
 
+    def fleet_snapshot(self) -> dict[str, Any]:
+        active_vehicles = []
+        active_chargers = []
+        available = connected = charging = 0
+        known_power = 0
+        total_power = 0.0
+        for asset_id, asset in sorted(self.manager.assets.items()):
+            lifecycle = str(self._v(asset_id, "asset.lifecycle_status") or "active").lower()
+            if lifecycle == "disabled":
+                continue
+            if asset.concept_id == "vehicle":
+                active_vehicles.append(asset_id)
+                continue
+            if asset.concept_id != "charger":
+                continue
+            active_chargers.append(asset_id)
+            if self._v(asset_id, "charger.available_for_connection") is True:
+                available += 1
+            if self._v(asset_id, "charger.connection_state") == "asset_connected":
+                connected += 1
+            if self._v(asset_id, "charger.operating_state") == "running":
+                charging += 1
+            power = self._v(asset_id, "charger.power_kw")
+            if isinstance(power, (int, float)):
+                known_power += 1
+                total_power += max(0.0, float(power))
+        if not active_chargers or known_power == 0:
+            power_state = "unknown"
+            aggregate_power = None
+        elif known_power == len(active_chargers):
+            power_state = "complete"
+            aggregate_power = round(total_power, 3)
+        else:
+            power_state = "partial"
+            aggregate_power = round(total_power, 3)
+        return {
+            "active_vehicle_count": len(active_vehicles),
+            "active_charger_count": len(active_chargers),
+            "available_charger_count": available,
+            "connected_charger_count": connected,
+            "charging_charger_count": charging,
+            "aggregate_actual_charging_power_kw": aggregate_power,
+            "aggregate_power_state": power_state,
+            "power_known_charger_count": known_power,
+            "power_unknown_charger_count": len(active_chargers) - known_power,
+        }
+
     def snapshot(self) -> dict[str, Any]:
-        vehicles = [self._vehicle_row(aid) for aid, asset in sorted(self.public.manager.assets.items()) if asset.concept_id == "vehicle"]
-        chargers = [self._charger_row(aid) for aid, asset in sorted(self.public.manager.assets.items()) if asset.concept_id == "charger"]
-        return {"contract_id": self.CONTRACT_ID, "publisher": "rhi_mobility", "policy_revision": self.policy_revision, "fleet": self.public.fleet_snapshot(), "vehicles": vehicles, "chargers": chargers, "energy_planning_inference": False, "generic_truthiness_security": False, "not_evaluated_placeholders": False}
+        vehicles = [self._vehicle_row(aid) for aid, asset in sorted(self.manager.assets.items()) if asset.concept_id == "vehicle"]
+        chargers = [self._charger_row(aid) for aid, asset in sorted(self.manager.assets.items()) if asset.concept_id == "charger"]
+        return {"contract_id": self.CONTRACT_ID, "publisher": "rhi_mobility", "policy_revision": self.policy_revision, "fleet": self.fleet_snapshot(), "vehicles": vehicles, "chargers": chargers, "energy_planning_inference": False, "generic_truthiness_security": False, "not_evaluated_placeholders": False}
 
 
 class MobilityActivityProvider:

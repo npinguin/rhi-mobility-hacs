@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .const import DOMAIN, RELEASE
+from .property_resolver import PropertyResolver
 
 MOBILITY_REPOSITORY_URL = "https://github.com/npinguin/rhi-mobility"
 
@@ -73,9 +74,9 @@ class MobilitySourceDiagnosticsProvider:
         "CARDINALITY_ERROR", "REJECTED_REVIEW_REQUIRED",
     })
 
-    def __init__(self, manager: Any, public_provider: Any) -> None:
+    def __init__(self, manager: Any, controller: Any) -> None:
         self.manager = manager
-        self.public = public_provider
+        self.resolver = PropertyResolver(manager, controller)
 
     def sources(self, asset_id: str) -> list[dict[str, Any]]:
         """Return deduplicated accepted physical sources for one logical asset.
@@ -138,10 +139,10 @@ class MobilitySourceDiagnosticsProvider:
             status = "ACTIVE"
         observed_at = None
         if asset.concept_id == "charger":
-            observed_at = self.public.property_value(asset_id, "charger.observed_at")
+            observed_at = self.resolver.resolve(asset_id, "charger.observed_at").value
         elif snap is not None:
             for key in ("vehicle.last_seen", "vehicle.source_timestamp", "vehicle.source_vehicle_clock"):
-                value = self.public.property_value(asset_id, key)
+                value = self.resolver.resolve(asset_id, key).value
                 if value not in (None, ""):
                     observed_at = str(value)
                     break

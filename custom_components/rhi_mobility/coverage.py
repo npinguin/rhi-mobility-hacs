@@ -7,12 +7,12 @@ from .property_resolution import PropertyProducerKind, PropertyResolutionStatus
 from .property_resolver import PropertyResolver
 
 
-def normalized_property_coverage(manager: Any, public: Any, projection: Any = None) -> dict[str, Any]:
+def normalized_property_coverage(manager: Any, controller: Any = None, projection: Any = None) -> dict[str, Any]:
     """Audit canonical properties from typed PropertyResolution only."""
     totals = Counter()
     by_asset: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
-    resolver = PropertyResolver(manager, public)
+    resolver = PropertyResolver(manager, controller)
     bucket_by_producer = {
         PropertyProducerKind.SOURCE: "resolved_source",
         PropertyProducerKind.PROFILE: "resolved_profile",

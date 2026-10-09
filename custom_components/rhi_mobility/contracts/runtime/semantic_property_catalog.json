@@ -2654,16 +2654,15 @@
         }
       ],
       "truth_precedence": [
-        "ALIAS"
+        "SOURCE"
       ],
       "applicable_asset_types": [
         "charger"
       ],
       "producer_types": [
-        "ALIAS"
+        "SOURCE"
       ],
-      "value_type": "number",
-      "canonical_alias_of": "charger.session_duration_s"
+      "value_type": "number"
     },
     "charger.session_energy_kwh": {
       "component_id": "metering",
@@ -11167,7 +11166,6 @@
     "charger.phase_voltage_l1_v": "charger.voltage_l1_v",
     "charger.phase_voltage_l2_v": "charger.voltage_l2_v",
     "charger.phase_voltage_l3_v": "charger.voltage_l3_v",
-    "charger.added_energy_kwh": "charger.session_energy_kwh",
-    "charger.session_duration_s": "charger.session_duration_s"
+    "charger.added_energy_kwh": "charger.session_energy_kwh"
   }
 }

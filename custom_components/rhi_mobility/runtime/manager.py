@@ -331,6 +331,25 @@ class MobilityRuntimeManager:
             out["device_name"] = self._source_device_name(asset.source_device_id)
         return {k: v for k, v in out.items() if v is not None}
 
+    def source_observed_at(self, asset_id: str) -> str | None:
+        """Latest direct source timestamp; producer-owned freshness evidence."""
+        asset = self.assets.get(asset_id)
+        if asset is None:
+            return None
+        states = getattr(self.hass, "states", None)
+        if states is None:
+            return None
+        observed = []
+        for binding in asset.source_bindings.values():
+            for source in binding.inputs.values():
+                if not source.entity_id:
+                    continue
+                state = states.get(source.entity_id)
+                stamp = getattr(state, "last_updated", None) if state else None
+                if stamp is not None:
+                    observed.append(stamp)
+        return max(observed).isoformat() if observed else None
+
     def property_provenance(self, asset_id: str, property_key: str) -> dict[str, Any]:
         snap = self.snapshots.get(asset_id)
         asset = self.assets.get(asset_id)
