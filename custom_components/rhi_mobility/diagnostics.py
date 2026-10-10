@@ -230,7 +230,20 @@ def _ha_projection_diagnostics(
         if expected_device_id is not None and actual_device_id != expected_device_id:
             misplaced_product_surfaces.append(row)
         if disabled_text.lower() == "integration":
-            integration_disabled_product_surfaces.append(row)
+            # A declared engineering property is intentionally disabled by
+            # default. It is not a broken product capability. Only domain
+            # registry metadata, never property-key heuristics, decides.
+            from .capability_service import MobilityCapabilityService
+            capabilities = MobilityCapabilityService(manager.registry)
+            asset = manager.assets.get(expected["asset_id"])
+            if (
+                expected.get("surface_kind") != "property"
+                or asset is None
+                or not capabilities.engineering_only(
+                    asset.concept_id, str(expected.get("property_key") or "")
+                )
+            ):
+                integration_disabled_product_surfaces.append(row)
         elif disabled_text:
             user_disabled_product_surfaces.append(row)
 

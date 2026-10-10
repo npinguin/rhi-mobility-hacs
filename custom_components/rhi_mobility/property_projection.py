@@ -11,6 +11,7 @@ from .editable_projection import options as editable_options
 from .editable_projection import select_choices as editable_select_choices
 from .property_resolution import PropertyResolutionStatus
 from .property_resolver import PropertyResolver
+from .capability_service import MobilityCapabilityService
 
 
 class MobilityPropertyProjection:
@@ -21,19 +22,10 @@ class MobilityPropertyProjection:
         self.properties = dict(semantic.get("properties") or {})
         self.aliases = dict(getattr(self.registry, "semantic_aliases", {}) or {})
         self.resolver=PropertyResolver(manager,controller)
+        self.capabilities=MobilityCapabilityService(self.registry)
 
     def definition(self,asset_type: str,property_key: str) -> dict[str,Any] | None:
-        # One semantic/placement owner: MobilityModelRegistry.
-        from .model_registry import MobilityModelRegistry
-        definition = MobilityModelRegistry.property_definition(
-            self.registry, property_key, asset_type
-        )
-        if definition is None:
-            return None
-        applicable = set(definition.get("applicable_asset_types") or [])
-        if applicable and asset_type not in applicable:
-            return None
-        return {**definition, "property_key": property_key}
+        return self.capabilities.property_definition(asset_type, property_key)
 
     def definitions_for_type(self,asset_type: str) -> list[dict[str,Any]]:
         rows=[]
@@ -44,7 +36,7 @@ class MobilityPropertyProjection:
 
     def _capability_supported_keys(self, asset_id: str) -> set[str]:
         supported = getattr(self.manager, "supported_property_keys", None)
-        return set(supported(asset_id)) if callable(supported) else set()
+        return set(self.capabilities.supported_property_keys(self.manager, asset_id))
 
     def materialized_property_keys(self, asset_id: str) -> list[str]:
         """Materialize every declared applicable property, including unknown values.

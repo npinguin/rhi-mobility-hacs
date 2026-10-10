@@ -1,3 +1,10 @@
+## M0.10.43 — Capability Owned Projection (HACS test candidate)
+
+- consolidate Mobility property definitions, per-asset applicable offerings and product-vs-engineering visibility in one domain Capability Service using the existing model registry; no second state store or projection engine;
+- stop reporting intentionally hidden, domain-declared engineering entities as broken product surfaces while preserving missing, misplaced and disabled user-facing controls as errors;
+- remove stale UX health heuristics and protect via real semantic catalog/regression tests;
+- leave physical command authority, asset source bindings and energy handoff unchanged; require live runtime qualification for promotion.
+
 ## M0.10.42 — Canonical Runtime Cutover
 
 - release the already-merged canonical native property runtime from source PR #248 as a new immutable HACS test candidate;
