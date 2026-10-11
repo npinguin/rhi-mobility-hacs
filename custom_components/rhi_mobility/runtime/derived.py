@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Any
+from math import isfinite, sqrt
 
 
 def _num(value: Any) -> float | None:
@@ -168,7 +169,7 @@ def apply_vehicle_derivations(values: dict[str, Any], quality: dict[str, str], *
     _derive_identity_status(values, quality, "vehicle")
 
 
-def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str], *, utility_surface: bool = False) -> None:
+def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str], *, utility_surface: bool = False, source_integration_domain: str | None = None, effective_profile: dict[str, Any] | None = None) -> None:
     """Apply deterministic charger summaries and aggregate readback facts."""
     _derive_identity_status(values, quality, "charger")
     phase_currents = [_num(values.get(f"charger.current_l{phase}_a")) for phase in (1, 2, 3)]
@@ -199,7 +200,9 @@ def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str], *
                 voltage = measured_voltage
                 voltage_mode = "measured_aggregate"
             if voltage is None and nominal_voltage is not None:
-                voltage = nominal_voltage
+                # Above 300 V the canonical nominal is line-to-line (e.g.
+                # 400 V), not a phase-to-neutral multiplier for each phase.
+                voltage = nominal_voltage / sqrt(3.0) if nominal_voltage > 300.0 else nominal_voltage
                 voltage_mode = "canonical_nominal"
             if voltage is None or voltage <= 0.0:
                 complete_voltage_evidence = False
@@ -212,6 +215,36 @@ def apply_charger_derivations(values: dict[str, Any], quality: dict[str, str], *
                 "canonical_nominal": "derived_from_normalized_phase_current_canonical_nominal_voltage",
             }[voltage_mode]
             _set(values, quality, "charger.power_kw", round(phase_power_w / 1000.0, 3), reason, overwrite=True)
+
+    # OCPP implementations may publish a valid aggregate phase current but
+    # omit phase-current attributes and direct active power. The accepted
+    # Mobility electrical envelope already resolves negotiated vehicle/charger
+    # phase count and phase voltage; reuse that *physical* truth, never merely
+    # the charger's maximum phase capability or offered/current-limit setpoint.
+    # This is estimated electrical power (power factor assumed 1), not a meter.
+    if (
+        str(source_integration_domain or "").lower() == "ocpp"
+        and not active_phases
+        and (measured_power is None or measured_power <= 0.0)
+        and values.get("charger.operating_state") in {"running", "charging"}
+        and values.get("charger.connection_state") == "asset_connected"
+        and isinstance(effective_profile, dict)
+        and effective_profile.get("phase_count_source") == "vehicle_charger_capability_fallback"
+    ):
+        current = _num(values.get("charger.actual_current_a"))
+        phases = _num(effective_profile.get("phase_count"))
+        voltage = _num(effective_profile.get("phase_voltage_v"))
+        if (
+            current is not None and isfinite(current) and current > 0.2
+            and phases is not None and isfinite(phases) and phases in (1.0, 2.0, 3.0)
+            and voltage is not None and isfinite(voltage) and 0 < voltage < 300
+        ):
+            estimated_kw = round(current * phases * voltage / 1000.0, 3)
+            _set(
+                values, quality, "charger.power_kw", estimated_kw,
+                "derived_from_ocpp_actual_current_effective_phases_estimate",
+                overwrite=True,
+            )
 
     vendor = values.get("charger.vendor")
     model = values.get("charger.model")

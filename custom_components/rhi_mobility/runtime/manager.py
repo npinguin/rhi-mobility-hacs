@@ -1180,6 +1180,8 @@ class MobilityRuntimeManager:
                 derived_values,
                 derived_quality,
                 utility_surface=utility_surface,
+                source_integration_domain=asset.source_integration_domain,
+                effective_profile=self.effective_charging_profile(asset_id),
             )
             apply_derived_candidates(
                 before_values=snap.values,before_quality=snap.quality,

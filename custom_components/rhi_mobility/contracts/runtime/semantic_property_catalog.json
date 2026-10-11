@@ -2375,7 +2375,7 @@
       "visibility": "product",
       "unit": "kW",
       "entity_type": "sensor",
-      "derived": false,
+      "derived": true,
       "friendly_name": "Power",
       "render_as": "readonly_value",
       "applicable_asset_types": [
@@ -2395,7 +2395,8 @@
         }
       },
       "producer_types": [
-        "SOURCE"
+        "SOURCE",
+        "DERIVED"
       ],
       "builder_sources": [
         {
@@ -2412,9 +2413,18 @@
         }
       ],
       "truth_precedence": [
+        "DERIVED",
         "SOURCE"
       ],
-      "value_type": "number"
+      "value_type": "number",
+      "derived_dependencies": [
+        "charger.actual_current_a",
+        "charger.current_l1_a",
+        "charger.current_l2_a",
+        "charger.current_l3_a",
+        "charger.nominal_voltage_v",
+        "charger.voltage_v"
+      ]
     },
     "charger.power_l1_kw": {
       "component_id": "metering",

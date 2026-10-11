@@ -1,3 +1,11 @@
+## M0.10.46 — OCPP Charging Power Truth (HACS test candidate)
+
+- Estimate live OCPP charge power from actual current and effective vehicle/charger phase configuration when the native power value reports zero; preserve positive independently measured power.
+- At 6 A, two effective phases and 400 V line-to-line, derive ~2.771 kW, explicitly marked as estimated rather than metered.
+- Correct per-phase 400 V line-voltage conversion to phase voltage, including single-phase nominal situations.
+- Correct canonical SOURCE-only producer policy: charger.power_kw supports guarded DERIVED source fallback and model 1.2.6; regression test blocks duplicate source authority.
+- Do not infer physical charging from offered-current setpoints or charger capability alone. Target HA proof and physical command/readback remain pending.
+
 ## M0.10.45 — Canonical Lifecycle Truth (HACS test candidate)
 
 - Publish the Mobility runtime's active lifecycle default through the canonical property rather than CONFIGURATION_REQUIRED.

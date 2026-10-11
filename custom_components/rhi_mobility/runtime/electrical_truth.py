@@ -66,7 +66,7 @@ def resolve_effective_charging_profile(
         nominal = _num(getattr(charger_profile, "nominal_voltage_v", None))
         if nominal is None or nominal <= 0:
             return None
-        phase_voltage = nominal / sqrt(3.0) if phases > 1 and nominal > 300.0 else nominal
+        phase_voltage = nominal / sqrt(3.0) if nominal > 300.0 else nominal
         voltage_source = (
             "derived_line_to_neutral_from_nominal"
             if phase_voltage != nominal
