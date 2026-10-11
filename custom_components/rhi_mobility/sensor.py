@@ -563,6 +563,11 @@ class MobilityPropertySensor(SensorEntity):
             add_control = getattr(self.projection.controller, "add_listener", None)
             if callable(add_control):
                 self.async_on_remove(add_control(self._changed))
+        if self.property_key in {
+            "charger.assigned_vehicle_id",
+            "charger.effective_assigned_vehicle_id",
+        }:
+            self.async_on_remove(self.manager.add_topology_listener(self._changed))
         if self.property_key == "vehicle.requested_charge_power_kw":
             # This canonical vehicle property is a projection of its effective
             # charger's physical control/readback. Refresh on charger-side runtime
@@ -575,7 +580,24 @@ class MobilityPropertySensor(SensorEntity):
 
     @property
     def native_value(self):
-        return self.projection.value(self.asset_id, self.property_key)
+        value = self.projection.value(self.asset_id, self.property_key)
+        if self.property_key in {
+            "charger.assigned_vehicle_id",
+            "charger.effective_assigned_vehicle_id",
+        }:
+            # Canonical property resolution remains a stable asset ID; native HA
+            # renders the display name and never mistakes assignment for a plug.
+            if value is not None:
+                asset = self.manager.assets.get(value)
+                return getattr(asset, "display_name", None) or value
+            if self.property_key == "charger.effective_assigned_vehicle_id":
+                from .relationship_resolution import resolve_charger_vehicle_relationship
+                relation = resolve_charger_vehicle_relationship(self.manager, self.asset_id)
+                if relation.charger_occupied is True:
+                    return "Vehicle identity unknown"
+                if relation.charger_occupied is False:
+                    return "No vehicle connected"
+        return value
 
     @property
     def available(self):
@@ -589,6 +611,17 @@ class MobilityPropertySensor(SensorEntity):
         projected = self.projection.row(self.asset_id, self.property_key) or {}
         provenance = dict(projected.get("source_provenance") or {})
         write = self.projection.write_metadata(self.asset_id, self.property_key) or {}
+        relation_attrs = {}
+        if self.property_key in {
+            "charger.assigned_vehicle_id",
+            "charger.effective_assigned_vehicle_id",
+        }:
+            from .relationship_resolution import resolve_charger_vehicle_relationship
+            relation = resolve_charger_vehicle_relationship(self.manager, self.asset_id)
+            relation_attrs = {
+                "canonical_vehicle_asset_id": self.projection.value(self.asset_id, self.property_key),
+                **relation.as_dict(),
+            }
         attrs = {
             "asset_id": self.asset_id,
             "asset_type": None if asset is None else asset.concept_id,
@@ -630,7 +663,7 @@ class MobilityPropertySensor(SensorEntity):
             **provenance,
             "canonical_contract": "RHI_MOBILITY_CANONICAL_PROPERTY_V1",
         }
-        return attrs
+        return {**attrs, **relation_attrs}
 
 
 class BroadDeviceSurfaceSensor(SensorEntity):

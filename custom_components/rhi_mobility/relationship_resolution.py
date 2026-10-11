@@ -119,3 +119,89 @@ def resolve_vehicle_charger_relationship(manager: Any, vehicle_id: str) -> Vehic
         assigned_charger_occupied=assigned_occupied,
         reason=reason,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class ChargerVehicleRelationship:
+    """Reverse assignment and observed physical identity without conflating them."""
+    charger_id: str
+    assigned_vehicle_id: str | None
+    physically_connected_vehicle_id: str | None
+    connection_state: str | None
+    status: RelationshipStatus
+    assigned_vehicle_count: int
+    observed_identity_proven: bool
+    reason: str | None
+
+    @property
+    def charger_occupied(self) -> bool | None:
+        if self.connection_state == "asset_connected":
+            return True
+        if self.connection_state == "no_asset_connected":
+            return False
+        return None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "charger_id": self.charger_id,
+            "assigned_vehicle_id": self.assigned_vehicle_id,
+            "physically_connected_vehicle_id": self.physically_connected_vehicle_id,
+            "connection_state": self.connection_state,
+            "charger_occupied": self.charger_occupied,
+            "relationship_status": self.status.value,
+            "assigned_vehicle_count": self.assigned_vehicle_count,
+            "observed_identity_proven": self.observed_identity_proven,
+            "reason": self.reason,
+        }
+
+
+def resolve_charger_vehicle_relationship(manager: Any, charger_id: str) -> ChargerVehicleRelationship:
+    """Never infer a vehicle identity merely from connector occupancy or assignment."""
+    effective = getattr(manager, "effective_relationships", None)
+    if not isinstance(effective, dict):
+        effective = getattr(manager, "relationships", {}) or {}
+    assigned = {
+        str(rel.from_asset_id)
+        for rel in effective.values()
+        if getattr(rel, "relationship_type", None) == "configured_assignment"
+        and getattr(rel, "to_asset_id", None) == charger_id
+        and getattr(rel, "health", "OK") == "OK"
+    }
+    observed = {
+        str(rel.from_asset_id)
+        for rel in (getattr(manager, "relationships", {}) or {}).values()
+        if getattr(rel, "relationship_type", None) in {"physical_connection", "observed_connection"}
+        and getattr(rel, "to_asset_id", None) == charger_id
+        and getattr(rel, "health", "OK") == "OK"
+    }
+    snap = (getattr(manager, "snapshots", {}) or {}).get(charger_id)
+    values = getattr(snap, "values", {}) if snap is not None else {}
+    connection = values.get("charger.connection_state") if isinstance(values, dict) else None
+    if connection in (None, "", "unknown", "unavailable"):
+        connection = None
+    if len(assigned) > 1 or len(observed) > 1:
+        status, reason = RelationshipStatus.CONFLICT, "multiple_vehicle_assignments_or_observations"
+    elif observed and connection == "no_asset_connected":
+        status, reason = RelationshipStatus.CONFLICT, "observed_identity_conflicts_with_unplugged_charger"
+    elif assigned and observed and assigned != observed:
+        status, reason = RelationshipStatus.CONFLICT, "assigned_vehicle_differs_from_observed_vehicle"
+    elif observed:
+        status = RelationshipStatus.CONSISTENT if assigned else RelationshipStatus.OBSERVED_ONLY
+        reason = None
+    elif assigned:
+        status = RelationshipStatus.CONFIGURED_ONLY
+        reason = "charger_occupied_identity_unproven" if connection == "asset_connected" else "assignment_not_physical_identity"
+    else:
+        status = RelationshipStatus.UNKNOWN
+        reason = "charger_occupied_identity_unproven" if connection == "asset_connected" else "no_vehicle_identity_evidence"
+    observed_id = next(iter(observed)) if len(observed) == 1 and connection != "no_asset_connected" else None
+    return ChargerVehicleRelationship(
+        charger_id=charger_id,
+        assigned_vehicle_id=next(iter(assigned)) if len(assigned) == 1 else None,
+        physically_connected_vehicle_id=observed_id,
+        connection_state=connection,
+        status=status,
+        assigned_vehicle_count=len(assigned),
+        observed_identity_proven=observed_id is not None,
+        reason=reason,
+    )

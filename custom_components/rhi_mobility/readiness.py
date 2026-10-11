@@ -176,8 +176,23 @@ def _control_health(manager: Any, controller: Any, asset_id: str) -> tuple[Healt
     ]
     reasons = descriptor_reasons + evidence_reasons
 
-    if len(allowed) == len(rows) and not blocked_evidence:
-        return HealthState.OK, []
+    # Normal operating state is not a broken control channel. A healthy,
+    # disconnected charger legitimately cannot Start; an idle charger cannot
+    # Stop. Keep the individual buttons blocked, but do not mark the whole
+    # product as defective. Missing write surfaces, stale reads and unknown
+    # command results remain genuine readiness blockers.
+    normal_inhibits = {"vehicle_not_connected", "charger_not_active", "already_running"}
+    abnormal_rows = [
+        row for row in rows
+        if not bool(getattr(row, "execution_allowed", False))
+        and str(getattr(row, "blocked_reason", "")) not in normal_inhibits
+    ]
+    if not abnormal_rows and not blocked_evidence:
+        operational = [
+            f"control_inactive:{getattr(row, 'command_key', 'unknown')}:{getattr(row, 'blocked_reason', 'inactive')}"
+            for row in rows if not bool(getattr(row, "execution_allowed", False))
+        ]
+        return HealthState.OK, operational
     if allowed:
         return HealthState.LIMITED, reasons
     return HealthState.BLOCKED, reasons

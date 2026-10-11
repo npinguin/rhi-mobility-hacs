@@ -391,7 +391,8 @@ class MobilityExperienceProvider:
     def _charger_row(self, asset_id: str) -> dict[str, Any]:
         lifecycle = self._v(asset_id, "lifecycle_status") or "active"
         availability = self._v(asset_id, "asset.availability_state") or "unknown"
-        assigned = self._v(asset_id, "charger.effective_assigned_vehicle_id")
+        assigned = self._v(asset_id, "charger.assigned_vehicle_id")
+        connected = self._v(asset_id, "charger.effective_assigned_vehicle_id")
         connection = self._v(asset_id, "charger.connection_state")
         operating = self._v(asset_id, "charger.operating_state")
         power = self._v(asset_id, "charger.power_kw")
@@ -405,10 +406,38 @@ class MobilityExperienceProvider:
             connection_i = self._intel("unknown", "unknown", "No connection data", "No connection data", "unknown", "missing", ["charger.connection_state", "charger.connector_status"])
         else:
             connection_i = self._intel(str(connection), "normal" if connection != "fault" else "warning", str(connection).replace("_", " ").title(), str(connection), "connection_state", "measured", ["charger.connection_state", "charger.connector_status"])
-        if assigned:
-            vehicle_i = self._intel("connected" if connection == "asset_connected" else "assigned", "normal", f"Vehicle {assigned}", f"Assigned vehicle {assigned}", "connected_vehicle_context", "derived", ["charger.effective_assigned_vehicle_id", "charger.connection_state"], connected_vehicle_asset_id=assigned, connected_vehicle_display_name=self._v(assigned, "asset.display_name") or assigned)
+        assigned_name = (self._v(assigned, "asset.display_name") or assigned) if assigned else ""
+        connected_name = (self._v(connected, "asset.display_name") or connected) if connected else ""
+        if connected:
+            state, severity = "connected", "normal"
+            summary, reason = f"Connected: {connected_name}", "Observed physical vehicle identity"
+        elif connection == "asset_connected":
+            state, severity = "unidentified", "warning"
+            summary = "Charger occupied — vehicle unidentified"
+            reason = f"Assigned: {assigned_name} (not physically verified)" if assigned else "No physical vehicle identity evidence"
+        elif assigned:
+            state, severity = "assigned", "normal"
+            summary, reason = f"Assigned: {assigned_name}", "Assignment is not proof of connection"
+        elif connection == "no_asset_connected":
+            state, severity = "none", "normal"
+            summary, reason = "No vehicle connected", "Charger reports no connected vehicle"
         else:
-            vehicle_i = self._intel("none", "normal", "No vehicle connected", "No vehicle connected", "connected_vehicle_context", "derived", ["charger.effective_assigned_vehicle_id", "charger.connection_state"], connected_vehicle_asset_id="", connected_vehicle_display_name="")
+            state, severity = "unknown", "unknown"
+            summary, reason = "Vehicle connection unknown", "No vehicle identity or connection evidence"
+        vehicle_i = self._intel(
+            state, severity, summary, reason, "connected_vehicle_context",
+            "observed" if connected else "configured" if assigned else "missing",
+            [
+                "charger.assigned_vehicle_id",
+                "charger.effective_assigned_vehicle_id",
+                "charger.connection_state",
+            ],
+            assigned_vehicle_asset_id=assigned or "",
+            assigned_vehicle_display_name=assigned_name,
+            connected_vehicle_asset_id=connected or "",
+            connected_vehicle_display_name=connected_name,
+            physical_identity_proven=bool(connected),
+        )
         if operating is None and power is None:
             charging_i = self._intel("unknown", "unknown", "No charging data", "No charging data", "no_charging_data", "missing", ["charger.power_kw", "charger.operating_state", "charger.requested_charge_power_kw"])
         else:
@@ -502,9 +531,9 @@ class MobilityActivityProvider:
         activities = []
         for aid, snap in sorted(self.manager.snapshots.items()):
             if snap.concept_id == "charger":
-                activities.append({"activity_id": f"activity.mobility.{aid}.charging", "asset_id": aid, "activity_type": "charging", "activity_state": snap.values.get("charger.operating_state", "unknown"), "summary": f"{aid} charger state", "power_kw": snap.values.get("charger.power_kw"), "health": snap.health})
+                activities.append({"activity_id": f"activity.mobility.{aid}.charging", "asset_id": aid, "activity_type": "charging", "activity_state": snap.values.get("charger.operating_state", "unknown"), "summary": f"{aid} charger state", "power_kw": snap.values.get("charger.power_kw"), "health": snap.health, "row_kind": "current_state"})
             elif snap.concept_id == "vehicle":
-                activities.append({"activity_id": f"activity.mobility.{aid}.vehicle", "asset_id": aid, "activity_type": "vehicle", "activity_state": snap.values.get("vehicle.charging_state", "unknown"), "summary": f"{aid} vehicle state", "power_kw": snap.values.get("vehicle.charge_power_kw"), "health": snap.health})
+                activities.append({"activity_id": f"activity.mobility.{aid}.vehicle", "asset_id": aid, "activity_type": "vehicle", "activity_state": snap.values.get("vehicle.charging_state", "unknown"), "summary": f"{aid} vehicle state", "power_kw": snap.values.get("vehicle.charge_power_kw"), "health": snap.health, "row_kind": "current_state"})
         for row in self.controller.executor.snapshot()["last_results"]:
-            activities.append({"activity_id": f"activity.mobility.execution.{row['request_id']}", "asset_id": row["asset_id"], "activity_type": "execution", "activity_state": row["result"], "summary": row["operation_key"], "reason": row["reason"], "write_attempted": row["write_attempted"], "health": "OK" if row["result"] not in {"EXECUTION_UNKNOWN"} else "DEGRADED"})
+            activities.append({"activity_id": f"activity.mobility.execution.{row['request_id']}", "asset_id": row["asset_id"], "activity_type": "execution", "activity_state": row["result"], "summary": row["operation_key"], "reason": row["reason"], "write_attempted": row["write_attempted"], "row_kind": "execution", "observed_at": row.get("observed_at"), "health": "OK" if row["result"] not in {"EXECUTION_UNKNOWN"} else "DEGRADED"})
         return {"contract_id": self.CONTRACT_ID, "publisher": "rhi_mobility", "activities": activities}

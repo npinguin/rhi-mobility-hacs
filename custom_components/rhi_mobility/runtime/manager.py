@@ -556,10 +556,14 @@ class MobilityRuntimeManager:
             if aid in self.snapshots: self._refresh(aid)
 
     def configured_vehicle_for_charger(self, charger_id: str) -> str | None:
-        for rel in self.effective_relationships.values():
-            if rel.relationship_type=='configured_assignment' and rel.to_asset_id==charger_id and rel.health=='OK':
-                return rel.from_asset_id
-        return None
+        # Do not resolve a reverse relationship by taking the first assignment.
+        # Multiple vehicles assigned to one charger are ambiguous until fixed.
+        assigned = {
+            rel.from_asset_id for rel in self.effective_relationships.values()
+            if rel.relationship_type == 'configured_assignment'
+            and rel.to_asset_id == charger_id and rel.health == 'OK'
+        }
+        return next(iter(assigned)) if len(assigned) == 1 else None
 
     def effective_charging_profile(self, charger_id: str) -> dict[str, Any] | None:
         charger=self.control_profile(charger_id)

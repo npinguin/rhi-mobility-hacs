@@ -246,11 +246,21 @@ class PropertyResolver:
             elif canonical_key == "vehicle.effective_charger":
                 value = self.manager.effective_charger_for_vehicle(asset_id)
             else:
-                assigned = getattr(self.manager, "configured_vehicle_for_charger", None)
-                value = assigned(asset_id) if callable(assigned) else None
+                from .relationship_resolution import resolve_charger_vehicle_relationship
+                relationship = resolve_charger_vehicle_relationship(self.manager, asset_id)
+                if canonical_key == "charger.assigned_vehicle_id":
+                    value = relationship.assigned_vehicle_id
+                else:
+                    # A physical vehicle ID must be explicitly observed.
+                    # The configured assignment never proves who is plugged in.
+                    value = relationship.physically_connected_vehicle_id
             reference = {
                 "producer_kind": "RELATIONSHIP",
-                "derived_from": ["mobility.configured_assignment"],
+                "derived_from": (
+                    ["mobility.physical_connection"]
+                    if canonical_key == "charger.effective_assigned_vehicle_id"
+                    else ["mobility.configured_assignment"]
+                ),
                 "quality": "mobility_relationship",
                 "normalization_status": "AVAILABLE" if value is not None else "UNKNOWN",
             }
@@ -416,6 +426,32 @@ class PropertyResolver:
             reason = None
         else:
             status, error_kind, reason = self._absence_status(definition, capability_status)
+            if canonical_key in {
+                "charger.assigned_vehicle_id",
+                "charger.effective_assigned_vehicle_id",
+            }:
+                from .relationship_resolution import (
+                    RelationshipStatus, resolve_charger_vehicle_relationship,
+                )
+                rel = resolve_charger_vehicle_relationship(self.manager, asset_id)
+                if rel.status == RelationshipStatus.CONFLICT:
+                    status = PropertyResolutionStatus.RESOLUTION_ERROR
+                    error_kind = PropertyResolutionError.AMBIGUOUS_SOURCE
+                    reason = rel.reason
+                elif canonical_key == "charger.effective_assigned_vehicle_id":
+                    # Disconnected is not missing configuration. Occupied without
+                    # identified vehicle is unavailable identity evidence.
+                    status = (
+                        PropertyResolutionStatus.NOT_APPLICABLE
+                        if rel.charger_occupied is False
+                        else PropertyResolutionStatus.UNAVAILABLE_TEMPORARY
+                    )
+                    error_kind = None
+                    reason = (
+                        "no_vehicle_connected"
+                        if rel.charger_occupied is False
+                        else "physical_vehicle_identity_unproven"
+                    )
 
         return PropertyResolution(
             asset_id=asset_id,

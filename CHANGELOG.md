@@ -1,3 +1,12 @@
+## M0.10.44 — Vehicle Controls Activity Inventory (HACS test candidate)
+
+- Consolidate exact native vehicle Start/Stop commands, physical readback and charger/vehicle relationship truth from merged backend recovery #254.
+- Publish model-driven canonical property/command discovery inventory via Foundation and preserve explicit provider generation ownership.
+- Distinguish live Activity state from timestamped historical command outcomes; preserve lifecycle/idempotency and physical execution safety constraints.
+- Coordinate immutable test candidates F1.8.44, M0.10.44 and E0.15.115, with pending target-HA cross-baseline runtime qualification.
+- Remain test candidate only; verify source identity, physical charger commands, Q8 dual integration, HA reload, UI readback, upgrade and rollback before stable approval.
+- Zero accepted technical and feature debt; no silent runtime compatibility shims.
+
 ## M0.10.43 — Capability Owned Projection (HACS test candidate)
 
 - consolidate Mobility property definitions, per-asset applicable offerings and product-vs-engineering visibility in one domain Capability Service using the existing model registry; no second state store or projection engine;

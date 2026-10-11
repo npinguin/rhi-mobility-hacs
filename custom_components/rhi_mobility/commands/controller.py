@@ -42,6 +42,28 @@ class MobilityControlController:
             out[cid]=row
         return out
 
+    def assigned_charger_command_state(self, vehicle_id: str, action: str) -> dict[str, Any]:
+        from ..vehicle_charge_routing import resolve_vehicle_charge_route
+        return resolve_vehicle_charge_route(
+            self.manager, self.command_descriptors(), vehicle_id, action,
+        )
+
+    async def async_execute_assigned_charger_command(self, vehicle_id: str, action: str):
+        # Resolve again at dispatch. A charger assignment or physical condition
+        # may have changed since the native HA button was rendered.
+        route = self.assigned_charger_command_state(vehicle_id, action)
+        if not route["execution_allowed"]:
+            return {
+                "result": "BLOCKED",
+                "reason": route["blocked_reason"],
+                "consumer_asset_id": vehicle_id,
+                "charger_asset_id": route["charger_asset_id"],
+            }
+        # Preserve one physical owner, readback and unknown-execution gates.
+        return await self.async_execute_command(
+            route["charger_asset_id"], route["command_key"],
+        )
+
     def requested_power_descriptor(self,asset_id):
         return self.catalog.requested_power_descriptor(asset_id)
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections import OrderedDict
+from datetime import datetime, timezone
 from dataclasses import replace
 from typing import Any, Callable
 from homeassistant.core import HomeAssistant, callback
@@ -19,6 +20,8 @@ class MobilityCommandExecutor:
         self._unknown:dict[tuple[str,str],ExecutionRequest]={}
         self._dedup:OrderedDict[tuple[str,str,str],tuple[str,ExecutionResult]]=OrderedDict()
         self.last_results:dict[tuple[str,str],ExecutionResult]={}
+        # Timestamp is command-result evidence, not a snapshot/telemetry time.
+        self.result_observed_at:dict[tuple[str,str],str]={}
         self.listeners:list[Callable[[],None]]=[]
         self._reconcile_scheduled=False
         subscribe=getattr(manager,'add_runtime_listener',manager.add_listener)
@@ -90,6 +93,7 @@ class MobilityCommandExecutor:
                             prior,result='SUCCEEDED_AFTER_DELAY',reason='late_readback_converged',
                             state_after=self._confirmation_state(request.confirmation),lifecycle=lifecycle,
                         )
+                        self.result_observed_at[scope]=datetime.now(timezone.utc).isoformat()
         if cleared:self._notify()
 
     async def async_execute(self,request: ExecutionRequest) -> ExecutionResult:
@@ -192,6 +196,7 @@ class MobilityCommandExecutor:
         self._dedup[key]=(request.fingerprint,result); self._dedup.move_to_end(key)
         while len(self._dedup)>128:self._dedup.popitem(last=False)
         self.last_results[request.scope]=result
+        self.result_observed_at[request.scope]=datetime.now(timezone.utc).isoformat()
 
     @staticmethod
     def _lifecycle(request: ExecutionRequest, result: str, attempted: bool) -> CommandLifecycle:
@@ -227,6 +232,7 @@ class MobilityCommandExecutor:
             'last_results':[{
                 'producer_id':scope[0],'conflict_family':scope[1],'request_id':r.request_id,'asset_id':r.asset_id,
                 'operation_key':r.operation_key,'result':r.result,'reason':r.reason,'write_attempted':r.write_attempted,
+                'observed_at':self.result_observed_at.get(scope),
                 'confirmation_mode':r.confirmation_mode,'state_before':r.state_before,'state_after':r.state_after,
                 'lifecycle':None if r.lifecycle is None else r.lifecycle.as_dict(),
             } for scope,r in sorted(self.last_results.items())],

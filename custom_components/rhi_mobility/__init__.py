@@ -307,6 +307,7 @@ def _load_foundation_registry_api(hass: Any) -> dict[str,Any]:
         "shared_baseline": str(foundation_baseline),
         **required,
         "remove_domain_configuration":getattr(foundation_registry,"async_remove_domain_configuration",None),
+        "register_inventory":getattr(foundation_registry,"register_domain_publication_inventory_provider",None),
         "register_visual":getattr(foundation_visual_registry,"register_visual_asset_catalog_provider",None) if foundation_visual_registry else None,
         "unregister_visual":getattr(foundation_visual_registry,"unregister_visual_asset_catalog_provider",None) if foundation_visual_registry else None,
     }
@@ -341,6 +342,7 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     from .profile_catalog import MobilityProfileCatalogProvider
     from .policy import MobilityPolicyProvider
     from .publication import MobilityBuildSpecificationProvider
+    from .publication_inventory import MobilityPublicationInventoryProvider
     from .experience import MobilityActivityProvider, MobilityExperienceProvider
     from .runtime.manager import MobilityRuntimeManager
     from .supervision import MobilityDomainSupervisoryStatusProvider, MobilityProductSupervisionProvider
@@ -456,13 +458,24 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     async def set_policy(call: Any): return await policy_provider.async_set(call.data["policy_key"],call.data.get("value"))
 
     try:
-        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"command_provider":command_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"visual_catalog_provider":visual_catalog_provider,"bootstrapping":True,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"unregister_visual":foundation_api.get("unregister_visual"),"build_registration_unsub":None,"supervision_registration_unsub":None,"visual_registration_unsub":None,"setup_timings_ms":setup_timings_ms}
+        setup_data={"registry":registry,"provider":provider,"runtime":manager,"configuration_migrated":configuration_migrated,"controller":controller,"domain_config":domain_config,"energy_provider":energy_provider,"command_provider":command_provider,"profile_catalog_provider":profile_catalog_provider,"policy_provider":policy_provider,"experience_provider":experience_provider,"activity_provider":activity_provider,"product_supervision_provider":product_supervision_provider,"property_projection":property_projection,"supervision_provider":supervision_provider,"source_diagnostics_provider":source_diagnostics_provider,"device_surface_provider":device_surface_provider,"visual_catalog_provider":visual_catalog_provider,"bootstrapping":True,"unregister_provider":foundation_api["unregister_build"],"unregister_supervision":foundation_api["unregister_supervision"],"unregister_visual":foundation_api.get("unregister_visual"),"build_registration_unsub":None,"supervision_registration_unsub":None,"visual_registration_unsub":None,"publication_inventory_unsub":None,"setup_timings_ms":setup_timings_ms}
         hass.data.setdefault(DOMAIN,{})[entry.entry_id]=setup_data
         selected_unsub=_install_selected_input_lifecycle(hass,manager,entry,on_rebuilt=sync_publication_after_structural_build); setup_data["selected_unsub"]=selected_unsub
         build_registration_attempted=True
         handle=foundation_api["register_build"](hass,publisher_domain=DOMAIN,provider=provider,publication_revision=provider.publication_revision)
         build_registration_unsub=handle if callable(handle) else None
         setup_data["build_registration_unsub"]=build_registration_unsub
+        register_inventory=foundation_api.get("register_inventory")
+        if callable(register_inventory):
+            inventory_provider=MobilityPublicationInventoryProvider(registry)
+            setup_data["publication_inventory_provider"]=inventory_provider
+            setup_data["publication_inventory_unsub"]=register_inventory(
+                hass,publisher_domain=DOMAIN,provider=inventory_provider,
+            )
+            setup_data["publication_inventory_status"]="REGISTERED"
+        else:
+            setup_data["publication_inventory_status"]="FOUNDATION_API_UNAVAILABLE"
+            _LOGGER.warning("Mobility publication inventory not registered: Foundation API unavailable")
         register_visual=foundation_api.get("register_visual")
         if callable(register_visual):
             visual_handle=register_visual(hass,publisher_domain=DOMAIN,provider=visual_catalog_provider,publication_revision=visual_catalog_provider.publication_revision)
@@ -566,6 +579,9 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
         if supervision_registered:
             try: close_supervision_registration()
             except Exception: _LOGGER.exception("Mobility setup rollback: supervision cleanup failed")
+        if setup_data and setup_data.get("publication_inventory_unsub"):
+            try: _call_registration_unsub(setup_data["publication_inventory_unsub"])
+            except Exception: _LOGGER.exception("Mobility setup rollback: inventory cleanup failed")
         if visual_registration_unsub:
             try: _call_registration_unsub(visual_registration_unsub)
             except Exception: _LOGGER.exception("Mobility setup rollback: visual-provider cleanup failed")
@@ -600,6 +616,8 @@ async def async_unload_entry(hass: Any, entry: Any) -> bool:
     ok=await hass.config_entries.async_unload_platforms(entry,PLATFORMS)
     if ok:
         if data:
+            inventory_unsub=data.get("publication_inventory_unsub")
+            if callable(inventory_unsub): inventory_unsub()
             supervision_unsub=data.get("supervision_registration_unsub")
             if not _call_registration_unsub(supervision_unsub) and data.get("unregister_supervision"):
                 data["unregister_supervision"](hass,domain_id=FOUNDATION_DOMAIN_ID,publisher_domain=DOMAIN)
