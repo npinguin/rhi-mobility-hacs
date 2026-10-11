@@ -382,6 +382,27 @@ class PropertyResolver:
                 "normalization_status": "AVAILABLE" if value is not None else "UNKNOWN",
                 "derived_from": ["mobility.runtime_snapshot"],
             }
+        elif canonical_key == "asset.lifecycle_status":
+            # The Mobility runtime's configured lifecycle has an explicit
+            # default of "active" (see MobilityRuntimeManager materialization).
+            # A missing override is not CONFIGURATION_REQUIRED: otherwise HA
+            # publishes no lifecycle truth while the runtime runs active.
+            # Read the materialized canonical winner first to avoid split-brain.
+            observed = None if snap is None else (
+                getattr(snap, "values", {}) or {}
+            ).get(canonical_key)
+            value = (
+                observed if observed is not None else
+                self.manager.configuration_value(asset_id, canonical_key, "active")
+            )
+            reference = {
+                "producer_kind": "CONFIGURED",
+                "configuration_revision": int(
+                    getattr(getattr(self.manager, "domain_config", None), "revision", 0) or 0
+                ),
+                "normalization_status": "AVAILABLE" if value is not None else "UNKNOWN",
+                "derived_from": ["mobility.asset_lifecycle"],
+            }
         elif declared_owners == {"CONFIGURED"} and callable(
             getattr(self.manager, "configuration_value", None)
         ):

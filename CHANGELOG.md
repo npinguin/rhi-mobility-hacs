@@ -1,3 +1,11 @@
+## M0.10.45 — Canonical Lifecycle Truth (HACS test candidate)
+
+- Publish the Mobility runtime's active lifecycle default through the canonical property rather than CONFIGURATION_REQUIRED.
+- Preserve explicit disabled lifecycle and canonical snapshot authority.
+- Identify degraded asset IDs in domain supervision; improve asset-specific diagnostic reason scope.
+- Regression evidence includes default active, explicit disabled, missing snapshots and degraded assets.
+- Target Home Assistant acceptance, source integration readback and UX verification remain pending.
+
 ## M0.10.44 — Vehicle Controls Activity Inventory (HACS test candidate)
 
 - Consolidate exact native vehicle Start/Stop commands, physical readback and charger/vehicle relationship truth from merged backend recovery #254.

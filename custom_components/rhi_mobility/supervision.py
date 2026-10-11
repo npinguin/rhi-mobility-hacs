@@ -160,26 +160,35 @@ class MobilityDomainSupervisoryStatusProvider:
                 scope=missing[:20],
             ))
             return "BLOCKED", issues
-        health = {
-            str(getattr(snapshot, "health", "UNKNOWN") or "UNKNOWN").upper()
-            for snapshot in snapshots.values()
-            if getattr(snapshot, "asset_id", None) in active_asset_ids
+        # Report the actual affected assets. A domain-only issue loses the
+        # identity required to repair a degraded vehicle or charger binding.
+        # Preserve the existing aggregate readiness and bounded issue envelope.
+        unhealthy = {
+            asset_id: str(getattr(snapshots[asset_id], "health", "UNKNOWN") or "UNKNOWN").upper()
+            for asset_id in active_asset_ids
+            if asset_id in snapshots
         }
-        if health & {"BLOCKED", "INVALID", "ERROR", "FAILED"}:
+        blocked = {"BLOCKED", "INVALID", "ERROR", "FAILED"}
+        degraded = {"DEGRADED", "STALE", "UNKNOWN", "UNAVAILABLE"}
+        if any(value in blocked for value in unhealthy.values()):
             status = "BLOCKED"
-        elif health & {"DEGRADED", "STALE", "UNKNOWN", "UNAVAILABLE"}:
+        elif any(value in degraded for value in unhealthy.values()):
             status = "DEGRADED"
         else:
             status = "OK"
 
         if status != "OK":
+            affected = sorted(
+                asset_id for asset_id, value in unhealthy.items()
+                if value in (blocked | degraded)
+            )
             issues.append(self._issue(
                 "mobility:runtime:asset_health",
                 severity="ERROR" if status == "BLOCKED" else "WARNING",
                 category="RUNTIME",
                 reason_code=f"RUNTIME_ASSET_HEALTH_{status}",
                 blocking=status == "BLOCKED",
-                scope=["mobility"],
+                scope=affected[:20],
             ))
         return status, issues
 
