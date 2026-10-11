@@ -1,3 +1,11 @@
+## M0.10.47 — Peblar Exact State Binding (HACS test candidate)
+
+- Ship the already-merged Peblar #267 canonical matcher repair absent from immutable v0.10.46.
+- Match `_cp_state` exactly for four Peblar EVSE status/connection selectors; exclude unrelated `_lock_state` evidence without relaxing Foundation cardinality.
+- Align canonical adapter, build specifications, runtime mirror, raw matching catalog and regression against actual source identity.
+- Keep Foundation F1.8.44, Energy E0.15.119 and Shared Baseline 1.8.4; preserve canonical Mobility model 1.2.6 and existing HA entity identities.
+- v0.10.47 remains a TEST CANDIDATE: selected-source binding, EVSE command/readback, cross-domain, restart, rollback and three-home pilot require target Home Assistant proof.
+
 ## M0.10.46 — OCPP Charging Power Truth (HACS test candidate)
 
 - Estimate live OCPP charge power from actual current and effective vehicle/charger phase configuration when the native power value reports zero; preserve positive independently measured power.

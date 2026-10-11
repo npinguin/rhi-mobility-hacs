@@ -51,7 +51,7 @@
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "state"
+                "value": "_cp_state"
               }
             ]
           },
@@ -102,7 +102,7 @@
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "state"
+                "value": "_cp_state"
               }
             ]
           },
@@ -1025,7 +1025,7 @@
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "state"
+                "value": "_cp_state"
               }
             ]
           },
@@ -2606,7 +2606,7 @@
               {
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
-                "value": "state"
+                "value": "_cp_state"
               }
             ]
           },
