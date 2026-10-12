@@ -569,12 +569,23 @@ class MobilityExperienceProvider:
                 available += 1
             if self._v(asset_id, "charger.connection_state") == "asset_connected":
                 connected += 1
-            if self._v(asset_id, "charger.operating_state") == "running":
-                charging += 1
+            # Fleet totals reuse the same physical truth classification as the
+            # charger experience; an EVSE state alone cannot prove charging.
+            truth = self._charger_row(asset_id)
+            charging_state = (truth.get("charging_intelligence") or {}).get("state")
+            quality = (truth.get("power_intelligence") or {}).get("source_quality")
             power = self._v(asset_id, "charger.power_kw")
-            if isinstance(power, (int, float)):
+            measured = (
+                quality == "measured"
+                and isinstance(power, (int, float)) and not isinstance(power, bool)
+                and float("-inf") < float(power) < float("inf")
+                and float(power) >= 0
+            )
+            if measured:
                 known_power += 1
-                total_power += max(0.0, float(power))
+                total_power += float(power)
+                if charging_state in {"running", "charging"} and float(power) > 0.05:
+                    charging += 1
         if not active_chargers or known_power == 0:
             power_state = "unknown"
             aggregate_power = None

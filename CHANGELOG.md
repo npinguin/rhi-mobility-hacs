@@ -1,3 +1,8 @@
+## M0.10.49 — Fleet actual charging trust (HACS test candidate)
+
+- Correct actual charging fleet totals using physical EVSE state (#275).
+- Target stack F1.8.44 + M0.10.49 + E0.15.125; runtime qualification pending.
+
 ## M0.10.48 — Trusted Charging Demand (HACS test candidate)
 
 - Release merged Mobility #270 producer evidence trust and exact known zero/unavailable charging demand; genuine missing input remains a blocker.
