@@ -438,13 +438,95 @@ class MobilityExperienceProvider:
             connected_vehicle_display_name=connected_name,
             physical_identity_proven=bool(connected),
         )
-        if operating is None and power is None:
-            charging_i = self._intel("unknown", "unknown", "No charging data", "No charging data", "no_charging_data", "missing", ["charger.power_kw", "charger.operating_state", "charger.requested_charge_power_kw"])
+        # A setpoint or EVSE operating flag is not proof that a vehicle is
+        # physically attached or drawing power. In particular a charger may
+        # report RUNNING plus a stale 6 A-derived kW while its separately
+        # authoritative connector reports no vehicle. Preserve the raw
+        # canonical properties for diagnostics, but NEVER market this as
+        # confirmed charging or actual consumed power to the household.
+        power_value = (
+            float(power) if isinstance(power, (int, float)) and not isinstance(power, bool)
+            else None
+        )
+        unplugged = connection == "no_asset_connected"
+        attached = connection == "asset_connected"
+        active_claim = operating in {"running", "charging", "preparing", "suspended"}
+        positive_power = power_value is not None and power_value > 0.05
+        conflict = unplugged and (active_claim or positive_power)
+        charging_inputs = [
+            "charger.connection_state", "charger.operating_state",
+            "charger.power_kw", "charger.requested_charge_power_kw",
+        ]
+        if conflict:
+            charging_i = self._intel(
+                "inconsistent", "warning", "Connection / charging conflict",
+                "Connector reports no vehicle, but EVSE state or power suggests charging.",
+                "disconnected_charger_conflicting_telemetry", "conflict",
+                charging_inputs,
+            )
+            power_i = self._intel(
+                "inconsistent", "warning", "Power unverified",
+                "Raw charger power conflicts with disconnected connector; inspect source telemetry.",
+                "disconnected_charger_power_conflict", "conflict",
+                charging_inputs,
+            )
+        elif unplugged:
+            charging_i = self._intel(
+                "disconnected", "normal", "Not connected",
+                "No vehicle connected; requested charge power is a setpoint, not charging.",
+                "connector_disconnected", "observed", charging_inputs,
+            )
+            power_i = self._intel(
+                "ok" if power_value == 0.0 else "unknown",
+                "normal" if power_value == 0.0 else "unknown",
+                "0.00 kW measured" if power_value == 0.0 else "Power unavailable",
+                "No vehicle connected; no actual charging is confirmed.",
+                "connector_disconnected", "measured" if power_value == 0.0 else "missing",
+                charging_inputs,
+            )
+        elif not attached and (active_claim or positive_power):
+            charging_i = self._intel(
+                "unverified", "warning", "Charging not confirmed",
+                "Physical connector state is unavailable; EVSE operating state is not enough.",
+                "physical_connection_unverified", "unknown", charging_inputs,
+            )
+            power_i = self._intel(
+                "unverified", "warning", "Power unverified",
+                "Physical connector state is unavailable; inspect source evidence.",
+                "physical_connection_unverified", "unknown", charging_inputs,
+            )
         else:
-            state = str(operating or ("running" if isinstance(power, (int,float)) and power > 0.05 else "unknown"))
-            reason = f"Requested {float(requested):.2f} kW" if requested is not None else (f"{float(power):.2f} kW actual" if power is not None else state)
-            charging_i = self._intel(state, "warning" if state == "fault" else "normal", state.replace("_", " ").title(), reason, "actual_vs_requested_power", "derived", ["charger.power_kw", "charger.operating_state", "charger.requested_charge_power_kw"])
-        power_i = self._intel("ok" if power is not None else "unknown", "normal" if power is not None else "unknown", f"{float(power):.2f} kW actual" if power is not None else "No actual power data", f"Requested {float(requested):.2f} kW" if requested is not None else "No requested power configured", "actual_and_requested_power", "measured" if power is not None else "missing", ["charger.power_kw", "charger.requested_charge_power_kw"])
+            if operating is None and power is None:
+                charging_i = self._intel(
+                    "unknown", "unknown", "No charging data", "No charging data",
+                    "no_charging_data", "missing", charging_inputs,
+                )
+            elif attached and operating in {"running", "charging"} and not positive_power:
+                charging_i = self._intel(
+                    "connected", "normal", "Connected · no measured charge",
+                    "Charger reports running, but no positive actual charging power is available.",
+                    "no_positive_charging_power", "derived", charging_inputs,
+                )
+            else:
+                state = str(operating or ("running" if attached and positive_power else "unknown"))
+                reason = (
+                    f"Requested {float(requested):.2f} kW (setpoint)"
+                    if requested is not None else
+                    (f"{power_value:.2f} kW actual" if power_value is not None else state)
+                )
+                charging_i = self._intel(
+                    state, "warning" if state == "fault" else "normal",
+                    state.replace("_", " ").title(), reason, "actual_vs_requested_power",
+                    "derived", charging_inputs,
+                )
+            power_i = self._intel(
+                "ok" if power_value is not None else "unknown",
+                "normal" if power_value is not None else "unknown",
+                f"{power_value:.2f} kW actual" if power_value is not None else "No actual power data",
+                f"Requested {float(requested):.2f} kW (setpoint)" if requested is not None else "No requested power configured",
+                "actual_and_requested_power", "measured" if power_value is not None else "missing",
+                charging_inputs,
+            )
         current_i = self._intel("ok" if current is not None else "unknown", "normal" if current is not None else "unknown", f"{float(current):.1f} A readback" if current is not None else "No current readback", "Physical/readback current" if current is not None else "No requested-current estimate", "integration_current_readback", "measured" if current is not None else "missing", ["charger.current_limit_a", "limits.requested_current_limit_a"])
         maintenance_i = self._intel("unknown", "unknown", "No maintenance data", "No maintenance data", "no_maintenance_data", "missing", ["charger.firmware_version", "charger.telemetry_state", "charger.health"])
         freshness_i = self._intel("fresh" if observed else "unknown", "normal" if observed else "unknown", "Source observed" if observed else "No freshness data", observed or "No freshness data", "source_observed_at" if observed else "no_freshness_data", "measured" if observed else "missing", ["charger.observed_at", "charger.snapshot_revision"])

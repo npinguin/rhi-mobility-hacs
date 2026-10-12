@@ -1,3 +1,10 @@
+## M0.10.48 — Trusted Charging Demand (HACS test candidate)
+
+- Release merged Mobility #270 producer evidence trust and exact known zero/unavailable charging demand; genuine missing input remains a blocker.
+- Include #272 physical charger contradiction closure and #271 stable-proof release governance.
+- Preserve dual Audi Q8 independent identities, charger assignment versus proven physical identity, and Mobility-only physical charging command ownership.
+- Pair F1.8.44 + M0.10.48 + E0.15.124 + Mobility UX rc.96, with target HA, restart and rollback still pending.
+
 ## M0.10.47 — Peblar Exact State Binding (HACS test candidate)
 
 - Ship the already-merged Peblar #267 canonical matcher repair absent from immutable v0.10.46.

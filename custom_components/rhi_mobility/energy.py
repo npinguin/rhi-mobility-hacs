@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from math import isfinite
 from typing import Any
 import logging
 
@@ -9,6 +10,44 @@ from .relationship_resolution import resolve_vehicle_charger_relationship
 from .visual_catalog import resolve_visual_ref
 
 _LOGGER = logging.getLogger(__name__)
+
+def vehicle_planning_blockers(
+    *, current_soc: Any, target_soc: Any, capacity: Any,
+    ready_by: Any, charger_id: Any, energy_need: Any, source_health: Any,
+) -> list[str]:
+    """Producer-owned evidence required for an explainable charging need.
+
+    A known zero kWh need is valid. Missing or invalid derived demand is never
+    promoted to READY just because the three source properties are populated.
+    Planning eligibility and physical execution authorization remain separate.
+    """
+    blockers: list[str] = []
+    if current_soc is None:
+        blockers.append("current_soc_unavailable")
+    if target_soc is None:
+        blockers.append("target_soc_not_configured")
+    if capacity is None:
+        blockers.append("battery_capacity_unavailable")
+    if ready_by is None or not str(ready_by).strip():
+        blockers.append("ready_by_not_configured")
+    if not charger_id:
+        blockers.append("charger_not_assigned")
+    if str(source_health).upper() == "STALE":
+        blockers.append("vehicle_source_stale")
+    if current_soc is not None and target_soc is not None and capacity is not None:
+        try:
+            valid_need = (
+                not isinstance(energy_need, bool)
+                and energy_need is not None
+                and isfinite(float(energy_need))
+                and float(energy_need) >= 0
+            )
+        except (TypeError, ValueError, OverflowError):
+            valid_need = False
+        if not valid_need:
+            blockers.append("energy_need_unavailable")
+    return blockers
+
 
 class MobilityEnergyV2Provider:
     """Producer-owned Mobility -> Energy boundary.
@@ -298,13 +337,12 @@ class MobilityEnergyV2Provider:
         if power is None and physical_connection:
             power = cvals.get("charger.power_kw")
         flow = "unknown" if power is None else ("charging" if float(power) > 0.05 else "idle")
-        planning_blockers = []
-        if soc is None: planning_blockers.append("current_soc_unavailable")
-        if target is None: planning_blockers.append("target_soc_not_configured")
-        if cap is None: planning_blockers.append("battery_capacity_unavailable")
-        if ready_by is None: planning_blockers.append("ready_by_not_configured")
-        if charger_id is None: planning_blockers.append("charger_not_assigned")
-        planning_ready = lifecycle != "disabled" and not planning_blockers
+        planning_blockers = vehicle_planning_blockers(
+            current_soc=soc, target_soc=target, capacity=cap,
+            ready_by=ready_by, charger_id=charger_id,
+            energy_need=need, source_health=getattr(snap, "health", None),
+        )
+        planning_ready = lifecycle not in {"disabled", "inactive"} and not planning_blockers
         profile_resolved = self._profile_exists(profile_id)
         energy_need_resolution = self._energy_need_resolution(lifecycle, snap, soc, target, cap, profile_id, profile_resolved)
         desc = self.controller.requested_power_descriptor(charger_id) if charger_id else None
@@ -413,7 +451,7 @@ class MobilityEnergyV2Provider:
             "capacity_source": ("configuration" if self.manager.configuration_value(aid, "vehicle.battery_capacity_kwh", None) is not None else ("profile" if cap is not None and profile_resolved else ("source" if cap is not None else "unavailable"))),
             "planning_input_ready": planning_ready,
             "planning_blockers": planning_blockers,
-            "planning_readiness": {"state": "READY" if planning_ready else "INCOMPLETE", "blockers": planning_blockers},
+            "planning_readiness": {"state": "NOT_APPLICABLE" if lifecycle in {"disabled", "inactive"} else ("READY" if planning_ready else "INCOMPLETE"), "blockers": planning_blockers},
             "planning_preferences": {
                 "owner_domain": "rhi_mobility",
                 "battery_capacity_kwh": cap,
