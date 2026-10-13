@@ -1,3 +1,10 @@
+## M0.10.50 — Ocpp Binding Supervision
+
+- Governed HACS test candidate for PRs #277 and #278; exact OCPP station-current identity collision resolves within Mobility provider adapter, without generic Foundation changes.
+- Mobility shared supervision now reports ambiguous selected-source capabilities as degraded rather than READY.
+- Coordinated candidate target F1.8.45 + M0.10.50 + E0.15.126; three-home source/current-limit readback, restart and rollback still pending.
+- Target-HA runtime qualification and full feature closure remain separate from immutable installable candidate publication.
+
 ## M0.10.49 — Fleet actual charging trust (HACS test candidate)
 
 - Correct actual charging fleet totals using physical EVSE state (#275).

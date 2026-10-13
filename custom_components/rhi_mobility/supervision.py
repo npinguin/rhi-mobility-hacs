@@ -177,6 +177,30 @@ class MobilityDomainSupervisoryStatusProvider:
         else:
             status = "OK"
 
+        # A canonical snapshot can be healthy while an accepted selection still
+        # contains an ambiguous command binding (Molas: OCPP current limit).
+        # Use existing build-time diagnostics only; do not resolve HA sources or
+        # recompute canonical properties on the synchronous supervision path.
+        ambiguous_rows = [
+            row for row in (getattr(self.manager, "_capability_diagnostics", ()) or ())
+            if isinstance(row, dict)
+            and str(row.get("status") or "").upper() == "AMBIGUOUS"
+        ]
+        if ambiguous_rows:
+            status = _worst(status, "DEGRADED")
+            scope = sorted({
+                str(row.get("asset_id") or "mobility")
+                for row in ambiguous_rows
+            })
+            issues.append(self._issue(
+                "mobility:binding:ambiguous_source",
+                severity="WARNING",
+                category="BINDING",
+                reason_code="SOURCE_BINDING_AMBIGUOUS",
+                blocking=False,
+                scope=scope[:20],
+            ))
+
         if status != "OK":
             affected = sorted(
                 asset_id for asset_id, value in unhealthy.items()

@@ -228,10 +228,65 @@ def _adapt_full_evse(payload: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _deduplicate_ocpp_station_current(out: dict[str, Any]) -> None:
+    """Ignore only proven legacy aliases of the OCPP station-wide current limit.
+
+    Upstream OCPP publishes number.ocpp.<charge_point_id>.maximum_current.
+    Molas also retains number.<charge_point_id>.maximum_current on the same
+    HA physical device. Both pass technical discovery, but are not two
+    independent controls. Only the exact stable-identity pair on the same
+    device is deduplicated. Multiple canonical candidates remain ambiguous;
+    unknown or other-device candidates are never chosen by name or order.
+    """
+    evidence = {
+        str(row.get("candidate_id")): row
+        for row in out.get("candidate_evidence") or []
+        if isinstance(row, dict) and row.get("candidate_id")
+    }
+    for group in out.get("candidate_groups") or []:
+        if not isinstance(group, dict) or group.get("input_id") != "charger_current_limit_write":
+            continue
+        grouped: dict[str, list[tuple[str, str]]] = {}
+        for candidate_id in group.get("candidate_ids") or []:
+            cid = str(candidate_id)
+            candidate = evidence.get(cid)
+            if not candidate:
+                continue
+            device_group = _candidate_device_group(candidate)
+            source = candidate.get("source_identity") or {}
+            unique_id = str(source.get("unique_id") or "") if isinstance(source, dict) else ""
+            if device_group and unique_id:
+                grouped.setdefault(device_group, []).append((cid, unique_id))
+        rejected: set[str] = set()
+        for rows in grouped.values():
+            canonical = [
+                (cid, unique_id) for cid, unique_id in rows
+                if unique_id.startswith("number.ocpp.")
+                and unique_id.endswith(".maximum_current")
+                and unique_id[len("number.ocpp."):-len(".maximum_current")]
+                and ".conn" not in unique_id[len("number.ocpp."):-len(".maximum_current")]
+            ]
+            if len(canonical) != 1:
+                continue
+            canonical_id, canonical_uid = canonical[0]
+            legacy_uid = "number." + canonical_uid[len("number.ocpp."):]
+            rejected.update(
+                cid for cid, unique_id in rows
+                if cid != canonical_id and unique_id == legacy_uid
+            )
+        _remove_candidate_ids(group, rejected)
+
+
+def _adapt_ocpp_evse(payload: dict[str, Any]) -> dict[str, Any]:
+    out = _adapt_full_evse(payload)
+    _deduplicate_ocpp_station_current(out)
+    return out
+
+
 _ADAPTERS: dict[tuple[str, str], SemanticAdapter] = {
     ("mobility.vehicle.connected_vehicle.v1", "cupra_eu_data_act"): _adapt_cupra_vehicle,
     ("mobility.vehicle.connected_vehicle.v1", "mbapi2020"): _adapt_mbapi_vehicle,
-    ("mobility.charger.full_evse.v1", "ocpp"): _adapt_full_evse,
+    ("mobility.charger.full_evse.v1", "ocpp"): _adapt_ocpp_evse,
     ("mobility.charger.full_evse.v1", "peblar"): _adapt_full_evse,
     ("mobility.charger.full_evse.v1", "wallbox"): _adapt_full_evse,
 }
