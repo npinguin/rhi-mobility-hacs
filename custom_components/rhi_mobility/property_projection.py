@@ -146,8 +146,20 @@ class MobilityPropertyProjection:
             choices=editable_choice_rows(self.manager,self.registry,asset_id,key,editable)
             transport_by_value=dict(editable_select_choices(self.manager,self.registry,asset_id,key,editable))
             out["choices"]=[
-                {**row,"transport_value":transport_by_value.get(str(row.get("value")),str(row.get("label") or row.get("value") or ""))}
-                for row in choices
+                # The no-selection sentinel is a canonical value, not a valid
+                # Home Assistant select option. Publish the HA transport label
+                # from the same domain-owned select_choices source as real
+                # charger/profile/person values so UX never sends "__none__".
+                *([{
+                    "value": NO_SELECTION,
+                    "label": transport_by_value[NO_SELECTION],
+                    "transport_value": transport_by_value[NO_SELECTION],
+                }] if editable.get("write_kind") in {"profile","selected_charger","ha_person"}
+                   and NO_SELECTION in transport_by_value else []),
+                *[
+                    {**row,"transport_value":transport_by_value.get(str(row.get("value")),str(row.get("label") or row.get("value") or ""))}
+                    for row in choices
+                ],
             ]
             out["value_field"]="value"; out["label_field"]="label"; out["secondary_label_field"]="secondary_label"; out["transport_value_field"]="transport_value"
             if editable.get("write_kind") in {"profile","selected_charger","ha_person"}:

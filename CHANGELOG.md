@@ -1,3 +1,11 @@
+## M0.10.51 — Select None Transport Parity
+
+- Publishes an already-merged Mobility runtime fix absent from public HACS v0.10.50: native selected-charger select transport now admits the canonical no-selection sentinel with the exact Home Assistant option label and no fictional UX-only assignment. Regression: `test_m01050_select_none_transport.py`.
+- Includes merged source-only coverage tests for unique canonical Mobility properties and source builders. Native device and physical actuator ownership are unchanged.
+- Source authority: older v0.10.50 mirror `DISTRIBUTION_SOURCE.json` points to `1c1f6811715888e1a660f5e74625c809900f2c5d` while later main commits contain the transport fix. Do not move old immutable tag.
+- Wessels-first TEST candidate F1.8.45 + M0.10.51 + E0.15.131, Mobility UX rc.99, Energy UX rc.20. Source/CI do not establish installed physical assignment, requested current/power readback, historical charging or rollback. All remaining Foundation #129 P0/P1 and twelve mandatory iteration gates remain OPEN; stable NO-GO.
+- Previous Mobility test candidate for controlled comparison: M0.10.50; physical rollback NOT_EXECUTED.
+
 ## M0.10.50 — Ocpp Binding Supervision
 
 - Governed HACS test candidate for PRs #277 and #278; exact OCPP station-current identity collision resolves within Mobility provider adapter, without generic Foundation changes.
