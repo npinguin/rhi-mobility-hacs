@@ -1,3 +1,9 @@
+## M0.10.52 — Hacs Runtime Validation
+
+- Governed five-package HACS TEST pilot release; see npinguin/rhi-foundation#129.
+- Incorporates merged source fixes and cross-repository Mobility Energy V2 transport regression.
+- Stable blocked pending live HA source, command/readback, recovery and rollback.
+
 ## M0.10.51 — Select None Transport Parity
 
 - Publishes an already-merged Mobility runtime fix absent from public HACS v0.10.50: native selected-charger select transport now admits the canonical no-selection sentinel with the exact Home Assistant option label and no fictional UX-only assignment. Regression: `test_m01050_select_none_transport.py`.

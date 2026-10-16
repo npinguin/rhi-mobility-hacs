@@ -100,8 +100,15 @@ class MobilityControlController:
         if desc is None: return {'result':'BLOCKED','reason':'requested_power_write_not_ready','asset_id':asset_id}
         request,accepted=requested_power_request(desc,power_kw,request_id or f'setpoint_{uuid4().hex}')
         self.pending_intents[asset_id]=accepted; self._changed()
-        result=await self.executor.async_execute(request)
-        self.pending_intents.pop(asset_id,None)
+        try:
+            result=await self.executor.async_execute(request)
+        finally:
+            # An executor exception/cancellation must not leave a false pending
+            # intent indefinitely visible to the user or Energy planner.
+            # Only an explicit EXECUTION_UNKNOWN result receives a persisted
+            # unresolved-intent guard; an exception cannot claim a readback.
+            self.pending_intents.pop(asset_id,None)
+            self._changed()
         if result.result=='EXECUTION_UNKNOWN': self.unresolved_intents[asset_id]=accepted
         elif result.result in {'SUCCEEDED','ALREADY_CONVERGED','SUCCEEDED_AFTER_DELAY'}: self.unresolved_intents.pop(asset_id,None)
         self._changed()
@@ -133,14 +140,27 @@ class MobilityControlController:
         return {**result.__dict__,'accepted_requested_current_a':round(accepted,3),'actual_readback_current_a':self.requested_current_readback(asset_id)}
 
 
-    def vehicle_charge_mode_source(self,asset_id: str):
+    def vehicle_charge_mode_source_resolution(self,asset_id: str):
+        """Select exactly one real physical target; equal-priority disagreement HOLDs."""
         asset=self.manager.assets.get(asset_id)
-        if asset is None or asset.concept_id!='vehicle': return None
+        if asset is None or asset.concept_id!='vehicle':
+            return None, 'vehicle_not_found'
         candidates=[]
         for binding in asset.source_bindings.values():
             source=binding.inputs.get('vehicle_charge_mode_write')
-            if source is not None and source.entity_id: candidates.append((binding.source_precedence,source))
-        return max(candidates,key=lambda x:x[0])[1] if candidates else None
+            if source is not None and source.entity_id:
+                candidates.append((binding.source_precedence,source))
+        if not candidates:
+            return None, 'vehicle_charge_mode_write_not_ready'
+        precedence=max(row[0] for row in candidates)
+        top=[source for priority,source in candidates if priority==precedence]
+        physical={(str(source.producer_id),str(source.entity_id)) for source in top}
+        if len(physical)!=1:
+            return None, 'vehicle_charge_mode_ambiguous_physical_source'
+        return top[0], None
+
+    def vehicle_charge_mode_source(self,asset_id: str):
+        return self.vehicle_charge_mode_source_resolution(asset_id)[0]
 
     def vehicle_charge_mode_readback(self,asset_id: str) -> str | None:
         source=self.vehicle_charge_mode_source(asset_id)
@@ -157,9 +177,9 @@ class MobilityControlController:
         return [str(x) for x in raw] if isinstance(raw,(list,tuple)) else []
 
     async def async_set_vehicle_charge_mode(self,asset_id: str,value: str,request_id: str | None=None):
-        source=self.vehicle_charge_mode_source(asset_id)
+        source,blocked_reason=self.vehicle_charge_mode_source_resolution(asset_id)
         if source is None or not source.entity_id:
-            return {'result':'BLOCKED','reason':'vehicle_charge_mode_write_not_ready','asset_id':asset_id}
+            return {'result':'BLOCKED','reason':blocked_reason or 'vehicle_charge_mode_write_not_ready','asset_id':asset_id}
         domain=source.entity_id.split('.',1)[0]
         if domain not in {'select','input_select'}:
             return {'result':'BLOCKED','reason':'vehicle_charge_mode_surface_not_select','asset_id':asset_id}
