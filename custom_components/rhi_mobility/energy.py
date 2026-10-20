@@ -6,7 +6,7 @@ import logging
 
 from .property_resolver import PropertyResolver
 from .readiness import evaluate_asset_readiness
-from .relationship_resolution import resolve_vehicle_charger_relationship
+from .relationship_resolution import resolve_vehicle_charger_relationship, resolve_charger_vehicle_relationship
 from .visual_catalog import resolve_visual_ref
 
 _LOGGER = logging.getLogger(__name__)
@@ -737,8 +737,30 @@ class MobilityEnergyV2Provider:
                 "vehicle_health": self.manager.snapshots.get(rel.from_asset_id).health if self.manager.snapshots.get(rel.from_asset_id) else None,
                 "charger_health": None if charger is None else charger.health,
             })
-            if charger and cvals.get("charger.energy_total_kwh") is not None:
-                counters.append({"counter_id": f"counter.mobility.{rel.to_asset_id}.delivered_energy_total", "charger_asset_id": rel.to_asset_id, "connected_asset_id": rel.from_asset_id, "counter_key": "charger.energy_total_kwh", "value_kwh": cvals.get("charger.energy_total_kwh"), "direction": "to_connected_asset", "periodization_owner": "rhi_energy", "attribution_owner": "rhi_energy"})
+        # Counters are physical EVSE source facts, never one row per configured
+        # vehicle assignment. Two integrations / two assignments must not
+        # double the counter or implicitly prove which physical vehicle charged.
+        for connection in connection_assets:
+            charger_id = str(connection.get("asset_id") or "")
+            raw = self._v(charger_id, "charger.energy_total_kwh")
+            if raw is None:
+                continue
+            relation = resolve_charger_vehicle_relationship(self.manager, charger_id)
+            proven_id = (
+                relation.physically_connected_vehicle_id
+                if relation.observed_identity_proven and relation.status.value != "CONFLICT"
+                else None
+            )
+            counters.append({
+                "counter_id": f"counter.mobility.{charger_id}.delivered_energy_total",
+                "charger_asset_id": charger_id,
+                "connected_asset_id": proven_id,
+                "attribution_quality": "PROVEN" if proven_id else "UNATTRIBUTED",
+                "attribution_reason": None if proven_id else relation.reason or "physical_identity_unproven",
+                "counter_key": "charger.energy_total_kwh",
+                "value_kwh": raw, "direction": "to_connected_asset",
+                "periodization_owner": "rhi_energy", "attribution_owner": "rhi_energy",
+            })
         return {
             "contract_id": self.CONTRACT_ID, "publisher": "rhi_mobility",
             "consumer_assets": consumer_assets, "connection_assets": connection_assets,

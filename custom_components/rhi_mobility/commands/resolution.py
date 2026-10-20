@@ -1,4 +1,5 @@
 from __future__ import annotations
+from math import floor, isfinite
 from typing import Any
 from .models import CommandDescriptor, ExecutionRequest, RequestedPowerDescriptor
 
@@ -80,8 +81,23 @@ def command_request(descriptor: CommandDescriptor, request_id: str) -> Execution
 
 
 def requested_power_request(descriptor: RequestedPowerDescriptor, power_kw: float, request_id: str) -> tuple[ExecutionRequest,float]:
-    requested=float(power_kw)
-    requested=max(descriptor.min_power_kw,min(requested,descriptor.max_power_kw))
+    # No physical setpoint may be manufactured from bool, NaN, infinity,
+    # an invalid profile, or a value beyond the currently accepted OCPP range.
+    if isinstance(power_kw, bool):
+        raise ValueError("requested_power_invalid")
+    try:
+        requested=float(power_kw)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("requested_power_invalid") from exc
+    minimum, maximum = descriptor.min_power_kw, descriptor.max_power_kw
+    if (
+        not isfinite(requested) or not isfinite(minimum)
+        or not isfinite(maximum) or minimum < 0 or maximum < minimum
+    ):
+        raise ValueError("requested_power_invalid")
+    if requested < minimum - 1e-9 or requested > maximum + 1e-9:
+        raise ValueError("requested_power_out_of_range")
+    requested=max(minimum,min(requested,maximum))
     source=descriptor.source
     if not source.entity_id: raise ValueError('requested power write surface requires entity source')
     domain=source.entity_id.split('.',1)[0]
@@ -98,11 +114,23 @@ def requested_power_request(descriptor: RequestedPowerDescriptor, power_kw: floa
     else:
         if descriptor.effective_voltage_v is None or descriptor.effective_phase_count is None or descriptor.current_step_a is None:
             raise ValueError('current-limit requested power requires complete control profile')
-        raw_current=requested*1000.0/(descriptor.effective_voltage_v*descriptor.effective_phase_count)
+        voltage=descriptor.effective_voltage_v
+        phases=descriptor.effective_phase_count
         step=descriptor.current_step_a
-        current=round(raw_current/step)*step
-        current=max(descriptor.min_current_a or current,min(current,descriptor.max_current_a or current))
-        requested=current*descriptor.effective_voltage_v*descriptor.effective_phase_count/1000.0
+        lower=descriptor.min_current_a
+        upper=descriptor.max_current_a
+        if (lower is None or upper is None or step is None
+            or not all(isfinite(x) for x in (voltage, float(phases), step, lower, upper))
+            or voltage <= 0 or phases <= 0 or step <= 0 or lower < 0 or upper < lower):
+            raise ValueError("requested_power_invalid")
+        raw_current=requested*1000.0/(voltage*phases)
+        # A Home Assistant number's step is relative to its minimum, not 0A.
+        # This also preserves a legitimate 0A lower bound and avoids producing
+        # an off-step setpoint when min=7A and step=2A (7,9,11,...).
+        max_steps=floor((upper-lower)/step+1e-9)
+        steps=max(0,min(round((raw_current-lower)/step),max_steps))
+        current=round(lower+steps*step,6)
+        requested=current*voltage*phases/1000.0
         if domain in {'number','input_number'}:
             action='set_value'; data={'value':current}
         elif domain in {'select','input_select'}:

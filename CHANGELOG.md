@@ -1,3 +1,10 @@
+## M0.10.53 — User Requested Hacs Test 20261020
+
+- Durable physical command guards, accepted EVSE 6 A/current step validation, physical vehicle identity and single charger energy-meter correction.
+- Fixes M-C3-030, M-C3-031, M-C3-032, M-C5-039, M-C6-043; PRs #293, #294, #295.
+- TEST ONLY on five-package F1.8.47/M0.10.53/E0.15.139 + existing UX v1.0.0-rc.100/v4.3.36-rc.21.
+- Three-home runtime proof and stable approval pending.
+
 ## M0.10.52 — Hacs Runtime Validation
 
 - Governed five-package HACS TEST pilot release; see npinguin/rhi-foundation#129.

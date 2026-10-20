@@ -360,6 +360,9 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
     mark_timing("domain_config_initialize", phase_started)
     manager=MobilityRuntimeManager(hass,registry,domain_config)
     controller=MobilityControlController(hass,manager,registry)
+    # Commands must not be executable before durable pre-dispatch guards and
+    # restart-uncertain physical scopes have been restored.
+    await controller.async_restore_execution()
     profile_catalog_provider=MobilityProfileCatalogProvider(registry)
     policy_provider=MobilityPolicyProvider(domain_config)
     property_projection=MobilityPropertyProjection(hass,manager,controller); energy_provider=MobilityEnergyV2Provider(manager,controller,registry)

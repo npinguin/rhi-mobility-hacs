@@ -1,4 +1,5 @@
 from __future__ import annotations
+from math import isfinite
 from dataclasses import replace
 from typing import Any, Callable
 from uuid import uuid4
@@ -17,6 +18,10 @@ class MobilityControlController:
         # Controller state changes only on topology or command/executor state, not on every telemetry update.
         # Readback entities already subscribe to their affected Mobility asset directly.
         self._unsub_topology=manager.add_topology_listener(self._changed); self._unsub_exec=self.executor.add_listener(self._changed)
+
+    async def async_restore_execution(self) -> None:
+        """Recover durable command admission before any provider is published."""
+        await self.executor.async_restore_execution()
 
     def shutdown(self):
         self._unsub_topology(); self._unsub_exec(); self.executor.shutdown(); self.listeners.clear()
@@ -98,7 +103,16 @@ class MobilityControlController:
     async def async_set_requested_power(self,asset_id: str,power_kw: float,request_id: str | None=None):
         desc=self.requested_power_descriptor(asset_id)
         if desc is None: return {'result':'BLOCKED','reason':'requested_power_write_not_ready','asset_id':asset_id}
-        request,accepted=requested_power_request(desc,power_kw,request_id or f'setpoint_{uuid4().hex}')
+        try:
+            request,accepted=requested_power_request(desc,power_kw,request_id or f'setpoint_{uuid4().hex}')
+        except (TypeError, ValueError, OverflowError) as exc:
+            reason = (
+                "requested_power_out_of_range"
+                if str(exc) == "requested_power_out_of_range"
+                else "requested_power_invalid"
+            )
+            return {'result':'BLOCKED','reason':reason,'asset_id':asset_id,
+                    'min_power_kw':desc.min_power_kw,'max_power_kw':desc.max_power_kw}
         self.pending_intents[asset_id]=accepted; self._changed()
         try:
             result=await self.executor.async_execute(request)
@@ -118,7 +132,14 @@ class MobilityControlController:
         desc=self.requested_current_descriptor(asset_id)
         if desc is None:
             return {'result':'BLOCKED','reason':'requested_current_write_not_ready','asset_id':asset_id}
-        requested=float(current_a_value)
+        if isinstance(current_a_value, bool):
+            return {'result':'BLOCKED','reason':'requested_current_invalid','asset_id':asset_id}
+        try:
+            requested=float(current_a_value)
+        except (ValueError, TypeError, OverflowError):
+            return {'result':'BLOCKED','reason':'requested_current_invalid','asset_id':asset_id}
+        if not isfinite(requested):
+            return {'result':'BLOCKED','reason':'requested_current_invalid','asset_id':asset_id}
         if requested < desc.min_current_a-1e-9 or requested > desc.max_current_a+1e-9:
             return {'result':'BLOCKED','reason':'requested_current_out_of_range','asset_id':asset_id,'min_current_a':desc.min_current_a,'max_current_a':desc.max_current_a}
         steps=round((requested-desc.min_current_a)/desc.current_step_a)

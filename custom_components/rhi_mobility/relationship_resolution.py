@@ -52,19 +52,20 @@ def _configured_charger(manager: Any, vehicle_id: str) -> str | None:
     return None
 
 
-def _explicit_observed_charger(manager: Any, vehicle_id: str) -> str | None:
-    """Return a physical charger only when runtime carries explicit vehicle identity.
+def _observed_chargers(manager: Any, vehicle_id: str) -> set[str]:
+    """Collect all trustworthy physical observations before resolving identity.
 
     Generic connector state such as `asset_connected` proves occupancy, not which
-    vehicle is connected, and therefore must never be promoted to observed identity.
+    vehicle it is; multiple authoritative observations cannot be resolved by order.
     """
-    for rel in getattr(manager, "relationships", {}).values():
-        relation_type = str(getattr(rel, "relationship_type", ""))
-        if relation_type not in {"physical_connection", "observed_connection"}:
-            continue
-        if getattr(rel, "from_asset_id", None) == vehicle_id:
-            return str(rel.to_asset_id)
-    return None
+    return {
+        str(rel.to_asset_id)
+        for rel in (getattr(manager, "relationships", {}) or {}).values()
+        if getattr(rel, "relationship_type", None) in {"physical_connection", "observed_connection"}
+        and getattr(rel, "from_asset_id", None) == vehicle_id
+        and getattr(rel, "health", "OK") == "OK"
+        and getattr(rel, "to_asset_id", None)
+    }
 
 
 def _assigned_charger_connection(manager: Any, charger_id: str | None) -> tuple[str | None, bool | None]:
@@ -88,11 +89,21 @@ def resolve_vehicle_charger_relationship(manager: Any, vehicle_id: str) -> Vehic
     effective_fn = getattr(manager, "effective_charger_for_vehicle", None)
     effective = effective_fn(vehicle_id) if callable(effective_fn) else configured
     effective = None if effective in (None, "") else str(effective)
-    observed = _explicit_observed_charger(manager, vehicle_id)
+    observed_candidates = _observed_chargers(manager, vehicle_id)
+    observed = next(iter(observed_candidates)) if len(observed_candidates) == 1 else None
     context_charger = effective or configured
     assigned_connection_state, assigned_occupied = _assigned_charger_connection(manager, context_charger)
+    observed_state, observed_occupied = _assigned_charger_connection(manager, observed)
 
-    if configured and observed and configured != observed:
+    if len(observed_candidates) > 1:
+        observed = None
+        status = RelationshipStatus.CONFLICT
+        reason = "multiple_physical_charger_observations"
+    elif observed and observed_occupied is False:
+        observed = None
+        status = RelationshipStatus.CONFLICT
+        reason = "observed_vehicle_conflicts_with_unplugged_charger"
+    elif configured and observed and configured != observed:
         status = RelationshipStatus.CONFLICT
         reason = "configured_and_observed_charger_differ"
     elif observed and effective and observed == effective:
