@@ -36,8 +36,8 @@ class MobilityCommandProvider:
     async def async_apply_requested_setpoint(self,request: dict[str,Any]) -> dict[str,Any]:
         """Apply canonical requested-power/current intent through Mobility-owned control semantics.
 
-        Compatibility callers may provide power, current or both. Coherence and physical
-        mapping remain V2 concerns; the V1 facade never performs electrical conversion.
+        Canonical callers may provide power, current or both. Coherence and physical
+        conversion remain Mobility-owned control responsibilities; no legacy facade exists.
         """
         asset_id=str(request['asset_id'])
         power=request.get('power_kw')

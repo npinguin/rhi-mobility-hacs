@@ -1,3 +1,9 @@
+## M0.10.54 — User Requested Hacs Test 20261024
+
+- User-requested full five-package HACS TEST: F1.8.48 / M0.10.54 / E0.15.141 / Mobility UX rc.101 / Energy UX rc.23.
+- Mobility #302 physically bounded EVSE command correction after OCPP reboot, safe 6A and Number lattice.
+- Canonical source status 3/12; 9/12 incomplete; actual HA runtime 0/12. Readback, three-home restart/recovery and rollback still mandatory; STABLE NO-GO.
+
 ## M0.10.53 — User Requested Hacs Test 20261020
 
 - Durable physical command guards, accepted EVSE 6 A/current step validation, physical vehicle identity and single charger energy-meter correction.

@@ -7,6 +7,7 @@ from .catalog import MobilityControlCatalog
 from .executor import MobilityCommandExecutor
 from .resolution import command_request, requested_power_request
 from .models import ExecutionRequest
+from .current_limit_policy import _finite_current
 
 class MobilityControlController:
     def __init__(self,hass,manager,registry) -> None:
@@ -89,6 +90,38 @@ class MobilityControlController:
         unit=desc.source.native_unit or state.attributes.get('unit_of_measurement') or 'A'
         return current_a(state.state,unit)
 
+    def operator_current_limit_evidence(self,asset_id: str,desc=None) -> dict[str,Any]:
+        getter=getattr(self.manager,'configuration_value',None)
+        configured=getter(asset_id,'charger.max_current_a',None) if callable(getter) else None
+        if configured is None:
+            return {'configured_current_ceiling_a':None,'status':'NOT_CONFIGURED',
+                    'actual_current_limit_a':None,'limit_exceeded':False}
+        cap=_finite_current(configured)
+        if cap is None or cap<=0:
+            return {'configured_current_ceiling_a':None,'status':'INVALID_CONFIGURATION',
+                    'actual_current_limit_a':None,'limit_exceeded':False}
+        desc=desc if desc is not None else self.requested_power_descriptor(asset_id)
+        mode=getattr(desc,'mode',None)
+        if mode=='current_limit':
+            actual=self.requested_current_readback(asset_id)
+            ceiling=cap
+        elif mode=='direct_power':
+            actual=self.requested_power_readback(asset_id)
+            ceiling=getattr(desc,'max_power_kw',None)
+        else:
+            actual=None
+            ceiling=None
+        if actual is None or ceiling is None:
+            return {'configured_current_ceiling_a':cap,'status':'READBACK_UNKNOWN',
+                    'actual_current_limit_a':actual if mode=='current_limit' else None,
+                    'limit_exceeded':False}
+        exceeded=actual>ceiling+(0.01 if mode=='current_limit' else 0.005)
+        return {'configured_current_ceiling_a':cap,
+                'actual_current_limit_a':actual if mode=='current_limit' else None,
+                'actual_power_limit_kw':actual if mode=='direct_power' else None,
+                'status':'OPERATOR_LIMIT_EXCEEDED' if exceeded else 'WITHIN_OPERATOR_LIMIT',
+                'limit_exceeded':exceeded}
+
     async def async_execute_command(self,asset_id: str,command_key: str,request_id: str | None=None):
         cid=f'{asset_id}:{command_key}'; desc=self.command_descriptors().get(cid)
         if desc is None: raise ValueError(f'unsupported command: {cid}')
@@ -103,6 +136,18 @@ class MobilityControlController:
     async def async_set_requested_power(self,asset_id: str,power_kw: float,request_id: str | None=None):
         desc=self.requested_power_descriptor(asset_id)
         if desc is None: return {'result':'BLOCKED','reason':'requested_power_write_not_ready','asset_id':asset_id}
+        if getattr(desc,'mode',None) in {'current_limit','direct_power'}:
+            limit=self.operator_current_limit_evidence(asset_id,desc)
+            # An EVSE reboot may restore its hardware limit above the saved
+            # operator ceiling. A *bounded corrective write* through the same
+            # accepted physical Number is the recovery path: rejecting every
+            # write while exceeded creates a permanent deadlock at 32A. The
+            # descriptor is already clamped to the saved ceiling; the executor
+            # still requires source readback/confirmation. Unknown readback or
+            # invalid config cannot be treated as permission to actuate.
+            if limit['status'] in {'READBACK_UNKNOWN','INVALID_CONFIGURATION'}:
+                return {'result':'BLOCKED','reason':'operator_current_limit_'+limit['status'].lower(),
+                        'asset_id':asset_id,'limit_evidence':limit}
         try:
             request,accepted=requested_power_request(desc,power_kw,request_id or f'setpoint_{uuid4().hex}')
         except (TypeError, ValueError, OverflowError) as exc:
@@ -126,7 +171,9 @@ class MobilityControlController:
         if result.result=='EXECUTION_UNKNOWN': self.unresolved_intents[asset_id]=accepted
         elif result.result in {'SUCCEEDED','ALREADY_CONVERGED','SUCCEEDED_AFTER_DELAY'}: self.unresolved_intents.pop(asset_id,None)
         self._changed()
-        return {**result.__dict__,'accepted_requested_power_kw':accepted,'actual_readback_power_kw':self.requested_power_readback(asset_id)}
+        return {**result.__dict__,'accepted_requested_power_kw':accepted,
+                'actual_readback_power_kw':self.requested_power_readback(asset_id),
+                'operator_current_limit':self.operator_current_limit_evidence(asset_id,desc)}
 
     async def async_set_requested_current(self,asset_id: str,current_a_value: float,request_id: str | None=None):
         desc=self.requested_current_descriptor(asset_id)
@@ -233,6 +280,7 @@ class MobilityControlController:
             'pending_intent_power_kw':self.pending_intents.get(asset_id),
             'unresolved_intent_power_kw':self.unresolved_intents.get(asset_id),
             'value_semantics':'actual_readback_by_default',
+            'operator_current_limit':self.operator_current_limit_evidence(asset_id),
         }
 
     def _reconcile_intents(self):

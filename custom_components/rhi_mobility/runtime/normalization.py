@@ -355,8 +355,19 @@ def _maintenance_source_multipliers() -> dict[str, float]:
         return {}
     result: dict[str, float] = {}
     for domain, row in (data.get("source_conventions") or {}).items():
+        # An explicitly unverified source sign (e.g. mbapi2020) intentionally
+        # has a null multiplier. It is a fail-closed quality state, not a broken
+        # contract and must not emit an error at every Home Assistant startup.
+        if isinstance(row, dict) and row.get("canonical_multiplier") is None:
+            if row.get("raw_sign") == "unverified" and row.get("evidence_status") == "target_validation_required":
+                continue
+            _LOGGER.error("Invalid maintenance source convention for %s", domain)
+            continue
         try:
-            result[str(domain).strip().lower()] = float(row["canonical_multiplier"])
+            multiplier = float(row["canonical_multiplier"])
+            if multiplier not in (-1.0, 1.0):
+                raise ValueError("maintenance_sign_multiplier_outside_allowed_values")
+            result[str(domain).strip().lower()] = multiplier
         except (KeyError, TypeError, ValueError):
             _LOGGER.error("Invalid maintenance source convention for %s", domain)
     return result

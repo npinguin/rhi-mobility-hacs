@@ -82,11 +82,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for row in rows:
             key = (row["asset_id"], row["property_key"])
             if key in created:
-                # Topology notifications are also the convergence signal after
-                # number/select/text/switch editor registration. Existing property
-                # entities must republish their write metadata; merely keeping the
-                # same entity object leaves early read-only metadata stale forever.
-                created[key]._changed()
+                # Editor topology changes must republish metadata once the
+                # property entity has completed HA platform registration.
+                # A pending async_add_entities() entity is already in created
+                # but has no hass/identity yet; async_write_ha_state would raise.
+                entity = created[key]
+                if entity.hass is not None and entity.entity_id is not None:
+                    entity._changed()
+                # HA publishes initial state itself when adding a pending entity.
                 continue
             entity = MobilityPropertySensor(entry.entry_id, row["asset_id"], row["property_key"], manager, projection)
             created[key] = entity

@@ -1,8 +1,10 @@
 from __future__ import annotations
+from math import floor
 from typing import Any
 from .models import CommandDescriptor, CurrentLimitDescriptor, RequestedPowerDescriptor
 from ..models.contracts import SourceRef
 from ..runtime.normalization import current_a, power_kw
+from .current_limit_policy import current_envelope, _finite_current
 
 
 class MobilityControlCatalog:
@@ -195,6 +197,15 @@ class MobilityControlCatalog:
             return False,'vehicle_runtime_not_ready'
         return True,'ready'
 
+    def _configured_current_bounds(self, asset_id: str) -> tuple[Any, Any]:
+        getter=getattr(self.manager,'configuration_value',None)
+        if not callable(getter):
+            return None,None
+        return (
+            getter(asset_id,'charger.min_current_a',None),
+            getter(asset_id,'charger.max_current_a',None),
+        )
+
     def requested_current_descriptor(self,asset_id: str) -> CurrentLimitDescriptor | None:
         asset=self.manager.assets.get(asset_id)
         if asset is None or asset.concept_id!='charger': return None
@@ -208,9 +219,11 @@ class MobilityControlCatalog:
         mn=current_a(state.attributes.get('min'),unit)
         mx=current_a(state.attributes.get('max'),unit)
         st=current_a(state.attributes.get('step'),unit)
-        if mn is None or mx is None or st is None or st<=0 or mx<mn:
+        configured_min,configured_max=self._configured_current_bounds(asset_id)
+        envelope=current_envelope(mn,mx,st,configured_min=configured_min,configured_max=configured_max)
+        if envelope is None:
             return None
-        return CurrentLimitDescriptor(asset_id,current,float(mn),float(mx),float(st))
+        return CurrentLimitDescriptor(asset_id,current,*envelope)
 
     def requested_power_descriptor(self,asset_id: str) -> RequestedPowerDescriptor | None:
         asset=self.manager.assets.get(asset_id)
@@ -226,16 +239,43 @@ class MobilityControlCatalog:
             mx=power_kw(state.attributes.get('max'),unit) if state else None
             st=power_kw(state.attributes.get('step'),unit) if state else None
             if mn is not None and mx is not None and st and st>0:
+                _,configured_max=self._configured_current_bounds(asset_id)
+                if configured_max is not None:
+                    ceiling=_finite_current(configured_max)
+                    profile=self.manager.effective_charging_profile(asset_id)
+                    if ceiling is None or profile is None:
+                        return None
+                    volts=_finite_current(profile.get('nominal_voltage_v'))
+                    phases=_finite_current(profile.get('phase_count'))
+                    if volts is None or phases is None or volts<=0 or phases<=0:
+                        return None
+                    # Preserve the physical number lattice from its own
+                    # minimum.  Merely clipping a fractional power ceiling
+                    # could let Home Assistant round UP beyond the 16A policy.
+                    max_allowed=min(mx,ceiling*volts*phases/1000.0)
+                    mx=mn+floor((max_allowed-mn)/st+1e-9)*st
+                if mx<mn: return None
                 return RequestedPowerDescriptor(asset_id,direct,'direct_power',mn,mx,st)
         if current and current.entity_id:
             current_desc=self.requested_current_descriptor(asset_id)
             profile=self.manager.effective_charging_profile(asset_id)
             if current_desc is None or profile is None: return None
-            min_a=max(float(profile['min_current_a']),current_desc.min_current_a)
-            max_a=min(float(profile['max_current_a']),current_desc.max_current_a)
-            profile_step=profile.get('current_step_a')
-            step_a=current_desc.current_step_a if profile_step is None else max(float(profile_step),current_desc.current_step_a)
-            if max_a<min_a or step_a<=0: return None
+            allowed=current_envelope(
+                current_desc.min_current_a,current_desc.max_current_a,
+                current_desc.current_step_a,
+                configured_min=profile.get('min_current_a'),
+                configured_max=profile.get('max_current_a'),
+            )
+            if allowed is None: return None
+            min_a,max_a,step_a=allowed
+            profile_step=_finite_current(profile.get('current_step_a'))
+            if profile.get('current_step_a') is not None and (
+                profile_step is None or profile_step<step_a
+                or abs(profile_step/step_a-round(profile_step/step_a))>1e-9
+            ):
+                return None
+            if profile_step is not None:
+                step_a=profile_step
             v=profile['nominal_voltage_v']; phases=int(profile['phase_count'])
             return RequestedPowerDescriptor(
                 asset_id,current_desc.source,'current_limit',min_a*v*phases/1000.0,max_a*v*phases/1000.0,
