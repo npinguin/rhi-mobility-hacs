@@ -2,7 +2,7 @@
   "schema_version": 1,
   "product": "rhi_mobility",
   "bundle_filename": "rhi-mobility-ux.js",
-  "version": "0.10.55",
+  "version": "0.10.56",
   "source_manifest_schema": 1,
   "hacs_package_root": "dist",
   "hacs_filename": "rhi-mobility-ux.js",
@@ -13,7 +13,7 @@
     "metadata",
     "vehicles"
   ],
-  "runtime_sha256": "68ff09520f112159bef442999e0b0a502d4b4d8ae23c1ad7417dde6bbdd6e1fe",
+  "runtime_sha256": "c653498ba32abae77f32935de6ed0f35ce21fe3f6c4b1209cc23ce74b3acbd5e",
   "files": [
     {
       "path": "assets/chargers/charger_fallback.png",
@@ -88,7 +88,7 @@
     {
       "path": "assets/metadata/mobility-visual-manifest.json",
       "bytes": 14907,
-      "sha256": "df962a5354383edc1f790a3540c2f2edb58b490e9e1e85411e76794afc29cac5"
+      "sha256": "0c54ebfc0726c73282a63ab63fa134851390eb1424076523b5db0866dec8579d"
     },
     {
       "path": "assets/vehicles/vehicle_audi_q8.webp",
@@ -128,12 +128,12 @@
     {
       "path": "rhi-mobility-ux.js",
       "bytes": 881363,
-      "sha256": "68ff09520f112159bef442999e0b0a502d4b4d8ae23c1ad7417dde6bbdd6e1fe"
+      "sha256": "c653498ba32abae77f32935de6ed0f35ce21fe3f6c4b1209cc23ce74b3acbd5e"
     },
     {
       "path": "rhi-mobility-ux.js.sha256",
       "bytes": 85,
-      "sha256": "7d1eabf76e98a4c9599b04814814c89ca5cc1a504574ea0fa48ed3c3dff6e015"
+      "sha256": "5c05f0d991c0114b822b619bba4f55b176e3a9c2d8178fe7e19e460b1327a5a5"
     }
   ]
 }

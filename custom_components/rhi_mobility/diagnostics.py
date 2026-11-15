@@ -557,7 +557,9 @@ async def async_get_config_entry_diagnostics(hass: Any, entry: Any) -> dict[str,
                     break
                 if resolution.failed or not resolution.available:
                     resolution_evidence.append(resolution.as_dict())
+    from .frontend import ux_diagnostics
     return {
+        "ux": ux_diagnostics(hass, entry),
         "identity": {
             "domain": DOMAIN,
             "release": RELEASE,
