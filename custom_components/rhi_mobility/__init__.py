@@ -321,6 +321,12 @@ def _call_registration_unsub(handle: Any) -> bool:
     return True
 
 
+async def async_setup(hass: Any, config: Any) -> bool:
+    from .frontend import async_register_frontend
+    await async_register_frontend(hass)
+    return True
+
+
 async def async_setup_entry(hass: Any, entry: Any) -> bool:
     setup_started = perf_counter()
     setup_timings_ms: dict[str, float] = {}
@@ -565,6 +571,9 @@ async def async_setup_entry(hass: Any, entry: Any) -> bool:
             "selected_input_count": int(last_build.get("selected_input_count") or len(_selected_input_payloads(hass))),
             "asset_count": int(last_build.get("asset_count") or len(manager.assets)),
         }
+        if getattr(hass, "http", None) is not None:
+            from .frontend import async_setup_ux
+            async_setup_ux(hass, entry)
         return True
     except Exception:
         if platforms_forward_started:

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "modules": [
+    "app/asset-paths.js",
+    "app/asset-catalog.js",
+    "vendor/rhi-ux-core.js",
+    "app/localization.js",
+    "app/presentation.js",
+    "app/header-and-navigation.js",
+    "domain/adapters/intelligence-model-alignment.js",
+    "runtime/canonical-property-index.js",
+    "runtime/ha-contract-runtime.js",
+    "runtime/energy-public-v2-projection.js",
+    "runtime/energy-planning-projection.js",
+    "runtime/energy-mobility-insights-projection.js",
+    "runtime/energy-mobility-strategy-projection.js",
+    "domain/models/asset-factory.js",
+    "domain/adapters/vehicle-adapter.js",
+    "domain/adapters/charger-adapter.js",
+    "ui/components/vehicle-visual-picker.js",
+    "ui/components/charger-visual-picker.js",
+    "ui/components/asset-shell.js",
+    "ui/screens/vehicle-detail.js",
+    "ui/screens/charger-detail.js",
+    "ui/screens/charger-maintenance.js",
+    "ui/screens/mobility-dashboard.js",
+    "ui/screens/router.js",
+    "ui/screens/bootstrap.js"
+  ],
+  "assets_root": "assets"
+}

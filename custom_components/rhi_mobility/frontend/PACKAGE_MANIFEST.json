@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "product": "rhi_mobility",
+  "bundle_filename": "rhi-mobility-ux.js",
+  "version": "0.10.55",
+  "source_manifest_schema": 1,
+  "hacs_package_root": "dist",
+  "hacs_filename": "rhi-mobility-ux.js",
+  "assets_root": "assets",
+  "asset_categories": [
+    "chargers",
+    "heroes",
+    "metadata",
+    "vehicles"
+  ],
+  "runtime_sha256": "68ff09520f112159bef442999e0b0a502d4b4d8ae23c1ad7417dde6bbdd6e1fe",
+  "files": [
+    {
+      "path": "assets/chargers/charger_fallback.png",
+      "bytes": 132329,
+      "sha256": "1d5b2baace7e9ab549525bfbaca9078c699a761e8b84921864401ab2e512d987"
+    },
+    {
+      "path": "assets/chargers/charger_peblar.webp",
+      "bytes": 16256,
+      "sha256": "b0c958c7b7e29e7a0c6750bf023a1bb6af6e35ec5fb680e5ee89e44bffffb987"
+    },
+    {
+      "path": "assets/chargers/charger_utility_plug.svg",
+      "bytes": 634,
+      "sha256": "c1c3ae25e1203e3f606e5858858f7a2207425da0e951167d50026858fac95a01"
+    },
+    {
+      "path": "assets/chargers/charger_wallbox_black.webp",
+      "bytes": 34382,
+      "sha256": "8d88c46ccf992d9355217f41c6616fcdd61e398e754fe3b7fdc9d0e618f30bec"
+    },
+    {
+      "path": "assets/chargers/charger_wallbox_white.webp",
+      "bytes": 35298,
+      "sha256": "5d825d3115bf21e1d3797e73a6a963bdcd9fbe438ac6cb47dca6213cef7ae2e8"
+    },
+    {
+      "path": "assets/heroes/mobility-chargers.png",
+      "bytes": 2358013,
+      "sha256": "8a2a871027b89bd95bd1f7126403535635317d990ae774891982083eacb24b9b"
+    },
+    {
+      "path": "assets/heroes/mobility-charging-detail.png",
+      "bytes": 2249680,
+      "sha256": "84c57016c889fe3d8acbdd6c40d344fb6f24be0ced918683f14a1765333fd6d2"
+    },
+    {
+      "path": "assets/heroes/mobility-history.png",
+      "bytes": 2296486,
+      "sha256": "7a6b6e57d907992996160fb3ae454a15228fdba67e1b26a6439fd398b121c957"
+    },
+    {
+      "path": "assets/heroes/mobility-log.png",
+      "bytes": 2198926,
+      "sha256": "a444381d18d9f8129968b3350211691528c93b08ce525ac2c2b9fe5dc9cd9cd6"
+    },
+    {
+      "path": "assets/heroes/mobility-overview.png",
+      "bytes": 2330222,
+      "sha256": "7c8b0be4d6677cf0e1658f6e6faa9a46517872ddb3eb08b1f5d0a2bfbddccfbb"
+    },
+    {
+      "path": "assets/heroes/mobility-planning.png",
+      "bytes": 2418236,
+      "sha256": "016640f67a8d7d23ab7e7034ada7f329a25804b0ed73df8a3c590c444383eeaf"
+    },
+    {
+      "path": "assets/heroes/mobility-strategies.png",
+      "bytes": 2230620,
+      "sha256": "f1d08cd92f44b7308dbf2822e8565c9b55af3a69c594f1667c4df42c6b691b98"
+    },
+    {
+      "path": "assets/heroes/mobility-vehicle-detail.png",
+      "bytes": 2256288,
+      "sha256": "cb39e0b59d37e647d8cbbe3138fdb6eedda98ea882139361d588426cc96573f9"
+    },
+    {
+      "path": "assets/heroes/mobility-vehicles.png",
+      "bytes": 2280184,
+      "sha256": "25c93350c2510d161d288f1acd3a798ccf86832f8cfeb7c3c3dc18f9794892f4"
+    },
+    {
+      "path": "assets/metadata/mobility-visual-manifest.json",
+      "bytes": 14907,
+      "sha256": "df962a5354383edc1f790a3540c2f2edb58b490e9e1e85411e76794afc29cac5"
+    },
+    {
+      "path": "assets/vehicles/vehicle_audi_q8.webp",
+      "bytes": 24636,
+      "sha256": "7902122c567321b67015028ef47202ba774b904a73ebf9ef66e2e696d67d1ba8"
+    },
+    {
+      "path": "assets/vehicles/vehicle_bmw_x1_phev.webp",
+      "bytes": 13392,
+      "sha256": "3c507faecb338d0dd24ce8fe8a4928dadcb06aa9c35a3dfcd3698184db3e7ff2"
+    },
+    {
+      "path": "assets/vehicles/vehicle_fallback.png",
+      "bytes": 113622,
+      "sha256": "9d9191f8079dc817ba08c1dc7cda5294ab5f6d81fd18b5a4fd607813490270f0"
+    },
+    {
+      "path": "assets/vehicles/vehicle_guest.webp",
+      "bytes": 14644,
+      "sha256": "2f52220a8cce8b65f07c8a1d07039be318ad618543d81201d071e3ecc8c941e4"
+    },
+    {
+      "path": "assets/vehicles/vehicle_mercedes_gla.webp",
+      "bytes": 11610,
+      "sha256": "d363eca7a37a5a40696e314f246f6c4c13da04689d03e2e118391a9c28488a9d"
+    },
+    {
+      "path": "assets/vehicles/vehicle_renault_scenic_techno_ev.webp",
+      "bytes": 9966,
+      "sha256": "e80cf8cbb4f032623ad175c1c8ca7fd85351cd4d71ea683fcd9213430356dc38"
+    },
+    {
+      "path": "assets/vehicles/vehicle_vw_id4.webp",
+      "bytes": 7964,
+      "sha256": "65b8ef597ae8664e30521b6b2c6cdfd1b2ec4a1d2c2fa493b16b7eeb79846b1d"
+    },
+    {
+      "path": "rhi-mobility-ux.js",
+      "bytes": 881363,
+      "sha256": "68ff09520f112159bef442999e0b0a502d4b4d8ae23c1ad7417dde6bbdd6e1fe"
+    },
+    {
+      "path": "rhi-mobility-ux.js.sha256",
+      "bytes": 85,
+      "sha256": "7d1eabf76e98a4c9599b04814814c89ca5cc1a504574ea0fa48ed3c3dff6e015"
+    }
+  ]
+}

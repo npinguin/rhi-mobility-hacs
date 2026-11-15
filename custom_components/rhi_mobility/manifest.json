@@ -2,7 +2,8 @@
   "domain": "rhi_mobility",
   "name": "Robotix Home Intelligence - Mobility Module",
   "after_dependencies": [
-    "rhi_foundation"
+    "rhi_foundation",
+    "frontend"
   ],
   "codeowners": [
     "@npinguin"
@@ -17,5 +18,5 @@
   "issue_tracker": "https://github.com/npinguin/rhi-mobility/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.10.54"
+  "version": "0.10.55"
 }

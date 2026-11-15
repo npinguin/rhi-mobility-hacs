@@ -20,7 +20,8 @@
           "vehicles": "Vehicles",
           "chargers": "Chargers",
           "guest_vehicles": "Guest vehicles",
-          "advanced": "Advanced"
+          "advanced": "Advanced",
+          "frontend": "Dashboard"
         }
       },
       "edit_product_asset": {
@@ -349,6 +350,12 @@
         "description": "Choose a charger whose profile-owned technical values you explicitly want to override.",
         "data": {
           "product_asset": "Charger"
+        }
+      },
+      "frontend": {
+        "title": "Mobility dashboard",
+        "data": {
+          "enable_ux": "Automatically load dashboard cards"
         }
       }
     },

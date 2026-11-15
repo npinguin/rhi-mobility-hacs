@@ -23,6 +23,9 @@
     },
     {
       "integration_domain": "cardata"
+    },
+    {
+      "integration_domain": "vag_connect"
     }
   ],
   "candidate_requirements": {
@@ -118,6 +121,18 @@
                 "value": "vehicle.drivetrain.batteryManagement.header"
               }
             ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "battery_soc_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_battery_soc"
+              }
+            ]
           }
         ]
       },
@@ -169,6 +184,18 @@
                 "value": "cruising_range_combined"
               }
             ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_total_range_km"
+              }
+            ]
           }
         ]
       },
@@ -218,6 +245,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "vehicle.drivetrain.electricEngine.remainingElectricRange"
+              }
+            ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "ev_range_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_electric_range_km"
               }
             ]
           }
@@ -305,6 +344,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "vehicle.drivetrain.electricEngine.charging.hvStatus"
+              }
+            ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "charge_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_charging_state"
               }
             ]
           }
@@ -419,6 +470,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "vehicle.vehicle.travelledDistance"
+              }
+            ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "odometer_km",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_odometer_km"
               }
             ]
           }
@@ -596,6 +659,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "vehicle.powertrain.electric.battery.charging.power"
+              }
+            ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "charge_power_kw",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_charging_power_kw"
               }
             ]
           }
@@ -967,6 +1042,18 @@
                 "value": "vehicle.powertrain.tractionBattery.charging.port.anyPosition.isPlugged"
               }
             ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "plug_state",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_plug_state"
+              }
+            ]
           }
         ]
       },
@@ -1079,6 +1166,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "charging_complete_time"
+              }
+            ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "charging_complete_time",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_charge_complete_eta"
               }
             ]
           }
@@ -2586,6 +2685,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "vehicle.drivetrain.fuelSystem.level"
+              }
+            ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "fuel_level_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_fuel_level"
               }
             ]
           }
@@ -4671,6 +4782,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "vehicle.powertrain.electric.battery.stateOfCharge.target"
+              }
+            ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "source_target_soc_pct",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_target_soc"
               }
             ]
           }
@@ -7898,6 +8021,18 @@
                 "value": "integration_status"
               }
             ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "integration_status",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_portal_health"
+              }
+            ]
           }
         ]
       },
@@ -8112,6 +8247,18 @@
                 "field": "source_identity.unique_id",
                 "operator": "ends_with",
                 "value": "source_timestamp"
+              }
+            ]
+          },
+          {
+            "integration_domain": "vag_connect",
+            "raw_capability_id": "source_timestamp",
+            "source_kind": "entity",
+            "all_of": [
+              {
+                "field": "source_identity.unique_id",
+                "operator": "ends_with",
+                "value": "_last_snapshot_at"
               }
             ]
           }

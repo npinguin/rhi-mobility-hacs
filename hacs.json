@@ -1,4 +1,5 @@
 {
   "name": "Robotix Home Intelligence - Mobility Module",
-  "render_readme": true
+  "render_readme": true,
+  "homeassistant": "2026.11.1"
 }

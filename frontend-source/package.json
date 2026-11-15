@@ -1,0 +1,33 @@
+{
+  "name": "rhi-mobility-ux",
+  "private": true,
+  "description": "Robotix Home Intelligence Mobility UX for Home Assistant",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "clean": "node tools/clean.mjs",
+    "build": "node tools/build.mjs",
+    "check:syntax": "node --check dist/rhi-mobility-ux.js",
+    "check:architecture": "node tools/check-architecture.mjs",
+    "check:hygiene": "node tools/check-public-hygiene.mjs",
+    "test": "npm run clean && npm run build && npm run test:contract && npm run test:ux && npm run test:package",
+    "check:branding": "node tools/check-branding.mjs",
+    "check:footer": "node tools/check-footer.mjs",
+    "check:test-ownership": "node tools/check-test-ownership.mjs",
+    "test:contract": "node tests/contracts/canonical-property-runtime-smoke.mjs && node tests/contracts/runtime-contract-smoke.mjs && node tests/contracts/command-placement-smoke.mjs && node tests/contracts/configuration-editables-smoke.mjs && node tests/contracts/write-readback-only-smoke.mjs && node tests/contracts/supervisor-authority-smoke.mjs && node tests/contracts/energy-planning-projection-smoke.mjs && node tests/contracts/energy-mobility-insights-projection-smoke.mjs && node tests/contracts/energy-mobility-strategy-projection-smoke.mjs && node tests/contracts/canonical-projection-authority-smoke.mjs && node tests/contracts/visual-manifest-smoke.mjs && node tests/contracts/dashboard-path-routing-smoke.mjs",
+    "test:ux": "node tests/contracts/vehicle-management-smoke.mjs && node tests/view-models/charger-materialization.mjs && node tests/view-models/charger-overview-availability.mjs && node tests/view-models/v2-property-placement.mjs && node tests/contracts/picker-session-smoke.mjs && node tests/contracts/interaction-state-preservation-smoke.mjs && node tests/contracts/rc75-product-ux-closure-smoke.mjs && npm run check:ux-core && npm run check:shared-visual-ownership && npm run check:presentation-debt && node tests/contracts/rc78-shared-picker-parity.mjs && node tests/contracts/rc82-ipad-command-closure.mjs && npm run check:localization && node tests/render/responsive-asset-journey.mjs && node tests/render/detail-navigation-journey.mjs",
+    "test:package": "node tools/check-version.mjs && npm run check:syntax && npm run check:architecture && npm run check:zero-debt && npm run check:hygiene && npm run check:branding && npm run check:footer && npm run check:test-ownership && npm run check:source-ownership && npm run check:asset-policy && npm run check:hacs-package && npm run test:hacs-install && node tests/render/bundle-load-smoke.mjs && node tools/verify-dist.mjs",
+    "check:source-ownership": "node tools/check-source-ownership.mjs",
+    "check:hacs-package": "node tools/check-hacs-package.mjs",
+    "check:asset-policy": "node tools/check-asset-policy.mjs",
+    "test:hacs-install": "node tests/package/hacs-install-simulation.mjs",
+    "check:ux-core": "node tools/check-ux-core.mjs",
+    "check:shared-visual-ownership": "node tools/check-shared-visual-ownership.mjs",
+    "check:presentation-debt": "node tools/check-presentation-debt.mjs",
+    "check:zero-debt": "node tools/check-zero-debt.mjs",
+    "check:localization": "node tests/contracts/localization-smoke.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

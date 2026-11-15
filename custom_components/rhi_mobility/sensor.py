@@ -554,7 +554,7 @@ class MobilityPropertySensor(SensorEntity):
         self._attr_device_info = logical_device_info(manager.hass, entry_id, manager, asset_id)
 
     async def async_added_to_hass(self) -> None:
-        self.async_on_remove(self.manager.add_asset_listener(self.asset_id,self._changed))
+        self.async_on_remove(self.manager.add_property_listener(self.asset_id,self.property_key,self._changed))
         if self.property_key in {
             "charger.requested_power_kw",
             "charger.requested_charge_power_kw",
@@ -613,7 +613,9 @@ class MobilityPropertySensor(SensorEntity):
         definition = self.manager.registry.property_definition(self.property_key, None if asset is None else asset.concept_id) or {}
         projected = self.projection.row(self.asset_id, self.property_key) or {}
         provenance = dict(projected.get("source_provenance") or {})
-        write = self.projection.write_metadata(self.asset_id, self.property_key) or {}
+        # row() already resolves editor/write metadata; do not repeat all native
+        # editor registry lookups and capability checks for each HA state write.
+        write = projected
         relation_attrs = {}
         if self.property_key in {
             "charger.assigned_vehicle_id",

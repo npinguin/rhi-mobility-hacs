@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "principle": "one source concern, one owner",
+  "owners": {
+    "app": {
+      "path": "src/app",
+      "owns": [
+        "application shell",
+        "navigation",
+        "HACS asset URL resolution",
+        "runtime package identity placeholder",
+        "shared presentation tokens",
+        "shared responsive page grammar",
+        "Mobility tab hero composition"
+      ]
+    },
+    "runtime": {
+      "path": "src/runtime",
+      "owns": [
+        "Home Assistant access",
+        "RHI_MOBILITY_CANONICAL_PROPERTY_V1 access",
+        "MOBILITY_EXPERIENCE_V2 access",
+        "MOBILITY_POLICY_V2 access",
+        "canonical per-asset V2 semantic configuration read/write boundary",
+        "V2-only product authority; missing truth fails closed",
+        "contract normalization",
+        "commands and canonical readback boundary",
+        "read-only Energy public planning projection for Mobility Intelligence",
+        "read-only Energy public metering/value projection for Mobility Insights",
+        "read-only Energy public strategy projection for Mobility Intelligence"
+      ]
+    },
+    "domain_adapters": {
+      "path": "src/domain/adapters",
+      "owns": [
+        "backend contract to Mobility UX semantic mapping"
+      ]
+    },
+    "domain_models": {
+      "path": "src/domain/models",
+      "owns": [
+        "canonical Mobility UX view models and asset model selection"
+      ]
+    },
+    "ui_components": {
+      "path": "src/ui/components",
+      "owns": [
+        "reusable presentation components",
+        "shared detail shell"
+      ]
+    },
+    "ui_screens": {
+      "path": "src/ui/screens",
+      "owns": [
+        "screen-specific composition",
+        "screen-specific interaction",
+        "Overview",
+        "Vehicles",
+        "Chargers",
+        "detail and route presentation",
+        "Planning projection",
+        "Strategies",
+        "History",
+        "Log"
+      ]
+    },
+    "assets": {
+      "path": "src/assets",
+      "owns": [
+        "canonical package artwork grouped by public asset category"
+      ]
+    },
+    "package": {
+      "path": "tools/build.mjs",
+      "owns": [
+        "source manifest consumption",
+        "bundle generation",
+        "dist package assembly",
+        "package manifest generation"
+      ]
+    }
+  }
+}

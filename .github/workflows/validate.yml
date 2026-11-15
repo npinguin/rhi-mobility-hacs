@@ -1,29 +1,47 @@
 name: Validate HACS Distribution
-
 on:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  hacs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hacs/action@main
-        with:
-          category: integration
-
-  hassfest:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: home-assistant/actions/hassfest@master
+      - uses: hacs/action@main
+        with:
+          category: integration
+          ignore: description topics license
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Exact protected inventory and rebuild corresponding frontend
+        run: |
+          node frontend-source/tools/build.mjs
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('custom_components/rhi_mobility')
+          p=json.loads(Path('DISTRIBUTION_SOURCE.json').read_text())
+          assert p['status']=='PROTECTED_TEST_CANDIDATE' and not p['approved_release']
+          assert set(p['platforms'])=={'x86_64','aarch64'}
+          assert json.loads((root/'manifest.json').read_text())['version']==p['manifest_version']
+          files={f.relative_to(root).as_posix():hashlib.sha256(f.read_bytes()).hexdigest() for f in root.rglob('*') if f.is_file()}
+          assert files==p['runtime_files']
+          assert {k for k in files if k.endswith('.py')}==set(p['readable_native_adapters'])
+          assert not set(p['protected_modules']) & files.keys()
+          assert len([k for k in files if k.endswith('.so')])==2*len(p['protected_modules'])
+          branding_files={f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in (Path('brand')).iterdir() if f.is_file()}
+          assert branding_files==p['branding_files'], 'Branding provenance mismatch'
+          assert set(branding_files)=={f.name for f in (root/'brand').iterdir() if f.is_file()}
+          for f in (root/'brand').iterdir():
+              assert f.read_bytes()==(Path('brand')/f.name).read_bytes(), 'HACS root branding differs'
+          for f in Path('frontend-source/dist').rglob('*'):
+              if f.is_file():
+                  assert f.read_bytes()==(root/'frontend'/f.relative_to('frontend-source/dist')).read_bytes()
+          assert (root/'frontend/LICENSE').read_bytes()==Path('frontend-source/LICENSE').read_bytes()
+          print('Exact protected runtime and reproducible GPL frontend PASS')
+          PY

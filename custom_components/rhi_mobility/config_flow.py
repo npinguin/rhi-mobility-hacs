@@ -643,8 +643,17 @@ class RhiMobilityOptionsFlow(getattr(config_entries, "OptionsFlow", object)):
             choices.append("vehicles")
         if self._product_assets_for_type("charger"):
             choices.append("chargers")
-        choices.extend(["guest_vehicles", "advanced"])
+        choices.extend(["guest_vehicles", "advanced", "frontend"])
         return self.async_show_menu(step_id="init", menu_options=choices)
+
+    async def async_step_frontend(self, user_input=None):
+        options = self._options()
+        if user_input is not None:
+            options["enable_ux"] = bool(user_input["enable_ux"])
+            return self.async_create_entry(title="", data=options)
+        return self.async_show_form(step_id="frontend", data_schema=vol.Schema({
+            vol.Required("enable_ux", default=options.get("enable_ux", True)): bool,
+        }))
 
     async def async_step_vehicles(self, user_input=None):
         return await self._configure_asset_type("vehicle", "vehicles", user_input)
